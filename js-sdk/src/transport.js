@@ -16,7 +16,7 @@ MagnetJS.Request = function(request, callback, failback) {
         call : deferred.promise
     };
 
-    if (MagnetJS.App.credentials && MagnetJS.App.credentials.access_token)
+    if (MagnetJS.App.credentials && MagnetJS.App.credentials.access_token && !request.headers.Authorization)
         request.headers['Authorization'] = 'Bearer ' + MagnetJS.App.credentials.access_token;
 
     setTimeout(function() {

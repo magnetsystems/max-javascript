@@ -19,7 +19,7 @@ MagnetJS.User.register = function(userObj) {
     return def.promise;
 };
 
-MagnetJS.User.login = function(userObj, cb) {
+MagnetJS.User.login = function(userObj) {
     userObj = userObj || {};
     userObj.grant_type = 'password';
     userObj.client_id = MagnetJS.App.clientId;
@@ -38,9 +38,26 @@ MagnetJS.User.login = function(userObj, cb) {
 
         MagnetJS.App.credentials = data;
         mCurrentUser = new MagnetJS.User(data.user);
+
+        // TODO: implement remember me
+        //var token  = (MagnetJS.Utils.isNode ? details.info.response.headers['authorization'] : details.info.xhr.Authorization);
+        //if (MagnetJS.Config.storeCredentials === true) {
+        //    if (!token)
+        //        MagnetJS.Log.warning('the connected server does not have OAuth enabled, so credentials cannot be stored.');
+        //    MagnetJS.Storage.createTableIfNotExist(this.store, {
+        //        hash : 'TEXT'
+        //    }, {
+        //        hash : MagnetJS.Utils.stringToBase64(JSON.stringify({
+        //            endpointUrl : MagnetJS.Config.endpointUrl,
+        //            token       : token ? token.replace('Bearer ', '') : ''
+        //    }))}, true);
+        //}
+        //if (MagnetJS.Utils.isNode && details.info.response.headers['set-cookie'])
+        //    MagnetJS.Transport.Headers.Cookie = details.info.response.headers['set-cookie'][0];
+
         MagnetJS.Device.register().success(function() {
             MagnetJS.MMXClient.connect(userObj.password).success(function() {
-                def.resolve.apply(def, arguments);
+                def.resolve(mCurrentUser, mCurrentDevice);
             });
         });
 
@@ -63,13 +80,12 @@ MagnetJS.User.getUsersByUserNames = function(usernames) {
 
     var def = MagnetJS.Request({
         method: 'GET',
-        url: 'http://localhost:7777/api/com.magnet.server/user/users' + qs
+        url: '/com.magnet.server/user/users' + qs
     }, function(data, details) {
-
         for (var i=0;i<data.length;++i)
             userlist.push(new MagnetJS.User(data[i]));
 
-        def.resolve.apply(def, [userlist, details]);
+        def.resolve(userlist, details);
     }, function() {
         def.reject.apply(def, arguments);
     });
@@ -77,9 +93,8 @@ MagnetJS.User.getUsersByUserNames = function(usernames) {
     return def.promise;
 };
 
-MagnetJS.User.search = function(queryObj, cb) {
-    var qs = '';
-
+MagnetJS.User.search = function(queryObj) {
+    var qs = '', userlist = [];
     var keyMap = {
         query: 'q',
         limit: 'take',
@@ -87,42 +102,38 @@ MagnetJS.User.search = function(queryObj, cb) {
         orderby: 'sort'
     };
 
-    for(var key in queryObj){
+    for(var key in queryObj)
         qs += '&'+keyMap[key]+'='+queryObj[key];
-    }
     qs = qs != '' ? qs.replace('&', '?') : qs;
 
-    $.ajax({
+    var def = MagnetJS.Request({
         method: 'GET',
-        url: 'http://localhost:7777/api/com.magnet.server/user/query'+qs,
-        beforeSend: function(xhr) {
-           xhr.setRequestHeader('Authorization', 'Bearer ' + MagnetJS.App.credentials.token.access_token);
-        }
-    }).done(function(users) {
-        var userlist = [];
-        for (var i=0;i<users.length;++i) {
-            userlist.push(new MagnetJS.User(users[i]));
-        }
-        cb(null, userlist);
-    }).fail(function(err) {
-        cb(err);
+        url: '/com.magnet.server/user/query'+qs
+    }, function(data, details) {
+        for (var i=0;i<data.length;++i)
+            userlist.push(new MagnetJS.User(data[i]));
+
+        def.resolve(userlist, details);
+    }, function() {
+        def.reject.apply(def, arguments);
     });
+
+    return def.promise;
 };
 
-MagnetJS.User.logout = function(cb) {
+MagnetJS.User.logout = function() {
     mCurrentUser = null;
     mCurrentDevice = null;
-    MagnetJS.App.credentials = null;
 
-    $.ajax({
+    var def = MagnetJS.Request({
         method: 'DELETE',
-        url: 'http://localhost:7777/api/com.magnet.server/user/session',
-        beforeSend: function(xhr) {
-           xhr.setRequestHeader('Authorization', 'Bearer ' + MagnetJS.App.credentials.token.access_token);
-        }
-    }).done(function(data) {
-        (cb || function() {})();
-    }).fail(function(err) {
-        (cb || function() {})();
+        url: '/com.magnet.server/user/session'
+    }, function() {
+        MagnetJS.App.credentials = null;
+
+        def.resolve.apply(def, arguments);
+    }, function() {
+        def.reject.apply(def, arguments);
     });
+    return def.promise;
 };

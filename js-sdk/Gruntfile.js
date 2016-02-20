@@ -168,7 +168,8 @@ module.exports = function(grunt){
     grunt.registerTask('default', ['concat']);
     grunt.registerTask('min', ['concat', 'uglify']);
     grunt.registerTask('docs', ['clean', 'concat', 'jsdoc:docstrap']);
-    grunt.registerTask('all', ['clean', 'concat', 'uglify', 'jsdoc:docstrap']);
+    grunt.registerTask('full', ['clean', 'concat', 'uglify', 'jsdoc:docstrap']);
+    //grunt.registerTask('test', ['clean', 'concat', 'jasmine']);
     //grunt.registerTask('full', ['clean', 'concat', 'uglify', 'jsdoc:docstrap', 'jasmine_node']);
     //grunt.registerTask('nodetests', ['clean', 'concat', 'jasmine_node']);
     //grunt.registerTask('webtests', ['concat', 'jasmine']);

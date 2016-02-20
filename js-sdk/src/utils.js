@@ -47,15 +47,19 @@ MagnetJS.Config = {
      */
     securityPolicy         : 'RELAXED',
     /**
-     * @property {string} mmxDomain mmxDomain.
+     * @property {string} mmxDomain mmx domain.
      */
     mmxDomain              : 'mmx',
     /**
-     * @property {string} mmxPort mmxPort.
+     * @property {string} mmxPort mmx port.
      */
     mmxPort                : 5222,
     /**
-     * @property {string} mmxRESTPort mmxRESTPort.
+     * @property {string} mmxPublicRESTPort mmx public REST port.
+     */
+    mmxPublicRESTPort      : 5220,
+    /**
+     * @property {string} mmxRESTPort mmx REST port.
      */
     mmxRESTPort            : 6060,
     /**

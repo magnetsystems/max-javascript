@@ -1,7 +1,3 @@
-# README #
-
-This README would normally document whatever steps are necessary to get your application up and running.
-
 ### Prerequisities ###
 
 * [node.js](http://nodejs.org/)
@@ -9,12 +5,12 @@ This README would normally document whatever steps are necessary to get your app
 
 ### Clone and Build SDK ###
 
-1. git clone git@bitbucket.org:magneteng/js-sdk.git
+1. git clone https://github.com/magnetsystems/max-javascript.git -b develop
 2. cd js-sdk
 3. npm install
 4. command line build options:
 
-* grunt   (builds SDK)
-* grunt nodetests   (builds SDK, run tests)
-* grunt docs   (builds SDK, generate docs) 
-* grunt full   (builds SDK, generate docs, run tests, create reports, creates -min SDK)
+* grunt        (builds SDK)
+* grunt min    (builds SDK, creates -min SDK)
+* grunt docs   (builds SDK, generate docs)
+* grunt full   (builds SDK, generate docs, creates -min SDK)

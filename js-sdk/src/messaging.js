@@ -58,6 +58,7 @@ MagnetJS.MMXClient = {
             '@' + MagnetJS.Config.mmxDomain + '/' + mCurrentDevice.deviceId;
 
         mXMPPConnection.connect(mCurrentUser.jid, password, function(status) {
+
             if (status == Strophe.Status.CONNECTING) {
                 MagnetJS.Log.fine('MMX is connecting.');
             } else if (status == Strophe.Status.CONNFAIL) {
@@ -68,7 +69,9 @@ MagnetJS.MMXClient = {
                 MagnetJS.Log.info('MMX is disconnected.');
             } else if (status == Strophe.Status.CONNECTED) {
                 MagnetJS.Log.info('MMX is connected.');
+
                 mXMPPConnection.send($pres());
+
                 if (!mCurrentUser.connected) {
                     mCurrentUser.connected = true;
                     def.resolve();
@@ -83,34 +86,30 @@ MagnetJS.MMXClient = {
 MagnetJS.Message = function(contents, recipientOrRecipients) {
     this.meta = {};
     this.recipients = [];
-    if (contents) {
+
+    if (contents)
         this.messageContent = contents;
-    }
+
     if (recipientOrRecipients) {
         if (MagnetJS.Utils.isArray(recipientOrRecipients)) {
-            for (var i=0;i<recipientOrRecipients.length;++i) {
+            for (var i=0;i<recipientOrRecipients.length;++i)
                 this.recipients.push(this.formatUser(recipientOrRecipients[i]));
-            }
         } else {
             this.recipients.push(this.formatUser(recipientOrRecipients));
         }
     }
-    if (mCurrentUser) {
+
+    if (mCurrentUser)
         this.sender = {
             userId: mCurrentUser.userIdentifier
         };
-    }
+
     return this;
 };
 
 MagnetJS.Message.prototype.formatUser = function(userOrUserId) {
-    if (typeof userOrUserId == 'string') {
-        return {
-            userId: userOrUserId
-        };
-    }
     return {
-        userId: userOrUserId.userIdentifier
+        userId: typeof userOrUserId == 'string' ? userOrUserId : userOrUserId.userIdentifier
     };
 };
 
@@ -164,9 +163,19 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
         }
 
     } catch(e) {
-        console.log('MMXMessage.formatMessage', e);
+        MagnetJS.Log.fine('MMXMessage.formatMessage', e);
     }
 };
+
+function nodePathToChannel(nodeStr, cb) {
+    nodeStr = nodeStr.split('/');
+    if (nodeStr.length !== 4) return cb('invalid node path');
+
+    var name = nodeStr[nodeStr.length-1];
+    var userId = nodeStr[nodeStr.length-2];
+
+    return MagnetJS.Channel.getChannel(userId == '*' ? name : (userId + '#' + name), cb);
+}
 
 MagnetJS.Message.prototype.send = function() {
     var self = this;
@@ -227,6 +236,7 @@ MagnetJS.Message.prototype.send = function() {
     return deferred.promise;
 };
 
+// TODO: not implemented
 MagnetJS.Message.prototype.reply = function(content, cb) {
     if (!this.receivedMessage) return cb('unable to reply: not a received message.');
     $msg({to: this.meta.from, from: this.meta.to, type: 'chat'})
@@ -259,7 +269,8 @@ MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
         for (var i=0;i<data.results.length;++i) {
             channels.push(new MagnetJS.Channel(data.results[i]));
         }
-        def.resolve.apply(def, [channels, details]);
+
+        def.resolve(channels, details);
     }, function() {
         def.reject.apply(def, arguments);
     });
@@ -267,7 +278,7 @@ MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
     return def.promise;
 };
 
-MagnetJS.Channel.create = function(channelObj, cb) {
+MagnetJS.Channel.create = function(channelObj) {
     var def = new MagnetJS.Deferred();
     var dt = MagnetJS.Utils.dateToISO8601(new Date());
 
@@ -280,8 +291,10 @@ MagnetJS.Channel.create = function(channelObj, cb) {
 
         channelObj.channelName = channelObj.name;
         channelObj.ownerId = mCurrentUser.userIdentifier;
-        channelObj.privateChannel = (channelObj.private === true || channelObj.private === false) ? channelObj.private : false;
-        channelObj.subscribeOnCreate = (channelObj.subscribe === true || channelObj.subscribe === false) ? channelObj.subscribe : true;
+        channelObj.privateChannel = (channelObj.private === true || channelObj.private === false)
+            ? channelObj.private : false;
+        channelObj.subscribeOnCreate = (channelObj.subscribe === true || channelObj.subscribe === false)
+            ? channelObj.subscribe : true;
         channelObj.creationDate = dt;
         channelObj.lastTimeActive = dt;
 
@@ -295,7 +308,7 @@ MagnetJS.Channel.create = function(channelObj, cb) {
         }, function (data, details) {
             delete channelObj.ownerId;
 
-            def.resolve.apply(def, [new MagnetJS.Channel(channelObj), details]);
+            def.resolve(new MagnetJS.Channel(channelObj), details);
         }, function () {
             def.reject.apply(def, arguments);
         });
@@ -319,112 +332,117 @@ MagnetJS.Channel.create = function(channelObj, cb) {
 //        });
 //    };
 
-MagnetJS.Channel.getAllSubscriptions = function(cb) {
-    if (!mCurrentUser) return cb('not logged in!');
-    var messageId = MagnetJS.Utils.getCleanGUID();
-    if (mXMPPConnection.connected) {
+MagnetJS.Channel.getAllSubscriptions = function() {
+    var def = new MagnetJS.Deferred();
+    var msgId = MagnetJS.Utils.getCleanGUID();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session timeout');
+        if (!mXMPPConnection.connected) return def.reject('not connected');
+
         try {
             var mmxMeta = {
                 limit: -1,        // -1 for unlimited (or not specified), or > 0
-                recursive: true,           // true for all descendants, false for immediate children only
-                topic: null, // null from the root, or a starting topic
-                type: 'both'  // type of topics to be listed global/personal/both
+                recursive: true,  // true for all descendants, false for immediate children only
+                topic: null,      // null from the root, or a starting topic
+                type: 'both'      // type of topics to be listed global/personal/both
             };
 
             mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: messageId})
+            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
                 .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'listtopics', ctype: 'application/json'}, mmxMeta);
 
             mXMPPConnection.addHandler(function(msg) {
                 var json = x2js.xml2json(msg);
                 var payload, channels = [];
+
                 if (json.mmx) {
                     payload = JSON.parse(json.mmx);
                     if (payload.length) {
-                        for (var i=0;i<payload.length;++i) {
+                        for (var i=0;i<payload.length;++i)
                             channels.push(new MagnetJS.Channel(payload[i]));
-                        }
                     }
                 }
-                cb(null, payload);
-            }, null, null, null, messageId,  null);
+
+                def.resolve(channels);
+            }, null, null, null, msgId,  null);
 
             mXMPPConnection.send(payload.tree());
 
         } catch (e) {
-            console.log(e);
+            def.reject(e);
         }
-    } else if (mXMPPConnection.messageQueue) {
-        // TODO: add to queue
-        // return cb();
-    } else {
-        cb('not connected');
-    }
+    }, 0);
+
+    return def.promise;
 };
 
-MagnetJS.Channel.findChannelsBySubscribers = function(subscribers, cb) {
+MagnetJS.Channel.findChannelsBySubscribers = function(subscribers) {
     var subscriberlist = [];
-    for (var i in subscribers) {
+    var channels = [];
+
+    if (!MagnetJS.Utils.isArray(subscribers))
+        subscribers = [subscribers];
+
+    for (var i in subscribers)
         subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
-    }
-    $.ajax({
+
+    var def = MagnetJS.Request({
         method: 'POST',
-        url: 'http://localhost:7777/api/com.magnet.server/channel/query',
-        data: JSON.stringify({
+        url: '/com.magnet.server/channel/query',
+        data: {
             subscribers: subscriberlist,
             matchFilter: 'EXACT_MATCH'
-        }),
-        contentType: 'application/json',
-        beforeSend: function(xhr) {
-           xhr.setRequestHeader('Authorization', 'Bearer ' + MagnetJS.App.credentials.token.access_token);
         }
-    }).done(function(result) {
-        var channels = [];
-        if (result.channels && result.channels.length) {
-            for (var i=0;i<result.channels.length;++i) {
-                channels.push(new MagnetJS.Channel(result.channels[i]));
-            }
+    }, function(data, details) {
+        if (data.channels && data.channels.length) {
+            for (var i=0;i<data.channels.length;++i)
+                channels.push(new MagnetJS.Channel(data.channels[i]));
         }
-        cb(null, channels);
-    }).fail(function(err) {
-        cb(err);
+
+        def.resolve(channels, details);
+    }, function() {
+        def.reject.apply(def, arguments);
     });
+
+    return def.promise;
 };
 
-MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, messageCount, cb) {
-    if (!MagnetJS.Utils.isArray(channelOrChannels)) channelOrChannels = [channelOrChannels];
+MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, messageCount) {
     var channelIds = [];
-    for (var i=0;i<channelOrChannels.length;++i) {
+    var channelSummaries = [];
+
+    if (!MagnetJS.Utils.isArray(channelOrChannels))
+        channelOrChannels = [channelOrChannels];
+
+    for (var i=0;i<channelOrChannels.length;++i)
         channelIds.push({
             channelName: channelOrChannels[i].name,
             userId: channelOrChannels[i].userId,
             privateChannel: channelOrChannels[i].privateChannel
         });
-    }
-    $.ajax({
+
+    var def = MagnetJS.Request({
         method: 'POST',
-        url: 'http://localhost:7777/api/com.magnet.server/channel/summary',
-        data: JSON.stringify({
+        url: '/com.magnet.server/channel/summary',
+        data: {
             channelIds: channelIds,
             numOfSubcribers: subscriberCount,
             numOfMessages: messageCount
-        }),
-        contentType: 'application/json',
-        beforeSend: function(xhr) {
-           xhr.setRequestHeader('Authorization', 'Bearer ' + MagnetJS.App.credentials.token.access_token);
         }
-    }).done(function(result) {
-        var channelSummaries = [];
-        if (result && result.length) {
-            for (var i=0;i<result.length;++i) {
-                channelSummaries.push(result[i]);
-            }
+    }, function(data, details) {
+        if (data && data.length) {
+            for (var i=0;i<data.length;++i)
+                channelSummaries.push(data[i]);
         }
-        cb(null, channelSummaries);
-    }).fail(function(err) {
-        cb(err);
+
+        def.resolve(channelSummaries, details);
+    }, function() {
+        def.reject.apply(def, arguments);
     });
+
+    return def.promise;
 };
 
 MagnetJS.Channel.getChannel = function(channelName, cb) {
@@ -438,80 +456,82 @@ MagnetJS.Channel.getChannel = function(channelName, cb) {
     });
 };
 
-MagnetJS.Channel.prototype.getAllSubscribers = function(cb) {
-    if (!this.name) return cb('invalid channel');
-    $.ajax({
+MagnetJS.Channel.prototype.getAllSubscribers = function() {
+    var def = MagnetJS.Request({
         method: 'GET',
-        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+encodeURIComponent(this.getChannelName())+'/subscriptions',
-        beforeSend: function(xhr) {
-           xhr.setRequestHeader('Authorization', 'Bearer ' + MagnetJS.App.credentials.token.access_token);
-        }
-    }).done(function(data) {
-        cb(null, data);
-    }).fail(function(err) {
-        cb(err);
+        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+encodeURIComponent(this.getChannelName())+'/subscriptions'
+    }, function() {
+        def.resolve.apply(def, arguments);
+    }, function() {
+        def.reject.apply(def, arguments);
     });
+
+    return def.promise;
 };
 
-MagnetJS.Channel.prototype.getChannelDetail = function() {
-
-};
-
-MagnetJS.Channel.prototype.addSubscribers = function(subscribers, cb) {
-    if (!this.name) return cb('invalid channel');
-    if (!this.isOwner() && this.isPrivate()) return cb('insufficient privileges');
+MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
+    var self = this;
     var subscriberlist = [];
-    for (var i in subscribers) {
-        subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
-    }
-    $.ajax({
-        method: 'POST',
-        url: 'http://localhost:7777/api/com.magnet.server/channel/'+this.name+'/subscribers/add',
-        data: JSON.stringify({
-            privateChannel: this.isPrivate(),
-            subscribers: subscriberlist
-        }),
-        contentType: 'application/json',
-        beforeSend: function(xhr) {
-           xhr.setRequestHeader('Authorization', 'Bearer ' + MagnetJS.App.credentials.token.access_token);
-        }
-    }).done(function(data) {
-        cb(null, data);
-    }).fail(function(err) {
-        cb(err);
-    });
+    var def = new MagnetJS.Deferred();
+
+    setTimeout(function() {
+        if (!self.name) return def.reject('invalid channel');
+        if (!self.isOwner() && self.isPrivate()) return def.reject('insufficient privileges');
+
+        for (var i in subscribers)
+            subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
+
+        MagnetJS.Request({
+            method: 'POST',
+            url: '/com.magnet.server/channel/'+self.name+'/subscribers/add',
+            data: {
+                privateChannel: self.isPrivate(),
+                subscribers: subscriberlist
+            }
+        }, function() {
+            def.resolve.apply(def, arguments);
+        }, function() {
+            def.reject.apply(def, arguments);
+        });
+    }, 0);
+
+    return def.promise;
 };
 
-MagnetJS.Channel.prototype.removeSubscribers = function(subscribers, cb) {
-    if (!this.name) return cb('invalid channel');
-    if (!this.isOwner() && this.isPrivate()) return cb('insufficient privileges');
+MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
+    var self = this;
     var subscriberlist = [];
-    for (var i in subscribers) {
-        subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
-    }
-    $.ajax({
-        method: 'POST',
-        url: 'http://localhost:7777/api/com.magnet.server/channel/'+this.name+'/subscribers/remove',
-        data: JSON.stringify({
-            privateChannel: this.isPrivate(),
-            subscribers: subscriberlist
-        }),
-        contentType: 'application/json',
-        beforeSend: function(xhr) {
-           xhr.setRequestHeader('Authorization', 'Bearer ' + MagnetJS.App.credentials.token.access_token);
-        }
-    }).done(function(data) {
-        cb(null, data);
-    }).fail(function(err) {
-        cb(err);
-    });
+    var def = new MagnetJS.Deferred();
+
+    setTimeout(function() {
+        if (!self.name) return def.reject('invalid channel');
+        if (!self.isOwner() && self.isPrivate()) return def.reject('insufficient privileges');
+
+        for (var i in subscribers)
+            subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
+
+        MagnetJS.Request({
+            method: 'POST',
+            url: '/com.magnet.server/channel/'+self.name+'/subscribers/remove',
+            data: {
+                privateChannel: self.isPrivate(),
+                subscribers: subscriberlist
+            }
+        }, function() {
+            def.resolve.apply(def, arguments);
+        }, function() {
+            def.reject.apply(def, arguments);
+        });
+    }, 0);
+
+    return def.promise;
 };
 
 MagnetJS.Channel.prototype.subscribe = function() {
     var def = MagnetJS.Request({
         method: 'PUT',
         url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+encodeURIComponent(this.getChannelName())+'/subscribe'
-    }, function(data, details) {
+    }, function() {
         def.resolve.apply(def, arguments);
     }, function() {
         def.reject.apply(def, arguments);
@@ -524,7 +544,7 @@ MagnetJS.Channel.prototype.unsubscribe = function() {
     var def = MagnetJS.Request({
         method: 'PUT',
         url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+encodeURIComponent(this.getChannelName())+'/unsubscribe'
-    }, function(data, details) {
+    }, function() {
         def.resolve.apply(def, arguments);
     }, function() {
         def.reject.apply(def, arguments);
@@ -587,21 +607,19 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage) {
     return def.promise;
 };
 
-MagnetJS.Channel.prototype.delete = function(cb) {
-    var qs = '';
-    if (!this.name) return cb('invalid channel');
-    if (this.privateChannel) qs += '?personal=true';
-    $.ajax({
+MagnetJS.Channel.prototype.delete = function() {
+    var qs = this.privateChannel ? '?personal=true' : '';
+
+    var def = MagnetJS.Request({
         method: 'DELETE',
-        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+this.name + qs,
-        beforeSend: function(xhr) {
-           xhr.setRequestHeader('Authorization', 'Bearer ' + MagnetJS.App.credentials.token.access_token);
-        }
-    }).done(function(data) {
-        cb(null, data);
-    }).fail(function(err) {
-        cb(err);
+        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+this.name + qs
+    }, function() {
+        def.resolve('ok')
+    }, function() {
+        def.reject.apply(def, arguments);
     });
+
+    return def.promise;
 };
 
 MagnetJS.Channel.prototype.isOwner = function() {
@@ -619,16 +637,6 @@ MagnetJS.Channel.prototype.getChannelName = function() {
 MagnetJS.Channel.prototype.getNodePath = function() {
     return '/' + MagnetJS.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
 };
-
-function nodePathToChannel(nodeStr, cb) {
-    nodeStr = nodeStr.split('/');
-    if (nodeStr.length !== 4) return cb('invalid node path');
-
-    var name = nodeStr[nodeStr.length-1];
-    var userId = nodeStr[nodeStr.length-2];
-
-    return MagnetJS.Channel.getChannel(userId == '*' ? name : (userId + '#' + name));
-}
 
 MagnetJS.PubSubManager = {
     store: {},
