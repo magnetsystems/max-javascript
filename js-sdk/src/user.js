@@ -1,5 +1,15 @@
 
 MagnetJS.User = function(userObj) {
+    if (userObj.displayName == 'null null') delete userObj.displayName;
+    if (userObj.displayName) {
+        var name = userObj.displayName.split(' ');
+        if (!userObj.firstName) userObj.firstName = (name[0]) ? name[0] : '';
+        if (!userObj.lastName) userObj.lastName = (name[1]) ? name[1] : '';
+    }
+    if (userObj.userId && userObj.userId.indexOf('%') != -1)
+        userObj.userId = userObj.userId.split('%')[0];
+    if (userObj.userId && !userObj.userIdentifier) userObj.userIdentifier = userObj.userId;
+    userObj.userName = userObj.userName || userObj.username || userObj.displayName;
     MagnetJS.Utils.mergeObj(this, userObj);
     return this;
 };
@@ -35,7 +45,7 @@ MagnetJS.User.login = function(userObj) {
 
     var def = MagnetJS.Request({
         method: 'POST',
-        url: 'http://localhost:1337/localhost:7777/api/com.magnet.server/user/session',
+        url: '/com.magnet.server/user/session',
         data: userObj,
         contentType: 'application/x-www-form-urlencoded',
         headers: {

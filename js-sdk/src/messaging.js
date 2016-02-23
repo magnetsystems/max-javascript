@@ -14,8 +14,8 @@ MagnetJS.stop = function() {
 
 MagnetJS.registerListener = function(listener) {
     xmppStore = xmppStore || {};
-
     xmppStore[listener.id] = mXMPPConnection.addHandler(function(msg) {
+
         var jsonObj = x2js.xml2json(msg);
         var mmxMsg = new MagnetJS.Message();
 
@@ -28,6 +28,7 @@ MagnetJS.registerListener = function(listener) {
 };
 
 MagnetJS.unregisterListener = function(id) {
+    if (!xmppStore || !id) return;
     mXMPPConnection.deleteHandler(xmppStore[id]);
 };
 
@@ -44,7 +45,8 @@ MagnetJS.MMXClient = {
         var self = this;
         var def = new MagnetJS.Deferred();
 
-        mXMPPConnection = new Strophe.Connection(MagnetJS.Config.httpBindEndpoint);
+        var protocol = (MagnetJS.Config.mmxEndpoint.indexOf('https://') != -1 ? 'https' : 'http') + '://';
+        mXMPPConnection = new Strophe.Connection(protocol + MagnetJS.Config.mmxHost + ':' + MagnetJS.Config.httpBindPort + '/http-bind/');
 
         mXMPPConnection.rawInput = function(data) {
             if (MagnetJS.Config.payloadLogging)
@@ -109,9 +111,7 @@ MagnetJS.Message = function(contents, recipientOrRecipients) {
     }
 
     if (mCurrentUser)
-        this.sender = {
-            userId: mCurrentUser.userIdentifier
-        };
+        this.sender = mCurrentUser;
 
     return this;
 };
@@ -124,6 +124,7 @@ MagnetJS.Message.prototype.formatUser = function(userOrUserId) {
 
 MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
     var self = this;
+
     try {
         this.receivedMessage = true;
         this.messageType = msg._type;
@@ -155,7 +156,7 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
         if (msg.mmx && msg.mmx.mmxmeta) {
             var mmxMeta = JSON.parse(msg.mmx.mmxmeta);
             this.recipients = mmxMeta.To;
-            this.sender = mmxMeta.From;
+            this.sender = new MagnetJS.User(mmxMeta.From);
         }
 
         if (msg.mmx && msg.mmx.payload) {
@@ -163,10 +164,8 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
         }
 
         if (msg.event && msg.event.items && msg.event.items._node) {
-            nodePathToChannel(msg.event.items._node, function(e, channel) {
-                self.channel = channel;
-                cb();
-            });
+            self.channel = nodePathToChannel(msg.event.items._node);
+            cb();
         } else {
             cb();
         }
@@ -176,14 +175,32 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
     }
 };
 
-function nodePathToChannel(nodeStr, cb) {
+// TODO: if we ever ned to fully hydrate channel on message receive:
+//function nodePathToChannel(nodeStr, cb) {
+//    nodeStr = nodeStr.split('/');
+//    if (nodeStr.length !== 4) return cb('invalid node path');
+//
+//    var name = nodeStr[nodeStr.length-1];
+//    var userId = nodeStr[nodeStr.length-2];
+//    userId = userId == '*' ? null : userId;
+//
+//    MagnetJS.Channel.getChannel(name, userId).success(cb).error(function() {
+//        cb();
+//    });
+//}
+
+function nodePathToChannel(nodeStr) {
     nodeStr = nodeStr.split('/');
-    if (nodeStr.length !== 4) return cb('invalid node path');
+    if (nodeStr.length !== 4) return;
 
     var name = nodeStr[nodeStr.length-1];
     var userId = nodeStr[nodeStr.length-2];
+    userId = userId == '*' ? null : userId;
 
-    return MagnetJS.Channel.getChannel(userId == '*' ? name : (userId + '#' + name), cb);
+    return new MagnetJS.Channel({
+        name: name,
+        userId: userId
+    });
 }
 
 MagnetJS.Message.prototype.send = function() {
@@ -204,15 +221,15 @@ MagnetJS.Message.prototype.send = function() {
             // TODO: replace with reliable offline
         }
 
-        self.sender = {
-            userId: mCurrentUser.userIdentifier
-        };
+        self.sender = mCurrentUser;
 
         try {
             var meta = JSON.stringify(self.messageContent);
             var mmxMeta = {
                 To: self.recipients,
-                From: self.sender,
+                From: {
+                    userId: mCurrentUser.userIdentifier
+                },
                 NoAck: true,
                 mmxdistributed: true
             };
@@ -265,24 +282,63 @@ MagnetJS.Channel = function(channelObj) {
 };
 
 MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
-    var qs = '';
+    var def = new MagnetJS.Deferred();
+    var iqId = MagnetJS.Utils.getCleanGUID();
     var channels = [];
 
-    if (typeof channelName == 'string')
-        qs += '?channelName=' + channelName;
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-    var def = MagnetJS.Request({
-        method: 'GET',
-        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels' + qs
-    }, function(data, details) {
-        for (var i=0;i<data.results.length;++i) {
-            channels.push(new MagnetJS.Channel(data.results[i]));
+        try {
+            var mmxMeta = {
+                operator: 'AND',
+                limit: -1,       // -1 for max # of records imposed by system, or > 0
+                offset: 0,       // optional, starting from zero
+                type: 'global'  // personal|global|both, default is global
+            };
+            if (channelName)
+                mmxMeta.topicName = {
+                    match: 'EXACT',
+                    value: channelName
+                };
+
+            // TODO: implement tags
+            /*
+                description: {
+                    match: EXACT|PREFIX|SUFFIX,     // optional
+                    value: topic description
+                },
+                tags: {
+                    match: EXACT,                       // optional
+                    values: [ tag1, tag2...]            // multi-values
+                }
+             */
+
+            mmxMeta = JSON.stringify(mmxMeta);
+
+            var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'searchTopic', ctype: 'application/json'}, mmxMeta);
+
+            mXMPPConnection.addHandler(function(msg) {
+                var payload, json = x2js.xml2json(msg);
+
+                if (json.mmx) {
+                    payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
+                    if (payload && payload.results && payload.results.length) {
+                        for (var i=0;i<payload.results.length;++i)
+                            channels.push(new MagnetJS.Channel(payload.results[i]));
+                    }
+                }
+                def.resolve(channels);
+            }, null, null, null, iqId,  null);
+
+            mXMPPConnection.send(payload.tree());
+
+        } catch (e) {
+            def.reject(e);
         }
-
-        def.resolve(channels, details);
-    }, function() {
-        def.reject.apply(def, arguments);
-    });
+    }, 0);
 
     return def.promise;
 };
@@ -326,20 +382,51 @@ MagnetJS.Channel.create = function(channelObj) {
     return def.promise;
 };
 
-// FIXME: this is an old API?
-//    MagnetJS.Channel.getAllSubscriptions = function(cb) {
-//        $.ajax({
-//            method: 'GET',
-//            url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/my_subscriptions',
-//            beforeSend: function(xhr) {
-//               xhr.setRequestHeader('Authorization', 'Bearer ' + MagnetJS.App.credentials.token.access_token);
-//            }
-//        }).done(function(data) {
-//            cb(null, data);
-//        }).fail(function(err) {
-//            cb(err);
-//        });
-//    };
+//MagnetJS.Channel.getAllSubscriptions = function() {
+//    var def = new MagnetJS.Deferred();
+//    var msgId = MagnetJS.Utils.getCleanGUID();
+//
+//    setTimeout(function() {
+//        if (!mCurrentUser) return def.reject('session timeout');
+//        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+//
+//        try {
+//            var mmxMeta = {
+//                limit: -1,        // -1 for unlimited (or not specified), or > 0
+//                recursive: true,  // true for all descendants, false for immediate children only
+//                topic: null,      // null from the root, or a starting topic
+//                type: 'both'      // type of topics to be listed global/personal/both
+//            };
+//
+//            mmxMeta = JSON.stringify(mmxMeta);
+//
+//            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
+//                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'listtopics', ctype: 'application/json'}, mmxMeta);
+//
+//            mXMPPConnection.addHandler(function(msg) {
+//                var json = x2js.xml2json(msg);
+//                var payload, channels = [];
+//
+//                if (json.mmx) {
+//                    payload = JSON.parse(json.mmx);
+//                    if (payload.length) {
+//                        for (var i=0;i<payload.length;++i)
+//                            channels.push(new MagnetJS.Channel(payload[i]));
+//                    }
+//                }
+//
+//                def.resolve(channels);
+//            }, null, null, null, msgId,  null);
+//
+//            mXMPPConnection.send(payload.tree());
+//
+//        } catch (e) {
+//            def.reject(e);
+//        }
+//    }, 0);
+//
+//    return def.promise;
+//};
 
 MagnetJS.Channel.getAllSubscriptions = function() {
     var def = new MagnetJS.Deferred();
@@ -350,28 +437,18 @@ MagnetJS.Channel.getAllSubscriptions = function() {
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
         try {
-            var mmxMeta = {
-                limit: -1,        // -1 for unlimited (or not specified), or > 0
-                recursive: true,  // true for all descendants, false for immediate children only
-                topic: null,      // null from the root, or a starting topic
-                type: 'both'      // type of topics to be listed global/personal/both
-            };
-
-            mmxMeta = JSON.stringify(mmxMeta);
-
-            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
-                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'listtopics', ctype: 'application/json'}, mmxMeta);
+            var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'get', id: msgId})
+                .c('pubsub', {xmlns: 'http://jabber.org/protocol/pubsub'})
+                .c('subscriptions');
 
             mXMPPConnection.addHandler(function(msg) {
                 var json = x2js.xml2json(msg);
-                var payload, channels = [];
+                var channels = [];
 
-                if (json.mmx) {
-                    payload = JSON.parse(json.mmx);
-                    if (payload.length) {
-                        for (var i=0;i<payload.length;++i)
-                            channels.push(new MagnetJS.Channel(payload[i]));
-                    }
+                if (json.pubsub && json.pubsub.subscriptions && json.pubsub.subscriptions.subscription) {
+                    var subs =json.pubsub.subscriptions.subscription;
+                    for (var i=0;i<subs.length;++i)
+                        channels.push(nodePathToChannel(subs[i]._node));
                 }
 
                 def.resolve(channels);
@@ -441,20 +518,27 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
             numOfMessages: messageCount
         }
     }, function(data, details) {
-        var i;
+        var i, j;
         if (data && data.length) {
             for (i=0;i<data.length;++i) {
                 if (data[i].messages && data[i].messages.length) {
                     for (j=0;j<data[i].messages.length;++j) {
                         var mmxMsg = new MagnetJS.Message();
                         mmxMsg.messageContent = data[i].messages[j].content;
-                        mmxMsg.sender = data[i].messages[j].publisher;
-                        mmxMsg.sender = data[i].messages[j].publisher;
+                        mmxMsg.sender = new MagnetJS.User(data[i].messages[j].publisher);
                         mmxMsg.timestamp = data[i].messages[j].metaData.creationDate;
                         mmxMsg.channel = data[i].messages[j].channelName;
                         mmxMsg.messageID = data[i].messages[j].itemId;
                         data[i].messages[j] = mmxMsg;
                     }
+                }
+                if (data[i].subscribers && data[i].subscribers.length) {
+                    for (j=0;j<data[i].subscribers.length;++j) {
+                        data[i].subscribers[j] = new MagnetJS.User(data[i].subscribers[j]);
+                    }
+                }
+                if (data[i].owner) {
+                    data[i].owner = new MagnetJS.User(data[i].owner);
                 }
                 channelSummaries.push(data[i]);
             }
@@ -468,26 +552,89 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
     return def.promise;
 };
 
-MagnetJS.Channel.getChannel = function(channelName, cb) {
-    MagnetJS.Request({
-        method: 'GET',
-        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+encodeURIComponent(channelName)
-    }, function(data) {
-        cb(null, new MagnetJS.Channel(data));
-    }, function(e) {
-        cb(e);
-    });
+MagnetJS.Channel.getChannel = function(channelName, userId) {
+    var def = new MagnetJS.Deferred();
+    var msgId = MagnetJS.Utils.getCleanGUID();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session timeout');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+
+        try {
+            var mmxMeta = {
+                userId: userId,
+                topicName: channelName
+            };
+
+            mmxMeta = JSON.stringify(mmxMeta);
+
+            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
+                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getTopic', ctype: 'application/json'}, mmxMeta);
+
+            mXMPPConnection.addHandler(function(msg) {
+                var json = x2js.xml2json(msg);
+                var payload, channel;
+
+                if (json.mmx) {
+                    payload = JSON.parse(json.mmx);
+                    channel = new MagnetJS.Channel(payload);
+                }
+
+                def.resolve(channel);
+            }, null, null, null, msgId,  null);
+
+            mXMPPConnection.send(payload.tree());
+
+        } catch (e) {
+            def.reject(e);
+        }
+    }, 0);
+
+    return def.promise;
 };
 
 MagnetJS.Channel.prototype.getAllSubscribers = function() {
-    var def = MagnetJS.Request({
-        method: 'GET',
-        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+encodeURIComponent(this.getChannelName())+'/subscriptions'
-    }, function() {
-        def.resolve.apply(def, arguments);
-    }, function() {
-        def.reject.apply(def, arguments);
-    });
+    var self = this;
+    var def = new MagnetJS.Deferred();
+    var iqId = MagnetJS.Utils.getCleanGUID();
+    var users = [];
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+
+        try {
+            var mmxMeta = {
+                userId: self.userId,     // null for global topic, or a user topic under a user ID
+                topicName: self.name,    // without /appID/* or /appID/userID
+                limit: -1,               // -1 for unlimited, or > 0
+                offset: 0                // offset starting from zero
+            };
+
+            mmxMeta = JSON.stringify(mmxMeta);
+
+            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: iqId})
+                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getSubscribers', ctype: 'application/json'}, mmxMeta);
+
+            mXMPPConnection.addHandler(function(msg) {
+                var payload, json = x2js.xml2json(msg);
+
+                payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
+                if (payload && payload.subscribers && payload.subscribers.length) {
+                    for (var i=0;i<payload.subscribers.length;++i) {
+                        users.push(new MagnetJS.User(payload.subscribers[i]));
+                    }
+                }
+
+                def.resolve(users);
+            }, null, null, null, iqId,  null);
+
+            mXMPPConnection.send(payload.tree());
+
+        } catch (e) {
+            def.reject(e);
+        }
+    }, 0);
 
     return def.promise;
 };
@@ -551,27 +698,82 @@ MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
 };
 
 MagnetJS.Channel.prototype.subscribe = function() {
-    var def = MagnetJS.Request({
-        method: 'PUT',
-        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+encodeURIComponent(this.getChannelName())+'/subscribe'
-    }, function() {
-        def.resolve.apply(def, arguments);
-    }, function() {
-        def.reject.apply(def, arguments);
-    });
+    var self = this;
+    var def = new MagnetJS.Deferred();
+    var iqId = MagnetJS.Utils.getCleanGUID();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+
+        try {
+            var mmxMeta = {
+                userId: self.userId,     // null for global topic, or a user topic under a user ID
+                topicName: self.name,    // without /appID/* or /appID/userID
+                devId: null,             // null for any devices, or a specific device
+                errorOnDup: false        // true to report error if duplicated subscription, false (default) to not report error
+            };
+
+            mmxMeta = JSON.stringify(mmxMeta);
+
+            var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'subscribe', ctype: 'application/json'}, mmxMeta);
+
+            mXMPPConnection.addHandler(function(msg) {
+                var payload, json = x2js.xml2json(msg);
+
+                if (json.mmx)
+                    payload = JSON.parse(json.mmx);
+
+                def.resolve(payload);
+            }, null, null, null, iqId,  null);
+
+            mXMPPConnection.send(payload.tree());
+
+        } catch (e) {
+            def.reject(e);
+        }
+    }, 0);
 
     return def.promise;
 };
 
 MagnetJS.Channel.prototype.unsubscribe = function() {
-    var def = MagnetJS.Request({
-        method: 'PUT',
-        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+encodeURIComponent(this.getChannelName())+'/unsubscribe'
-    }, function() {
-        def.resolve.apply(def, arguments);
-    }, function() {
-        def.reject.apply(def, arguments);
-    });
+    var self = this;
+    var def = new MagnetJS.Deferred();
+    var iqId = MagnetJS.Utils.getCleanGUID();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+
+        try {
+            var mmxMeta = {
+                userId: self.userId,        // null for global topic, or a user topic under a user ID
+                topicName: self.name,       // without /appID/* or /appID/userID
+                subscriptionId: null        // | a-subscription-ID  // null for all subscriptions to the topic
+            };
+
+            mmxMeta = JSON.stringify(mmxMeta);
+
+            var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'unsubscribe', ctype: 'application/json'}, mmxMeta);
+
+            mXMPPConnection.addHandler(function(msg) {
+                var payload, json = x2js.xml2json(msg);
+
+                if (json.mmx)
+                    payload = JSON.parse(json.mmx);
+
+                def.resolve(payload);
+            }, null, null, null, iqId,  null);
+
+            mXMPPConnection.send(payload.tree());
+
+        } catch (e) {
+            def.reject(e);
+        }
+    }, 0);
 
     return def.promise;
 };
@@ -621,7 +823,7 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage) {
 
             mXMPPConnection.send(payload.tree());
 
-        } catch (e) {console.log(e);
+        } catch (e) {
             def.reject(e);
         }
 
@@ -631,16 +833,40 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage) {
 };
 
 MagnetJS.Channel.prototype.delete = function() {
-    var qs = this.privateChannel ? '?personal=true' : '';
+    var self = this;
+    var def = new MagnetJS.Deferred();
+    var iqId = MagnetJS.Utils.getCleanGUID();
 
-    var def = MagnetJS.Request({
-        method: 'DELETE',
-        url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+this.name + qs
-    }, function() {
-        def.resolve('ok')
-    }, function() {
-        def.reject.apply(def, arguments);
-    });
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+
+        try {
+            var mmxMeta = {
+                topicName: self.name,                   // without /appID/* or /appID/userID
+                isPersonal: self.userId ? true : false  // true for personal user topic, false for global topic
+            };
+
+            mmxMeta = JSON.stringify(mmxMeta);
+
+            var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'deletetopic', ctype: 'application/json'}, mmxMeta);
+
+            mXMPPConnection.addHandler(function(msg) {
+                var payload, json = x2js.xml2json(msg);
+
+                if (json.mmx)
+                    payload = JSON.parse(json.mmx);
+
+                def.resolve(payload);
+            }, null, null, null, iqId,  null);
+
+            mXMPPConnection.send(payload.tree());
+
+        } catch (e) {
+            def.reject(e);
+        }
+    }, 0);
 
     return def.promise;
 };

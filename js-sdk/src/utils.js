@@ -5,10 +5,6 @@
  */
 MagnetJS.Config = {
     /**
-     * @property {string} endpointUrl The host for the Magnet Max Server.
-     */
-    endpointUrl            : '',
-    /**
      * @property {boolean} logging Enable the logging feature.
      */
     logging                : true,
@@ -54,17 +50,13 @@ MagnetJS.Config = {
      */
     mmxPort                : 5222,
     /**
-     * @property {string} mmxPublicRESTPort mmx public REST port.
-     */
-    mmxPublicRESTPort      : 5220,
-    /**
      * @property {string} mmxRESTPort mmx REST port.
      */
     mmxRESTPort            : 6060,
     /**
-     * @property {string} httpBindPort http-bind endpoint for BOSH.
+     * @property {string} httpBindPort http-bind port.
      */
-    httpBindEndpoint       : 'http://localhost:7070/http-bind/',
+    httpBindPort           : 7070,
     /**
      * @property {string} mmxHost mmxHost.
      */
@@ -1647,7 +1639,7 @@ MagnetJS.set = function(obj) {
  */
 MagnetJS.reset = function() {
     MagnetJS.set({
-        endpointUrl : '',
+        mmxEndpoint : '',
         logging     : true
     });
     return this;
@@ -1673,7 +1665,7 @@ MagnetJS.init = function(cfg) {
     // TODO: prevent second call
     MagnetJS.App.clientId = cfg.clientId;
     MagnetJS.App.clientSecret = cfg.clientSecret;
-    MagnetJS.Config.endpointUrl = cfg.baseUrl;
+    MagnetJS.Config.mmxEndpoint = cfg.baseUrl;
     MagnetJS.Device.checkInWithDevice();
 };
 

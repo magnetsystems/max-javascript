@@ -42,34 +42,6 @@ MagnetJS.Device = {
                 MagnetJS.Log.info('sdk initialized');
             }
 
-                //MagnetJS.Request({
-                //    method: 'POST',
-                //    url: '/com.magnet.server/config/mobile',
-                //    data: deviceInfo,
-                //    bypassReady: true
-                //}, function(data) {
-                //
-                //    MagnetJS.App.appId = data['mmx_app_id'];
-                //    MagnetJS.Config.mmxEndpoint = data['mms-application-endpoint'];
-                //    MagnetJS.Config.mmxHost = data['mmx-host'];
-                //    MagnetJS.Config.securityPolicy = data['security-policy'];
-                //    MagnetJS.Config.tlsEnabled = data['tls-enabled'] === 'true' || data['tls-enabled'] === true;
-                //    MagnetJS.Config.mmxDomain = data['mmx-domain'];
-                //    MagnetJS.Config.mmxPort = parseInt(data['mmx-port']);
-                //
-                //    mCurrentDevice = deviceInfo;
-                //
-                //    mCurrentUser = mCurrentUser || new MagnetJS.User({
-                //        userIdentifier: data.device.userId
-                //    });
-                //
-                //    initialize();
-                //
-                //}, function(e) {
-                //    MagnetJS.Log.severe('checkInWithDevice failed', e);
-                //});
-            //} else {
-
             MagnetJS.Request({
                 method: 'POST',
                 url: '/com.magnet.server/applications/session-device',
