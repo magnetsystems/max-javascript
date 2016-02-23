@@ -441,9 +441,23 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
             numOfMessages: messageCount
         }
     }, function(data, details) {
+        var i;
         if (data && data.length) {
-            for (var i=0;i<data.length;++i)
+            for (i=0;i<data.length;++i) {
+                if (data[i].messages && data[i].messages.length) {
+                    for (j=0;j<data[i].messages.length;++j) {
+                        var mmxMsg = new MagnetJS.Message();
+                        mmxMsg.messageContent = data[i].messages[j].content;
+                        mmxMsg.sender = data[i].messages[j].publisher;
+                        mmxMsg.sender = data[i].messages[j].publisher;
+                        mmxMsg.timestamp = data[i].messages[j].metaData.creationDate;
+                        mmxMsg.channel = data[i].messages[j].channelName;
+                        mmxMsg.messageID = data[i].messages[j].itemId;
+                        data[i].messages[j] = mmxMsg;
+                    }
+                }
                 channelSummaries.push(data[i]);
+            }
         }
 
         def.resolve(channelSummaries, details);
