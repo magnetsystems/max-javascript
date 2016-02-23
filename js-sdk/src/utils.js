@@ -28,11 +28,10 @@ MagnetJS.Config = {
      */
     logHandler             : 'Console',
     /**
-     * @property {boolean} storeCredentials Enable storage of OAuth access token after a successful login.
-     * This is required for the LoginService.loginWithAccessToken method, allowing the user to login automatically
-     * after a restart of the app. Note that the locally stored access token is not encrypted. The default is false.
+     * @property {boolean} storeCredentials Enable storage of OAuth access token after a successful login to be used
+     * for subsequent logins. The default is true.
      */
-    storeCredentials       : false,
+    storeCredentials       : true,
     /**
      * @property {boolean} debugMode Ignore self-signed certificates when saving files to the file system. Only applicable
      * to the Phonegap client when using FileTransfer API transport.
@@ -1597,6 +1596,36 @@ if (typeof window !== 'undefined' && typeof window.onError !== 'undefined') {
     };
 }
 
+var Cookie = {
+    create : function(name, val, days) {
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            var expires = '; expires=' + date.toGMTString();
+        } else {
+            var expires = '';
+        }
+        document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(val) + expires + '; path=/';
+    },
+    get : function(name) {
+        var nameEQ = encodeURIComponent(name) + '=';
+        var ca = document.cookie.split(';');
+        for (var i=0;i<ca.length;i++) {
+            var c = ca[i];
+            while (c.charAt(0) == ' ') {
+                c = c.substring(1, c.length)
+            };
+            if (c.indexOf(nameEQ) == 0) {
+                return decodeURIComponent(c.substring(nameEQ.length, c.length))
+            }
+        }
+        return null;
+    },
+    remove : function(name) {
+        this.create(name, "", -1);
+    }
+};
+
 /**
  * @method
  * @desc Set MagnetJS SDK configuration attributes.
@@ -1638,6 +1667,8 @@ var mCurrentDevice = null;
 var mCurrentUser = null;
 var mXMPPConnection = null;
 
+MagnetJS.Events.create(MagnetJS);
+
 MagnetJS.init = function(cfg) {
     // TODO: prevent second call
     MagnetJS.App.clientId = cfg.clientId;
@@ -1648,9 +1679,9 @@ MagnetJS.init = function(cfg) {
 
 MagnetJS.onReady = function(cb) {
     if (MagnetJS.App.initialized === true) return cb();
+
     var readyCheck = setInterval(function() {
         if (MagnetJS.App.initialized === true) {
-            MagnetJS.Log.info('sdk initialized');
             clearInterval(readyCheck);
             (cb || function() {})();
         }

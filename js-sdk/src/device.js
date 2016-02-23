@@ -7,7 +7,8 @@ MagnetJS.Device = {
         var def = MagnetJS.Request({
             method: 'POST',
             url: '/com.magnet.server/devices',
-            data: mCurrentDevice
+            data: mCurrentDevice,
+            bypassReady: true
         }, function() {
             def.resolve.apply(def, arguments);
         }, function() {
@@ -36,16 +37,50 @@ MagnetJS.Device = {
         MagnetJS.Device.collectDeviceInfo(function(e, deviceInfo) {
             if (e) throw (e);
 
+            function initialize() {
+                MagnetJS.App.initialized = true;
+                MagnetJS.Log.info('sdk initialized');
+            }
+
+                //MagnetJS.Request({
+                //    method: 'POST',
+                //    url: '/com.magnet.server/config/mobile',
+                //    data: deviceInfo,
+                //    bypassReady: true
+                //}, function(data) {
+                //
+                //    MagnetJS.App.appId = data['mmx_app_id'];
+                //    MagnetJS.Config.mmxEndpoint = data['mms-application-endpoint'];
+                //    MagnetJS.Config.mmxHost = data['mmx-host'];
+                //    MagnetJS.Config.securityPolicy = data['security-policy'];
+                //    MagnetJS.Config.tlsEnabled = data['tls-enabled'] === 'true' || data['tls-enabled'] === true;
+                //    MagnetJS.Config.mmxDomain = data['mmx-domain'];
+                //    MagnetJS.Config.mmxPort = parseInt(data['mmx-port']);
+                //
+                //    mCurrentDevice = deviceInfo;
+                //
+                //    mCurrentUser = mCurrentUser || new MagnetJS.User({
+                //        userIdentifier: data.device.userId
+                //    });
+                //
+                //    initialize();
+                //
+                //}, function(e) {
+                //    MagnetJS.Log.severe('checkInWithDevice failed', e);
+                //});
+            //} else {
+
             MagnetJS.Request({
                 method: 'POST',
                 url: '/com.magnet.server/applications/session-device',
                 data: deviceInfo,
                 headers: {
                     Authorization: 'Basic '+MagnetJS.Utils.stringToBase64(MagnetJS.App.clientId+':'+MagnetJS.App.clientSecret)
-                }
+                },
+                bypassReady: true
             }, function(data) {
 
-                MagnetJS.App.credentials = data.applicationToken;
+                MagnetJS.App.catCredentials = data.applicationToken;
                 MagnetJS.App.appId = data.applicationToken.mmx_app_id;
                 MagnetJS.Config.mmxEndpoint = data.config['mms-application-endpoint'];
                 MagnetJS.Config.mmxHost = data.config['mmx-host'];
@@ -54,16 +89,45 @@ MagnetJS.Device = {
                 MagnetJS.Config.mmxDomain = data.config['mmx-domain'];
                 MagnetJS.Config.mmxPort = parseInt(data.config['mmx-port']);
 
-                mCurrentDevice = data.device;
-                mCurrentUser = mCurrentUser || new MagnetJS.User({
-                    userIdentifier: data.device.userId
-                });
+                mCurrentDevice = deviceInfo;
 
-                MagnetJS.App.initialized = true;
+                var token = Cookie.get('magnet-max-auth-token');
+
+                if (!token || !data.device.userId)
+                    return initialize();
+
+                MagnetJS.App.hatCredentials = {
+                    access_token: token
+                };
+
+                Max.User.search({
+                    limit: 1,
+                    offset: 0,
+                    query: 'userIdentifier:'+data.device.userId,
+                    bypassReady: true
+                }).success(function(users) {
+                    if (!users.length) return initialize();
+
+                    mCurrentUser = users[0];
+
+                    MagnetJS.Device.register().success(function() {
+                        MagnetJS.MMXClient.connect(data.device.userId, token).success(function() {
+                            initialize();
+                        }).error(function(e) {
+                            MagnetJS.Log.severe('checkInWithDevice failed', e);
+                        });
+                    }).error(function(e) {
+                        MagnetJS.Log.severe('checkInWithDevice failed', e);
+                    });
+
+                }).error(function(e) {
+                    MagnetJS.Log.severe('checkInWithDevice failed', e);
+                });
 
             }, function(e) {
                 MagnetJS.Log.severe('checkInWithDevice failed', e);
             });
+
         });
     }
 };

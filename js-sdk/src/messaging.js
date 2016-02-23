@@ -40,7 +40,8 @@ MagnetJS.MessageListener = function(idOrHandler, handler) {
 };
 
 MagnetJS.MMXClient = {
-    connect: function(password) {
+    connect: function(userId, accessToken) {
+        var self = this;
         var def = new MagnetJS.Deferred();
 
         mXMPPConnection = new Strophe.Connection(MagnetJS.Config.httpBindEndpoint);
@@ -54,15 +55,15 @@ MagnetJS.MMXClient = {
                 MagnetJS.Log.fine('SENT: ' + data);
         };
 
-        mCurrentUser.jid = mCurrentUser.userIdentifier + "%" + MagnetJS.App.appId +
-            '@' + MagnetJS.Config.mmxDomain + '/' + mCurrentDevice.deviceId;
+        mCurrentUser.jid = self.getBaredJid(userId) + '/' + mCurrentDevice.deviceId;
 
-        mXMPPConnection.connect(mCurrentUser.jid, password, function(status) {
+        mXMPPConnection.connect(mCurrentUser.jid, accessToken, function(status) {
 
             if (status == Strophe.Status.CONNECTING) {
                 MagnetJS.Log.fine('MMX is connecting.');
             } else if (status == Strophe.Status.CONNFAIL) {
                 MagnetJS.Log.fine('MMX failed to connect.');
+                def.reject('not-authorized');
             } else if (status == Strophe.Status.DISCONNECTING) {
                 MagnetJS.Log.fine('MMX is disconnecting.');
             } else if (status == Strophe.Status.DISCONNECTED) {
@@ -71,15 +72,23 @@ MagnetJS.MMXClient = {
                 MagnetJS.Log.info('MMX is connected.');
 
                 mXMPPConnection.send($pres());
+                MagnetJS.invoke('authenticated', 'ok');
 
                 if (!mCurrentUser.connected) {
                     mCurrentUser.connected = true;
-                    def.resolve();
+                    def.resolve('ok');
                 }
             }
         });
 
         return def.promise;
+    },
+    disconnect: function() {
+        if (mXMPPConnection) mXMPPConnection.disconnect();
+    },
+    getBaredJid: function(userId) {
+        return userId + "%" + MagnetJS.App.appId +
+            '@' + MagnetJS.Config.mmxDomain;
     }
 };
 
@@ -191,7 +200,7 @@ MagnetJS.Message.prototype.send = function() {
         if (self.receivedMessage)
             return deferred.reject('unable to send: this was a received message.');
 
-        if (!mXMPPConnection.connected) {
+        if (!mXMPPConnection || !mXMPPConnection.connected) {
             // TODO: replace with reliable offline
         }
 
@@ -338,7 +347,7 @@ MagnetJS.Channel.getAllSubscriptions = function() {
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session timeout');
-        if (!mXMPPConnection.connected) return def.reject('not connected');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
         try {
             var mmxMeta = {
@@ -451,7 +460,7 @@ MagnetJS.Channel.getChannel = function(channelName, cb) {
         url: 'http://localhost:1337/localhost:5220/mmxmgmt/api/v2/channels/'+encodeURIComponent(channelName)
     }, function(data) {
         cb(null, new MagnetJS.Channel(data));
-    }, function() {
+    }, function(e) {
         cb(e);
     });
 };
@@ -563,7 +572,7 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage) {
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection.connected) return def.reject('not connected');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
         try {
             var meta = JSON.stringify(mmxMessage.messageContent);

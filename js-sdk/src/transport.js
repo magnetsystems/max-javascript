@@ -16,10 +16,13 @@ MagnetJS.Request = function(request, callback, failback) {
         call : deferred.promise
     };
 
-    if (MagnetJS.App.credentials && MagnetJS.App.credentials.access_token && !request.headers.Authorization)
-        request.headers['Authorization'] = 'Bearer ' + MagnetJS.App.credentials.access_token;
+    if (MagnetJS.App.hatCredentials && MagnetJS.App.hatCredentials.access_token && !request.headers.Authorization)
+        request.headers['Authorization'] = 'Bearer ' + MagnetJS.App.hatCredentials.access_token;
 
     setTimeout(function() {
+        if (!MagnetJS.App.initialized && !request.bypassReady)
+            return (failback || function() {})('sdk not ready');
+
         MagnetJS.Transport.request(request.data, request, options, function(result, details) {
             MagnetJS.Log.fine(details.status+' '+details.info.url+' ', {
                 contentType : details.contentType,
@@ -35,8 +38,19 @@ MagnetJS.Request = function(request, callback, failback) {
                 response    : e
             });
 
-            if (details.status == 401 || details.status == 403) {
-                // TODO: handle session timeout, reconnect, and re-send call
+            // TODO: need to rework the .status === 0 once CORS is full implemented by server
+            if (details.status == 401 || details.status === 0) {
+                mCurrentUser = null;
+                MagnetJS.App.hatCredentials = null;
+                MagnetJS.MMXClient.disconnect();
+                Cookie.remove('magnet-max-auth-token');
+                MagnetJS.invoke('not-authenticated', e, details);
+                // TODO: handle token expiry, reconnect, and re-send call
+            }
+
+            if (details.status == 403) {
+                MagnetJS.invoke('not-authorized', e, details);
+                // TODO: handle token expiry, reconnect, and re-send call
             }
 
             options.call.state = MagnetJS.CallState.FAILED;

@@ -4,7 +4,8 @@ module.exports = function(grunt){
         'src/core.js',
         'src/utils.js',
         'src/plugins/plugins.js',
-        'src/plugins/strophe.min.js',
+        'src/plugins/strophe.js',
+        'src/plugins/bf-oauth2.js',
         'src/plugins/xml2json.js',
         'src/transport.js',
         'src/user.js',
@@ -22,6 +23,10 @@ module.exports = function(grunt){
             webKitchenSink : {
                 src  : full,
                 dest : '../samples/web/assets/<%= pkg.name %>.js'
+            },
+            webMessenger : {
+                src  : full,
+                dest : '../samples/web/messenger/www/js/<%= pkg.name %>.js'
             },
             full : {
                 src  : full,

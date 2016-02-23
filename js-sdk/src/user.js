@@ -6,11 +6,19 @@ MagnetJS.User = function(userObj) {
 
 MagnetJS.User.register = function(userObj) {
     userObj.userName = userObj.username;
+    var auth;
+
+    if (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials) {
+        auth = {
+            'Authorization': 'Bearer ' + (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials || {}).access_token
+        };
+    }
 
     var def = MagnetJS.Request({
         method: 'POST',
         url: '/com.magnet.server/user/enrollment',
-        data: userObj
+        data: userObj,
+        headers: auth
     }, function() {
         def.resolve.apply(def, arguments);
     }, function() {
@@ -23,7 +31,7 @@ MagnetJS.User.login = function(userObj) {
     userObj = userObj || {};
     userObj.grant_type = 'password';
     userObj.client_id = MagnetJS.App.clientId;
-    userObj.remember_me = false;
+    userObj.remember_me = userObj.remember_me || false;
 
     var def = MagnetJS.Request({
         method: 'POST',
@@ -36,29 +44,20 @@ MagnetJS.User.login = function(userObj) {
         }
     }, function(data) {
 
-        MagnetJS.App.credentials = data;
+        MagnetJS.App.hatCredentials = data;
         mCurrentUser = new MagnetJS.User(data.user);
 
-        // TODO: implement remember me
-        //var token  = (MagnetJS.Utils.isNode ? details.info.response.headers['authorization'] : details.info.xhr.Authorization);
-        //if (MagnetJS.Config.storeCredentials === true) {
-        //    if (!token)
-        //        MagnetJS.Log.warning('the connected server does not have OAuth enabled, so credentials cannot be stored.');
-        //    MagnetJS.Storage.createTableIfNotExist(this.store, {
-        //        hash : 'TEXT'
-        //    }, {
-        //        hash : MagnetJS.Utils.stringToBase64(JSON.stringify({
-        //            endpointUrl : MagnetJS.Config.endpointUrl,
-        //            token       : token ? token.replace('Bearer ', '') : ''
-        //    }))}, true);
-        //}
-        //if (MagnetJS.Utils.isNode && details.info.response.headers['set-cookie'])
-        //    MagnetJS.Transport.Headers.Cookie = details.info.response.headers['set-cookie'][0];
+        if (userObj.remember_me)
+            Cookie.create('magnet-max-auth-token', data.access_token, 1);
 
         MagnetJS.Device.register().success(function() {
-            MagnetJS.MMXClient.connect(userObj.password).success(function() {
+            MagnetJS.MMXClient.connect(mCurrentUser.userIdentifier, data.access_token).success(function() {
                 def.resolve(mCurrentUser, mCurrentDevice);
+            }).error(function() {
+                def.reject.apply(def, arguments);
             });
+        }).error(function() {
+            def.reject.apply(def, arguments);
         });
 
     }, function() {
@@ -108,7 +107,8 @@ MagnetJS.User.search = function(queryObj) {
 
     var def = MagnetJS.Request({
         method: 'GET',
-        url: '/com.magnet.server/user/query'+qs
+        url: '/com.magnet.server/user/query'+qs,
+        bypassReady: queryObj.bypassReady
     }, function(data, details) {
         for (var i=0;i<data.length;++i)
             userlist.push(new MagnetJS.User(data[i]));
@@ -121,15 +121,30 @@ MagnetJS.User.search = function(queryObj) {
     return def.promise;
 };
 
+// TODO: not used
+MagnetJS.User.getToken = function() {
+    var def = MagnetJS.Request({
+        method: 'GET',
+        url: '/com.magnet.server/tokens/token'
+    }, function() {
+        def.resolve.apply(def, arguments);
+    }, function() {
+        def.reject.apply(def, arguments);
+    });
+    return def.promise;
+};
+
 MagnetJS.User.logout = function() {
     mCurrentUser = null;
-    mCurrentDevice = null;
+
+    MagnetJS.MMXClient.disconnect('logout');
+    Cookie.remove('magnet-max-auth-token');
 
     var def = MagnetJS.Request({
         method: 'DELETE',
         url: '/com.magnet.server/user/session'
     }, function() {
-        MagnetJS.App.credentials = null;
+        MagnetJS.App.hatCredentials = null;
 
         def.resolve.apply(def, arguments);
     }, function() {
