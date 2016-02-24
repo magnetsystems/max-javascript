@@ -14,8 +14,6 @@ APP_NAME=$1
 APP_VERSION=$2
 BUILD_NUMBER=$3
 
-cd js-sdk
-
 ### FETCH DEPENDENCIES ###
 npm install
 
