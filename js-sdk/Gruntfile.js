@@ -8,6 +8,7 @@ module.exports = function(grunt){
         'src/plugins/bf-oauth2.js',
         'src/plugins/xml2json.js',
         'src/transport.js',
+        'src/attachment.js',
         'src/user.js',
         'src/device.js',
         'src/messaging.js',

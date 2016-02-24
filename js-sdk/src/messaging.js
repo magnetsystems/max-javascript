@@ -219,6 +219,7 @@ MagnetJS.Message.prototype.send = function() {
 
         if (!mXMPPConnection || !mXMPPConnection.connected) {
             // TODO: replace with reliable offline
+            return deferred.reject('not connected');
         }
 
         self.sender = mCurrentUser;
@@ -778,53 +779,78 @@ MagnetJS.Channel.prototype.unsubscribe = function() {
     return def.promise;
 };
 
-MagnetJS.Channel.prototype.publish = function(mmxMessage) {
+MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
     var self = this;
     var def = new MagnetJS.Deferred();
     var iqId = MagnetJS.Utils.getCleanGUID();
     var messageId = MagnetJS.Utils.getCleanGUID();
     var dt = MagnetJS.Utils.dateToISO8601(new Date());
-    var attachments = [];
+
+    if (attachments && !MagnetJS.Utils.isArray(attachments))
+        attachments = [attachments];
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var meta = JSON.stringify(mmxMessage.messageContent);
-            var mmxMeta = {
-                From: {
-                    userId: mCurrentUser.userIdentifier,
-                    devId: mCurrentDevice.deviceId,
-                    displayName: mCurrentUser.userName
-                }
+        function sendMessage(msg) {
+            try {
+                var meta = JSON.stringify(msg);
+                var mmxMeta = {
+                    From: {
+                        userId: mCurrentUser.userIdentifier,
+                        devId: mCurrentDevice.deviceId,
+                        displayName: mCurrentUser.userName
+                    }
+                };
+                mmxMeta = JSON.stringify(mmxMeta);
+
+                var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'set', id: iqId})
+                    .c('pubsub', {xmlns: 'http://jabber.org/protocol/pubsub'})
+                    .c('publish', {node: self.getNodePath()})
+                    .c('item', {id: messageId})
+                    .c('mmx', {xmlns: 'com.magnet:msg:payload'})
+                    .c('mmxmeta', mmxMeta).up()
+                    .c('meta', meta).up()
+                    .c('payload', {mtype: 'unknown', stamp: dt, chunk: '0/0/0'});
+
+                // TODO: add attachments via:  "_attachments": "[ ... ]"
+
+                mXMPPConnection.addHandler(function(msg) {
+                    var json = x2js.xml2json(msg);
+
+                    if (json.error)
+                        return def.reject(json.error._code + ' : ' + json.error._type);
+
+                    def.resolve('ok');
+                }, null, null, null, iqId, null);
+
+                mXMPPConnection.send(payload.tree());
+
+            } catch (e) {
+                def.reject(e);
+            }
+        }
+
+        if (!attachments) {
+            sendMessage(mmxMessage.messageContent);
+        } else {
+            var multipart = new MagnetJS.Attachment(attachments);
+            var fileMeta = {
+                _attachments: []
             };
-            mmxMeta = JSON.stringify(mmxMeta);
-
-            var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'set', id: iqId})
-                .c('pubsub', {xmlns: 'http://jabber.org/protocol/pubsub'})
-                .c('publish', {node: self.getNodePath()})
-                .c('item', {id: messageId})
-                .c('mmx', {xmlns: 'com.magnet:msg:payload'})
-                .c('mmxmeta', mmxMeta).up()
-                .c('meta', meta).up()
-                .c('payload', {mtype: 'unknown', stamp: dt, chunk: '0/0/0'});
-
-            // TODO: add attachments via:  "_attachments": "[ ... ]"
-
-            mXMPPConnection.addHandler(function(msg) {
-                var json = x2js.xml2json(msg);
-
-                if (json.error)
-                    return def.reject(json.error._code + ' : ' + json.error._type);
-
-                def.resolve('ok');
-            }, null, null, null, iqId, null);
-
-            mXMPPConnection.send(payload.tree());
-
-        } catch (e) {
-            def.reject(e);
+            multipart.upload(self, iqId).success(function(uploadResult) {
+                for (var i=0;i<attachments.length;++i) {
+                    fileMeta._attachments.push({
+                        mimeType: attachments[i].mimeType,
+                        senderId: mCurrentUser.userIdentifier,
+                        attachmentId: uploadResult.attachment1
+                    });
+                }
+                sendMessage(mmxMessage ? MagnetJS.Utils.mergeObj(mmxMessage.messageContent, fileMeta) : fileMeta);
+            }).error(function(e) {
+                def.reject(e);
+            });
         }
 
     }, 0);
