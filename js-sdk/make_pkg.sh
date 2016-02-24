@@ -43,7 +43,12 @@ zip -r $APP_NAME-$APP_VERSION-docs.zip ./docs
 cd ../../samples/web
 zip -r ../../js-sdk/target/$APP_NAME-$APP_VERSION-getstarted.zip getstarted
 zip -r ../../js-sdk/target/$APP_NAME-$APP_VERSION-kitchen_sink.zip kitchen-sink
+
+# replace oauth client id and secret for convenience
 cd messenger/www
+sed -i -- 's/76b4e8f6-1066-49e0-a537-160d436ce78c/40a0501e-7205-4917-bc79-5b201a172052/g' js/app.js
+sed -i -- 's/xAq8auJL_VK5ZEWxXGNgm55WxZi67XeaFVBqxFYUCDI/0nWkq4JE1DvlEbBWfR53w5VPsiXdDHOV_U_efp6f8bE/g' js/app.js
+sed -i -- 's/http:\/\/localhost:7777\/api/https:\/\/dandy.magnet.com\/mobile\/api/g' js/app.js
 zip -r ../../../../js-sdk/target/$APP_NAME-$APP_VERSION-messenger.zip .
 
 
