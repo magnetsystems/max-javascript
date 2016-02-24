@@ -48,7 +48,7 @@ MagnetJS.Uploader.prototype.add = function(fileOrFiles, index, done) {
         self.message += '--'+self.boundary+'\r\n';
         self.message += 'Content-Type: '+fileOrFiles[index].type+'\r\n';
         self.message += 'Content-Disposition: form-data; name="file"; filename="attachment'+index+'"\r\n\r\n';
-        //self.message += 'Content-Transfer-Encoding: base64\r\n';
+        self.message += 'Content-Transfer-Encoding: base64\r\n';
         //self.message += 'Content-Id: '+id+'\r\n\r\n';
         self.message += reader.result+'\r\n\r\n';
 
@@ -61,8 +61,8 @@ MagnetJS.Uploader.prototype.add = function(fileOrFiles, index, done) {
         else self.add(fileOrFiles, index, done);
     }, false);
 
-    reader.readAsBinaryString(fileOrFiles[i]);
-    //reader.readAsDataURL(fileOrFiles[i]);
+    //reader.readAsBinaryString(fileOrFiles[i]);
+    reader.readAsDataURL(fileOrFiles[i]);
     //reader.readAsArrayBuffer(fileOrFiles[i]);
 };
 MagnetJS.Uploader.prototype.close = function(body) {
