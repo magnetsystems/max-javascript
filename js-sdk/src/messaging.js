@@ -148,9 +148,9 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
         this.meta.ns = msg.mmx ? msg.mmx._xmlns : '';
 
         if (msg.mmx && msg.mmx.meta) {
-            this.messageContent = JSON.parse(msg.mmx.meta);
-            // TODO: handle attachments
-            delete this.messageContent._attachments;
+            var msgMeta = JSON.parse(msg.mmx.meta);
+            attachmentRefsToAttachment(this, msgMeta);
+            this.messageContent = msgMeta;
         }
 
         if (msg.mmx && msg.mmx.mmxmeta) {
@@ -174,6 +174,19 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
         MagnetJS.Log.fine('MMXMessage.formatMessage', e);
     }
 };
+
+function attachmentRefsToAttachment(mmxMessage, msgMeta) {
+    mmxMessage.attachments = mmxMessage.attachments || [];
+
+    if (!msgMeta._attachments || msgMeta._attachments === '[]') return;
+    if (typeof msgMeta._attachments === 'string')
+        msgMeta._attachments = JSON.parse(msgMeta._attachments);
+
+    for (var i=0;i<msgMeta._attachments.length;++i)
+        mmxMessage.attachments.push(new MagnetJS.Attachment(msgMeta._attachments[i]));
+
+    delete msgMeta._attachments;
+}
 
 // TODO: if we ever ned to fully hydrate channel on message receive:
 //function nodePathToChannel(nodeStr, cb) {
@@ -525,11 +538,14 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
                 if (data[i].messages && data[i].messages.length) {
                     for (j=0;j<data[i].messages.length;++j) {
                         var mmxMsg = new MagnetJS.Message();
-                        mmxMsg.messageContent = data[i].messages[j].content;
                         mmxMsg.sender = new MagnetJS.User(data[i].messages[j].publisher);
                         mmxMsg.timestamp = data[i].messages[j].metaData.creationDate;
                         mmxMsg.channel = data[i].messages[j].channelName;
                         mmxMsg.messageID = data[i].messages[j].itemId;
+                        if (data[i].messages[j].content) {
+                            attachmentRefsToAttachment(mmxMsg, data[i].messages[j].content);
+                            mmxMsg.messageContent = data[i].messages[j].content;
+                        }
                         data[i].messages[j] = mmxMsg;
                     }
                 }
@@ -786,16 +802,13 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
     var messageId = MagnetJS.Utils.getCleanGUID();
     var dt = MagnetJS.Utils.dateToISO8601(new Date());
 
-    if (attachments && !MagnetJS.Utils.isArray(attachments))
-        attachments = [attachments];
-
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        function sendMessage(msg) {
+        function sendMessage(msgMeta) {
             try {
-                var meta = JSON.stringify(msg);
+                var meta = JSON.stringify(msgMeta);
                 var mmxMeta = {
                     From: {
                         userId: mCurrentUser.userIdentifier,
@@ -814,8 +827,6 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
                     .c('meta', meta).up()
                     .c('payload', {mtype: 'unknown', stamp: dt, chunk: '0/0/0'});
 
-                // TODO: add attachments via:  "_attachments": "[ ... ]"
-
                 mXMPPConnection.addHandler(function(msg) {
                     var json = x2js.xml2json(msg);
 
@@ -832,27 +843,19 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
             }
         }
 
-        if (!attachments) {
-            sendMessage(mmxMessage.messageContent);
-        } else {
-            var multipart = new MagnetJS.Attachment(attachments);
-            var fileMeta = {
-                _attachments: []
-            };
-            multipart.upload(self, iqId).success(function(uploadResult) {
-                for (var i=0;i<attachments.length;++i) {
-                    fileMeta._attachments.push({
-                        mimeType: attachments[i].mimeType,
-                        senderId: mCurrentUser.userIdentifier,
-                        attachmentId: uploadResult.attachment1
-                    });
-                }
-                sendMessage(mmxMessage ? MagnetJS.Utils.mergeObj(mmxMessage.messageContent, fileMeta) : fileMeta);
+        if (!attachments) return sendMessage(mmxMessage.messageContent);
+
+        new MagnetJS.Uploader(attachments, function(e, multipart) {
+            if (e || !multipart) return def.reject(e);
+
+            multipart.upload(self, iqId).success(function(attachments) {
+                sendMessage(MagnetJS.Utils.mergeObj(mmxMessage.messageContent || {}, {
+                    _attachments: JSON.stringify(attachments)
+                }));
             }).error(function(e) {
                 def.reject(e);
             });
-        }
-
+        });
     }, 0);
 
     return def.promise;

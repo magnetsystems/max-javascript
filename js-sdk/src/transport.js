@@ -6,7 +6,7 @@
  */
 MagnetJS.Request = function(request, callback, failback) {
     request._path = request.url;
-    request.contentType = request.contentType || 'application/json';
+    if (!request.isBinary) request.contentType = request.contentType || 'application/json';
     request.headers = request.headers || [];
 
     var deferred = new MagnetJS.Deferred();
@@ -119,6 +119,7 @@ MagnetJS.Transport = {
             timeout     : 30000,
             dataType    : metadata.dataType,
             contentType : metadata.contentType,
+            processData : !metadata.isBinary,
             data        : reqBody,
             beforeSend  : function(xhr) {
                 xhr.setRequestHeader('Accept', me.createAcceptHeader(metadata.dataType));
