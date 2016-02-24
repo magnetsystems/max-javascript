@@ -4,7 +4,7 @@ module.exports = function(grunt){
         'src/core.js',
         'src/utils.js',
         'src/plugins/plugins.js',
-        'src/plugins/strophe.js',
+        'src/plugins/strophe.min.js',
         'src/plugins/bf-oauth2.js',
         'src/plugins/xml2json.js',
         'src/transport.js',
@@ -40,7 +40,7 @@ module.exports = function(grunt){
                     preserveComments : 'some'
                 },
                 files : {
-                    'target/<%= pkg.name %>-min.js': ['target/<%= pkg.name %>.js']
+                    'target/<%= pkg.name %>.min.js': ['target/<%= pkg.name %>.js']
                 }
             }
         },
