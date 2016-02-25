@@ -412,52 +412,6 @@ MagnetJS.Channel.create = function(channelObj) {
     return def.promise;
 };
 
-//MagnetJS.Channel.getAllSubscriptions = function() {
-//    var def = new MagnetJS.Deferred();
-//    var msgId = MagnetJS.Utils.getCleanGUID();
-//
-//    setTimeout(function() {
-//        if (!mCurrentUser) return def.reject('session timeout');
-//        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
-//
-//        try {
-//            var mmxMeta = {
-//                limit: -1,        // -1 for unlimited (or not specified), or > 0
-//                recursive: true,  // true for all descendants, false for immediate children only
-//                topic: null,      // null from the root, or a starting topic
-//                type: 'both'      // type of topics to be listed global/personal/both
-//            };
-//
-//            mmxMeta = JSON.stringify(mmxMeta);
-//
-//            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
-//                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'listtopics', ctype: 'application/json'}, mmxMeta);
-//
-//            mXMPPConnection.addHandler(function(msg) {
-//                var json = x2js.xml2json(msg);
-//                var payload, channels = [];
-//
-//                if (json.mmx) {
-//                    payload = JSON.parse(json.mmx);
-//                    if (payload.length) {
-//                        for (var i=0;i<payload.length;++i)
-//                            channels.push(new MagnetJS.Channel(payload[i]));
-//                    }
-//                }
-//
-//                def.resolve(channels);
-//            }, null, null, null, msgId,  null);
-//
-//            mXMPPConnection.send(payload.tree());
-//
-//        } catch (e) {
-//            def.reject(e);
-//        }
-//    }, 0);
-//
-//    return def.promise;
-//};
-
 MagnetJS.Channel.getAllSubscriptions = function() {
     var def = new MagnetJS.Deferred();
     var msgId = MagnetJS.Utils.getCleanGUID();
@@ -551,12 +505,24 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
         var i, j;
         if (data && data.length) {
             for (i=0;i<data.length;++i) {
+                if (data[i].owner) {
+                    // TODO: this is quick fix until server bug is fixed
+                    if (data[i].userId)
+                        data[i].owner = {
+                            userId: data[i].userId
+                        };
+                    data[i].owner = new MagnetJS.User(data[i].owner);
+                }
+                data[i].channel = new MagnetJS.Channel({
+                    name: data[i].channelName,
+                    userId: (data[i].owner && data[i].owner.userId) ? data[i].owner.userId : null
+                });
                 if (data[i].messages && data[i].messages.length) {
                     for (j=0;j<data[i].messages.length;++j) {
                         var mmxMsg = new MagnetJS.Message();
                         mmxMsg.sender = new MagnetJS.User(data[i].messages[j].publisher);
                         mmxMsg.timestamp = data[i].messages[j].metaData.creationDate;
-                        mmxMsg.channel = data[i].messages[j].channelName;
+                        mmxMsg.channel = data[i].channel;
                         mmxMsg.messageID = data[i].messages[j].itemId;
                         if (data[i].messages[j].content) {
                             attachmentRefsToAttachment(mmxMsg, data[i].messages[j].content);
@@ -569,14 +535,6 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
                     for (j=0;j<data[i].subscribers.length;++j) {
                         data[i].subscribers[j] = new MagnetJS.User(data[i].subscribers[j]);
                     }
-                }
-                if (data[i].owner) {
-                    // TODO: this is quick fix until server bug is fixed
-                    if (data[i].userId)
-                        data[i].owner = {
-                            userId: data[i].userId
-                        };
-                    data[i].owner = new MagnetJS.User(data[i].owner);
                 }
                 channelSummaries.push(data[i]);
             }

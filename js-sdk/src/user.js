@@ -63,8 +63,12 @@ MagnetJS.User.login = function(userObj) {
             Cookie.create('magnet-max-refresh-token', data.access_token, 365);
 
         MagnetJS.MMXClient.registerDeviceAndConnect(null, data.access_token)
-            .success(def.resolve)
-            .error(def.reject);
+            .success(function() {
+                def.resolve.apply(def, arguments);
+            })
+            .error(function() {
+                def.reject.apply(def, arguments);
+            });
 
     }, function(e, details) {
         def.reject(details.status == 401 ? 'incorrect credentials' : e, details);
@@ -94,12 +98,12 @@ MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
 
         MagnetJS.MMXClient.registerDeviceAndConnect(null, data.access_token)
             .success(function() {
-                if (request)
-                    return MagnetJS.Request(request, callback, failback);
-
+                if (request) return MagnetJS.Request(request, callback, failback);
                 def.resolve.apply(def, arguments);
             })
-            .error(def.reject);
+            .error(function() {
+                def.reject.apply(def, arguments);
+            });
 
     }, function(e, details) {
         Cookie.remove('magnet-max-refresh-token');
