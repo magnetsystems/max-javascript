@@ -56,7 +56,7 @@ MagnetJS.Config = {
     /**
      * @property {string} httpsBindPort SSL-enabled http-bind port.
      */
-    httpsBindPort          : 7443,
+    httpsBindPort          : 443,
     /**
      * @property {string} httpBindPort http-bind port.
      */

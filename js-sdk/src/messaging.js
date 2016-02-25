@@ -148,7 +148,7 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
         ) ? msg.event.items.item.mmx : msg.mmx;
 
         this.meta.ns = msg.mmx ? msg.mmx._xmlns : '';
-
+      
         if (msg.mmx && msg.mmx.meta) {
             var msgMeta = JSON.parse(msg.mmx.meta);
             attachmentRefsToAttachment(this, msgMeta);
