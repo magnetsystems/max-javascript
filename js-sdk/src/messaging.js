@@ -45,8 +45,10 @@ MagnetJS.MMXClient = {
         var self = this;
         var def = new MagnetJS.Deferred();
 
-        var protocol = (MagnetJS.Config.mmxEndpoint.indexOf('https://') != -1 ? 'https' : 'http') + '://';
-        mXMPPConnection = new Strophe.Connection(protocol + MagnetJS.Config.mmxHost + ':' + MagnetJS.Config.httpBindPort + '/http-bind/');
+        var secure = MagnetJS.Config.mmxEndpoint.indexOf('https://') != -1;
+        var protocol = (secure ? 'https' : 'http') + '://';
+        mXMPPConnection = new Strophe.Connection(protocol + MagnetJS.Config.mmxHost + ':' +
+            (secure ? MagnetJS.Config.httpsBindPort : MagnetJS.Config.httpBindPort) + '/http-bind/');
 
         mXMPPConnection.rawInput = function(data) {
             if (MagnetJS.Config.payloadLogging)
