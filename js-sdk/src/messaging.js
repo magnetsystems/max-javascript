@@ -45,7 +45,7 @@ MagnetJS.MMXClient = {
         var self = this;
         var def = new MagnetJS.Deferred();
 
-        var secure = MagnetJS.Config.mmxEndpoint.indexOf('https://') != -1;
+        var secure = MagnetJS.Config.mmxEndpoint.indexOf('https://') != -1 && 1 == 2; // TODO: support SSL
         var protocol = (secure ? 'https' : 'http') + '://';
         mXMPPConnection = new Strophe.Connection(protocol + MagnetJS.Config.mmxHost + ':' +
             (secure ? MagnetJS.Config.httpsBindPort : MagnetJS.Config.httpBindPort) + '/http-bind/');
@@ -148,7 +148,7 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
         ) ? msg.event.items.item.mmx : msg.mmx;
 
         this.meta.ns = msg.mmx ? msg.mmx._xmlns : '';
-      
+
         if (msg.mmx && msg.mmx.meta) {
             var msgMeta = JSON.parse(msg.mmx.meta);
             attachmentRefsToAttachment(this, msgMeta);
