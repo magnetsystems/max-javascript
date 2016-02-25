@@ -557,6 +557,11 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
                     }
                 }
                 if (data[i].owner) {
+                    // TODO: this is quick fix until server bug is fixed
+                    if (data[i].userId)
+                        data[i].owner = {
+                            userId: data[i].userId
+                        };
                     data[i].owner = new MagnetJS.User(data[i].owner);
                 }
                 channelSummaries.push(data[i]);
