@@ -23,8 +23,10 @@ MagnetJS.Device = {
         var os = MagnetJS.Utils.getOS();
         var deviceId = Cookie.get('magnet-max-device-id');
 
-        if (!deviceId)
-            Cookie.create('magnet-max-device-id', 'js-'+MagnetJS.Utils.getGUID(), 1);
+        if (!deviceId) {
+            deviceId = 'js-'+MagnetJS.Utils.getGUID();
+            Cookie.create('magnet-max-device-id', deviceId, 1);
+        }
 
         var deviceInfo = {
             deviceId: deviceId,
