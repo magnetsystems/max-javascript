@@ -21,8 +21,13 @@ MagnetJS.Device = {
         var e = null;
         var browser = MagnetJS.Utils.getBrowser();
         var os = MagnetJS.Utils.getOS();
+        var deviceId = Cookie.get('magnet-max-device-id');
+
+        if (!deviceId)
+            Cookie.create('magnet-max-device-id', 'js-'+MagnetJS.Utils.getGUID(), 1);
+
         var deviceInfo = {
-            deviceId: 'web-client-js-sdk',
+            deviceId: deviceId,
             deviceStatus: 'ACTIVE',
             label: browser,
             os: 'ANDROID', // TODO: server must support web client: os.os,
