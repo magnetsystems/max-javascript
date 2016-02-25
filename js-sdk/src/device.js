@@ -25,7 +25,7 @@ MagnetJS.Device = {
 
         if (!deviceId) {
             deviceId = 'js-'+MagnetJS.Utils.getGUID();
-            Cookie.create('magnet-max-device-id', deviceId, 1);
+            Cookie.create('magnet-max-device-id', deviceId, 365);
         }
 
         var deviceInfo = {
@@ -89,15 +89,13 @@ MagnetJS.Device = {
 
                     mCurrentUser = users[0];
 
-                    MagnetJS.Device.register().success(function() {
-                        MagnetJS.MMXClient.connect(data.device.userId, token).success(function() {
+                    MagnetJS.MMXClient.registerDeviceAndConnect(data.device.userId, token)
+                        .success(function() {
                             initialize();
-                        }).error(function(e) {
+                        })
+                        .error(function(e) {
                             MagnetJS.Log.severe('checkInWithDevice failed', e);
                         });
-                    }).error(function(e) {
-                        MagnetJS.Log.severe('checkInWithDevice failed', e);
-                    });
 
                 }).error(function(e) {
                     MagnetJS.Log.severe('checkInWithDevice failed', e);

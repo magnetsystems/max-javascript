@@ -44,9 +44,9 @@ MagnetJS.MMXClient = {
     connect: function(userId, accessToken) {
         var self = this;
         var def = new MagnetJS.Deferred();
-
         var secure = MagnetJS.Config.mmxEndpoint.indexOf('https://') != -1 && 1 == 2; // TODO: support SSL
         var protocol = (secure ? 'https' : 'http') + '://';
+
         mXMPPConnection = new Strophe.Connection(protocol + MagnetJS.Config.mmxHost + ':' +
             (secure ? MagnetJS.Config.httpsBindPort : MagnetJS.Config.httpBindPort) + '/http-bind/');
 
@@ -85,6 +85,20 @@ MagnetJS.MMXClient = {
             }
         });
 
+        return def.promise;
+    },
+    registerDeviceAndConnect: function(userId, accessToken) {
+        userId = userId || mCurrentUser.userIdentifier;
+        var def = new MagnetJS.Deferred();
+        MagnetJS.Device.register().success(function() {
+            MagnetJS.MMXClient.connect(userId, accessToken).success(function() {
+                def.resolve(mCurrentUser, mCurrentDevice);
+            }).error(function() {
+                def.reject.apply(def, arguments);
+            });
+        }).error(function() {
+            def.reject.apply(def, arguments);
+        });
         return def.promise;
     },
     disconnect: function() {

@@ -1,3 +1,4 @@
+var MMS_DEVICE_ID = '1111-2222-3333-4444';
 
 MagnetJS.User = function(userObj) {
     if (userObj.displayName == 'null null') delete userObj.displayName;
@@ -18,11 +19,10 @@ MagnetJS.User.register = function(userObj) {
     userObj.userName = userObj.username;
     var auth;
 
-    if (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials) {
+    if (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials)
         auth = {
             'Authorization': 'Bearer ' + (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials || {}).access_token
         };
-    }
 
     var def = MagnetJS.Request({
         method: 'POST',
@@ -50,32 +50,65 @@ MagnetJS.User.login = function(userObj) {
         contentType: 'application/x-www-form-urlencoded',
         headers: {
            'Authorization': 'Basic ' + MagnetJS.Utils.stringToBase64(userObj.username+':'+userObj.password),
-           'MMS-DEVICE-ID': '1111-2222-3333-4444'
-        }
+           'MMS-DEVICE-ID': MMS_DEVICE_ID
+        },
+        isLogin: true
     }, function(data) {
 
         MagnetJS.App.hatCredentials = data;
         mCurrentUser = new MagnetJS.User(data.user);
+        Cookie.create('magnet-max-auth-token', data.access_token, 1);
 
-        if (userObj.remember_me)
-            Cookie.create('magnet-max-auth-token', data.access_token, 1);
+        if (data.refresh_token)
+            Cookie.create('magnet-max-refresh-token', data.access_token, 365);
 
-        MagnetJS.Device.register().success(function() {
-            MagnetJS.MMXClient.connect(mCurrentUser.userIdentifier, data.access_token).success(function() {
-                def.resolve(mCurrentUser, mCurrentDevice);
-            }).error(function() {
-                def.reject.apply(def, arguments);
-            });
-        }).error(function() {
-            def.reject.apply(def, arguments);
-        });
+        MagnetJS.MMXClient.registerDeviceAndConnect(null, data.access_token)
+            .success(def.resolve)
+            .error(def.reject);
 
-    }, function() {
-        def.reject.apply(def, arguments);
+    }, function(e, details) {
+        def.reject(details.status == 401 ? 'incorrect credentials' : e, details);
     });
 
     return def.promise;
 };
+
+MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
+    var token = Cookie.get('magnet-max-refresh-token');
+    var def = MagnetJS.Request({
+        method: 'POST',
+        url: '/com.magnet.server/user/newtoken',
+        data: {
+            client_id: MagnetJS.App.clientId,
+            refresh_token: token,
+            grant_type: 'refresh_token',
+            device_id: MMS_DEVICE_ID,
+            scope: 'user'
+        },
+        isLogin: true
+    }, function(data) {
+
+        MagnetJS.App.hatCredentials = data;
+        mCurrentUser = new MagnetJS.User(data.user);
+        Cookie.create('magnet-max-auth-token', data.access_token, 1);
+
+        MagnetJS.MMXClient.registerDeviceAndConnect(null, data.access_token)
+            .success(function() {
+                if (request)
+                    return MagnetJS.Request(request, callback, failback);
+
+                def.resolve.apply(def, arguments);
+            })
+            .error(def.reject);
+
+    }, function(e, details) {
+        Cookie.remove('magnet-max-refresh-token');
+        def.reject(details.status == 401 ? 'incorrect credentials' : e, details);
+    });
+
+    return def.promise;
+};
+
 
 MagnetJS.User.getUsersByUserNames = function(usernames) {
     var qs = '', userlist = [];
@@ -149,6 +182,7 @@ MagnetJS.User.logout = function() {
 
     MagnetJS.MMXClient.disconnect('logout');
     Cookie.remove('magnet-max-auth-token');
+    Cookie.remove('magnet-max-refresh-token');
 
     var def = MagnetJS.Request({
         method: 'DELETE',

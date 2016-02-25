@@ -39,19 +39,20 @@ MagnetJS.Request = function(request, callback, failback) {
             });
 
             // TODO: need to rework the .status === 0 once CORS is full implemented by server
-            if (details.status == 401 || details.status === 0) {
+            if ((details.status == 401 || details.status === 0) && !request.isLogin) {
                 mCurrentUser = null;
                 MagnetJS.App.hatCredentials = null;
                 MagnetJS.MMXClient.disconnect();
                 Cookie.remove('magnet-max-auth-token');
+
+                if (Cookie.get('magnet-max-refresh-token'))
+                    return MagnetJS.User.loginWithRefreshToken(request, callback, failback);
+
                 MagnetJS.invoke('not-authenticated', e, details);
-                // TODO: handle token expiry, reconnect, and re-send call
             }
 
-            if (details.status == 403) {
+            if (details.status == 403 && !request.isLogin)
                 MagnetJS.invoke('not-authorized', e, details);
-                // TODO: handle token expiry, reconnect, and re-send call
-            }
 
             options.call.state = MagnetJS.CallState.FAILED;
             (failback || function() {})(e, details);
