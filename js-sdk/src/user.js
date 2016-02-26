@@ -24,7 +24,7 @@ MagnetJS.User.register = function(userObj) {
     var auth;
 
     MagnetJS.MMXClient.disconnect();
-    
+
     if (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials)
         auth = {
             'Authorization': 'Bearer '
