@@ -73,11 +73,12 @@ MagnetJS.MMXClient = {
             } else if (status == Strophe.Status.DISCONNECTED) {
                 MagnetJS.Log.info('MMX is disconnected.');
 
-                if (mCurrentUser) {
-                    mCurrentUser.connected = false;
-                    if (MagnetJS.App.hatCredentials && MagnetJS.App.hatCredentials.access_token)
-                        self.registerDeviceAndConnect(mCurrentUser.userIdentifier, MagnetJS.App.hatCredentials);
-                }
+                MagnetJS.User.logout();
+                //if (mCurrentUser) {
+                //    mCurrentUser.connected = false;
+                //    if (MagnetJS.App.hatCredentials && MagnetJS.App.hatCredentials.access_token)
+                //        self.registerDeviceAndConnect(mCurrentUser.userIdentifier, MagnetJS.App.hatCredentials);
+                //}
             } else if (status == Strophe.Status.CONNECTED) {
                 MagnetJS.Log.info('MMX is connected.');
 
