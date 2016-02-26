@@ -2,15 +2,19 @@ var MMS_DEVICE_ID = '1111-2222-3333-4444';
 
 MagnetJS.User = function(userObj) {
     if (userObj.displayName == 'null null') delete userObj.displayName;
+
     if (userObj.displayName) {
         var name = userObj.displayName.split(' ');
         if (!userObj.firstName) userObj.firstName = (name[0]) ? name[0] : '';
         if (!userObj.lastName) userObj.lastName = (name[1]) ? name[1] : '';
     }
+
     if (userObj.userId && userObj.userId.indexOf('%') != -1)
         userObj.userId = userObj.userId.split('%')[0];
+
     if (userObj.userId && !userObj.userIdentifier) userObj.userIdentifier = userObj.userId;
     userObj.userName = userObj.userName || userObj.username || userObj.displayName;
+
     MagnetJS.Utils.mergeObj(this, userObj);
     return this;
 };
@@ -21,7 +25,8 @@ MagnetJS.User.register = function(userObj) {
 
     if (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials)
         auth = {
-            'Authorization': 'Bearer ' + (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials || {}).access_token
+            'Authorization': 'Bearer '
+            + (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials || {}).access_token
         };
 
     var def = MagnetJS.Request({
