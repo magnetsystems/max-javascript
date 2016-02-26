@@ -23,6 +23,8 @@ MagnetJS.User.register = function(userObj) {
     userObj.userName = userObj.username;
     var auth;
 
+    MagnetJS.MMXClient.disconnect();
+    
     if (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials)
         auth = {
             'Authorization': 'Bearer '
@@ -47,6 +49,8 @@ MagnetJS.User.login = function(userObj) {
     userObj.grant_type = 'password';
     userObj.client_id = MagnetJS.App.clientId;
     userObj.remember_me = userObj.remember_me || false;
+
+    MagnetJS.MMXClient.disconnect();
 
     var def = MagnetJS.Request({
         method: 'POST',
@@ -84,6 +88,9 @@ MagnetJS.User.login = function(userObj) {
 
 MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
     var token = Cookie.get('magnet-max-refresh-token');
+
+    MagnetJS.MMXClient.disconnect();
+
     var def = MagnetJS.Request({
         method: 'POST',
         url: '/com.magnet.server/user/newtoken',
