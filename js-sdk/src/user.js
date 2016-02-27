@@ -256,21 +256,29 @@ MagnetJS.User.getToken = function() {
  * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
  */
 MagnetJS.User.logout = function() {
-    mCurrentUser = null;
-
-    MagnetJS.MMXClient.disconnect('logout');
-    Cookie.remove('magnet-max-auth-token');
+    var self = this;
     Cookie.remove('magnet-max-refresh-token');
 
     var def = MagnetJS.Request({
         method: 'DELETE',
         url: '/com.magnet.server/user/session'
     }, function() {
-        MagnetJS.App.hatCredentials = null;
-
+        self.clearSession();
         def.resolve.apply(def, arguments);
     }, function() {
+        self.clearSession();
         def.reject.apply(def, arguments);
     });
     return def.promise;
+};
+
+/**
+ * Removes user session information.
+ */
+MagnetJS.User.clearSession = function() {
+    mCurrentUser = null;
+    MagnetJS.App.hatCredentials = null;
+    MagnetJS.MMXClient.disconnect();
+    mXMPPConnection = null;
+    Cookie.remove('magnet-max-auth-token');
 };

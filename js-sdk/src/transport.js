@@ -40,10 +40,7 @@ MagnetJS.Request = function(request, callback, failback) {
 
             // TODO: need to rework the .status === 0 once CORS is full implemented by server
             if ((details.status == 401 || details.status === 0) && !request.isLogin) {
-                mCurrentUser = null;
-                MagnetJS.App.hatCredentials = null;
-                MagnetJS.MMXClient.disconnect();
-                Cookie.remove('magnet-max-auth-token');
+                MagnetJS.User.clearSession();
 
                 if (Cookie.get('magnet-max-refresh-token'))
                     return MagnetJS.User.loginWithRefreshToken(request, callback, failback);

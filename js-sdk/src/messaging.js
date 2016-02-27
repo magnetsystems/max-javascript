@@ -99,11 +99,13 @@ MagnetJS.MMXClient = {
         mCurrentUser.jid = self.getBaredJid(userId) + '/' + mCurrentDevice.deviceId;
 
         mXMPPConnection.connect(mCurrentUser.jid, accessToken, function(status) {
-
             if (status == Strophe.Status.CONNECTING) {
                 MagnetJS.Log.fine('MMX is connecting.');
             } else if (status == Strophe.Status.CONNFAIL) {
                 MagnetJS.Log.fine('MMX failed to connect.');
+                def.reject('not-authorized');
+            } else if (status == Strophe.Status.AUTHFAIL) {
+                MagnetJS.Log.fine('MMX failed authentication.');
                 def.reject('not-authorized');
             } else if (status == Strophe.Status.DISCONNECTING) {
                 MagnetJS.Log.fine('MMX is disconnecting.');
@@ -546,7 +548,6 @@ MagnetJS.Channel.getAllSubscriptions = function() {
 
                 if (json.pubsub && json.pubsub.subscriptions && json.pubsub.subscriptions.subscription) {
                     var subs =json.pubsub.subscriptions.subscription;
-                    console.log(subs);
                     for (var i=0;i<subs.length;++i)
                         channels.push(nodePathToChannel(subs[i]._node));
                 }

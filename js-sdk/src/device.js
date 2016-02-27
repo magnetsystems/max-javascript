@@ -117,7 +117,8 @@ MagnetJS.Device = {
                             initialize();
                         })
                         .error(function(e) {
-                            MagnetJS.Log.severe('checkInWithDevice failed', e);
+                            if (e == 'not-authorized')
+                                MagnetJS.User.clearSession();
                         });
 
                 }).error(function(e) {
