@@ -1,8 +1,22 @@
-
+/**
+ * @constructor
+ * @class
+ * The Device class is a local representation of a device in the MagnetMax platform. This class provides
+ * various device specific methods, like collecting device information.
+ */
 MagnetJS.Device = {
+    /**
+     * @desc Get device information of the currently registered device.
+     * @returns {MagnetJS.Device} currently logged in user.
+     */
     getCurrentDevice: function() {
         return mCurrentDevice || null;
     },
+    /**
+     * Registers a new device.
+     * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+     * @ignore
+     */
     register: function() {
         var def = MagnetJS.Request({
             method: 'POST',
@@ -17,7 +31,12 @@ MagnetJS.Device = {
 
         return def.promise;
     },
-    collectDeviceInfo: function(cb) {
+    /**
+     * Retrieves the current device information.
+     * @param {function} [callback] Returns device information or error.
+     * @ignore
+     */
+    collectDeviceInfo: function(callback) {
         var e = null;
         var browser = MagnetJS.Utils.getBrowser();
         var os = MagnetJS.Utils.getOS();
@@ -36,8 +55,12 @@ MagnetJS.Device = {
             osVersion: os.version
         };
 
-        return (cb || function() {})(e, deviceInfo);
+        return (callback || function() {})(e, deviceInfo);
     },
+    /**
+     * Initiates a session with the server using the currently registered device.
+     * @ignore
+     */
     checkInWithDevice: function() {
         if (MagnetJS.App.initialized) return;
 

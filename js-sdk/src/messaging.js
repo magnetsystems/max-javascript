@@ -1,17 +1,29 @@
-
 var xmppStore;
 var x2js = new X2JS();
 
+/**
+ * @method
+ * @desc Start receiving messages.
+ */
 MagnetJS.start = function() {
     MagnetJS.App.receiving = true;
     mXMPPConnection.priority = 0;
 };
 
+/**
+ * @method
+ * @desc Stop receiving messages.
+ */
 MagnetJS.stop = function() {
     MagnetJS.App.receiving = false;
     mXMPPConnection.priority = -255;
 };
 
+/**
+ * @method
+ * @desc Register a listener to handle incoming messages.
+ * @param {MagnetJS.MessageListener} listener A message listener.
+ */
 MagnetJS.registerListener = function(listener) {
     xmppStore = xmppStore || {};
     xmppStore[listener.id] = mXMPPConnection.addHandler(function(msg) {
@@ -27,11 +39,24 @@ MagnetJS.registerListener = function(listener) {
     }, null, 'message', null, null,  null);
 };
 
-MagnetJS.unregisterListener = function(id) {
-    if (!xmppStore || !id) return;
-    mXMPPConnection.deleteHandler(xmppStore[id]);
+/**
+ * @method
+ * @desc Unregister a listener identified by the given id to stop handling incoming messages.
+ * @param {MagnetJS.MessageListener} listenerId A message listener.
+ */
+MagnetJS.unregisterListener = function(listenerId) {
+    if (!xmppStore || !listenerId) return;
+    mXMPPConnection.deleteHandler(xmppStore[listenerId]);
 };
 
+/**
+ * @constructor
+ * @memberof MagnetJS
+ * @class MessageListener The MessageListener is used to listen for incoming messages and subsequently call the given handler function.
+ * @param {string|function} [idOrHandler] A string ID for the handler, or a function to be fired
+ * when a message is received. The string ID should be specified if you plan to unregister the handler as some point.
+ * @param {function} [handler] Function to be fired when a message is received.
+ */
 MagnetJS.MessageListener = function(idOrHandler, handler) {
     if (typeof handler == typeof Function)
         this.handler = handler;
@@ -40,7 +65,19 @@ MagnetJS.MessageListener = function(idOrHandler, handler) {
     this.id = typeof idOrHandler == 'string' ? idOrHandler : MagnetJS.Utils.getGUID();
 };
 
+/**
+ * @constructor
+ * @memberof MagnetJS
+ * @class MMXClient The MMXClient handles communication with the MMX server via XMPP.
+ * @ignore
+ */
 MagnetJS.MMXClient = {
+    /**
+     * Connect to MMX server via BOSH http-bind.
+     * @param {string} userId The currently logged in user's userIdentifier (id).
+     * @param {string} accessToken The currently logged in user's access token.
+     * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+     */
     connect: function(userId, accessToken) {
         var self = this;
         var def = new MagnetJS.Deferred();
@@ -94,6 +131,12 @@ MagnetJS.MMXClient = {
 
         return def.promise;
     },
+    /**
+     * A wrapper function to register device and connect to MMX server via BOSH http-bind.
+     * @param {string} userId The currently logged in user's userIdentifier (id).
+     * @param {string} accessToken The currently logged in user's access token.
+     * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+     */
     registerDeviceAndConnect: function(userId, accessToken) {
         userId = userId || mCurrentUser.userIdentifier;
         var def = new MagnetJS.Deferred();
@@ -108,15 +151,32 @@ MagnetJS.MMXClient = {
         });
         return def.promise;
     },
+    /**
+     * Disconnect from MMX server.
+     */
     disconnect: function() {
         if (mXMPPConnection) mXMPPConnection.disconnect();
     },
+    /**
+     * Given a userIdentifier (id), return a Bared Jid.
+     * @param {string} userId A user's userIdentifier (id).
+     * @returns {string} a user's Bared Jid.
+     */
     getBaredJid: function(userId) {
         return userId + "%" + MagnetJS.App.appId +
             '@' + MagnetJS.Config.mmxDomain;
     }
 };
 
+/**
+ * @constructor
+ * @class
+ * The Message class is the local representation of a message. This class provides
+ * various message specific methods, like send or reply.
+ * @param {object} contents an object containing your custom message body.
+ * @param {MagnetJS.User|MagnetJS.User[]|string|string[]} recipientOrRecipients One or more {MagnetJS.User}
+ * objects or userIdentifiers to be recipients for your message.
+ */
 MagnetJS.Message = function(contents, recipientOrRecipients) {
     this.meta = {};
     this.recipients = [];
@@ -127,9 +187,9 @@ MagnetJS.Message = function(contents, recipientOrRecipients) {
     if (recipientOrRecipients) {
         if (MagnetJS.Utils.isArray(recipientOrRecipients)) {
             for (var i=0;i<recipientOrRecipients.length;++i)
-                this.recipients.push(this.formatUser(recipientOrRecipients[i]));
+                this.recipients.push(formatUser(recipientOrRecipients[i]));
         } else {
-            this.recipients.push(this.formatUser(recipientOrRecipients));
+            this.recipients.push(formatUser(recipientOrRecipients));
         }
     }
 
@@ -139,13 +199,22 @@ MagnetJS.Message = function(contents, recipientOrRecipients) {
     return this;
 };
 
-MagnetJS.Message.prototype.formatUser = function(userOrUserId) {
+/**
+ * Given {MagnetJS.User} object or userIdentifier, return a formatted object containing userId.
+ */
+function formatUser(userOrUserId) {
     return {
         userId: typeof userOrUserId == 'string' ? userOrUserId : userOrUserId.userIdentifier
     };
-};
+}
 
-MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
+/**
+ * Given an XMPP payload converted to JSON, set the properties of the {MagnetJS.Message} object.
+ * @param {object} msg A JSON representation of an xmpp payload.
+ * @param {function} callback This function fires after the format is complete.
+ * @ignore
+ */
+MagnetJS.Message.prototype.formatMessage = function(msg, callback) {
     var self = this;
 
     try {
@@ -188,9 +257,9 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
 
         if (msg.event && msg.event.items && msg.event.items._node) {
             self.channel = nodePathToChannel(msg.event.items._node);
-            cb();
+            callback();
         } else {
-            cb();
+            callback();
         }
 
     } catch(e) {
@@ -198,6 +267,9 @@ MagnetJS.Message.prototype.formatMessage = function(msg, cb) {
     }
 };
 
+/**
+ * Given a {MagnetJS.Message} object, instantiate the {MagnetJS.Attachment} objects.
+ */
 function attachmentRefsToAttachment(mmxMessage, msgMeta) {
     mmxMessage.attachments = mmxMessage.attachments || [];
 
@@ -225,6 +297,9 @@ function attachmentRefsToAttachment(mmxMessage, msgMeta) {
 //    });
 //}
 
+/**
+ * Convert a XMPP pubsub node string into a {MagnetJS.Channel} object.
+ */
 function nodePathToChannel(nodeStr) {
     nodeStr = nodeStr.split('/');
     if (nodeStr.length !== 4) return;
@@ -239,6 +314,10 @@ function nodePathToChannel(nodeStr) {
     });
 }
 
+/**
+ * Send the message to a user.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Message.prototype.send = function() {
     var self = this;
     var deferred = new MagnetJS.Deferred();
@@ -300,12 +379,24 @@ MagnetJS.Message.prototype.send = function() {
 };
 
 // TODO: not implemented
+/**
+ * Reply to the message.
+ * @param {object} A message content object.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @ignore
+ */
 MagnetJS.Message.prototype.reply = function(content, cb) {
     if (!this.receivedMessage) return cb('unable to reply: not a received message.');
     $msg({to: this.meta.from, from: this.meta.to, type: 'chat'})
         .cnode(Strophe.copyElement(content));
 };
 
+/**
+ * @constructor
+ * @class
+ * The Channel class is the local representation of a channel. This class provides
+ * various channel specific methods, like publishing and subscribing users.
+ */
 MagnetJS.Channel = function(channelObj) {
     if (channelObj.topicName) {
         channelObj.name = channelObj.topicName;
@@ -318,6 +409,11 @@ MagnetJS.Channel = function(channelObj) {
     return this;
 };
 
+/**
+ * Find the public channels that start with the specified text.
+ * @param {string} channelName The name of the channel.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
     var def = new MagnetJS.Deferred();
     var iqId = MagnetJS.Utils.getCleanGUID();
@@ -380,6 +476,14 @@ MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
     return def.promise;
 };
 
+/**
+ * Create a public or private channel.
+ * @param {object} channelObj An object containing channel information.
+ * @param {string} channelObj.name The name of the channel.
+ * @param {boolean} channelObj.private Set to true to make the channel private.
+ * @param {boolean} channelObj.subscribe Automatically subscribe the current user upon channel creation.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.create = function(channelObj) {
     var def = new MagnetJS.Deferred();
     var dt = MagnetJS.Utils.dateToISO8601(new Date());
@@ -419,6 +523,10 @@ MagnetJS.Channel.create = function(channelObj) {
     return def.promise;
 };
 
+/**
+ * Get all the channels the current user is the subscribed to.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.getAllSubscriptions = function() {
     var def = new MagnetJS.Deferred();
     var msgId = MagnetJS.Utils.getCleanGUID();
@@ -438,6 +546,7 @@ MagnetJS.Channel.getAllSubscriptions = function() {
 
                 if (json.pubsub && json.pubsub.subscriptions && json.pubsub.subscriptions.subscription) {
                     var subs =json.pubsub.subscriptions.subscription;
+                    console.log(subs);
                     for (var i=0;i<subs.length;++i)
                         channels.push(nodePathToChannel(subs[i]._node));
                 }
@@ -455,6 +564,11 @@ MagnetJS.Channel.getAllSubscriptions = function() {
     return def.promise;
 };
 
+/**
+ * Get channels the given subscribers are subscribed to.
+ * @param {string[]|MagnetJS.User[]} subscribers A list of userId or {MagnetJS.User} objects.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.findChannelsBySubscribers = function(subscribers) {
     var subscriberlist = [];
     var channels = [];
@@ -486,6 +600,13 @@ MagnetJS.Channel.findChannelsBySubscribers = function(subscribers) {
     return def.promise;
 };
 
+/**
+ * Get the extended channel information, including a summary of subscribers and chat history.
+ * @param {MagnetJS.Channel|MagnetJS.Channel[]} channelOrChannels One or more channels.
+ * @param {number} subscriberCount The number of subscribers to return.
+ * @param {number} messageCount The number of messages to return.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, messageCount) {
     var channelIds = [];
     var channelSummaries = [];
@@ -555,6 +676,12 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
     return def.promise;
 };
 
+/**
+ * Get the basic channel information.
+ * @param {string} channelName The channel name.
+ * @param {string} [userId] The userId of the channel owner if the channel is private.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.getChannel = function(channelName, userId) {
     var def = new MagnetJS.Deferred();
     var msgId = MagnetJS.Utils.getCleanGUID();
@@ -596,6 +723,10 @@ MagnetJS.Channel.getChannel = function(channelName, userId) {
     return def.promise;
 };
 
+/**
+ * Get a list of the users subscribed to the channel.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.prototype.getAllSubscribers = function() {
     var self = this;
     var def = new MagnetJS.Deferred();
@@ -642,6 +773,11 @@ MagnetJS.Channel.prototype.getAllSubscribers = function() {
     return def.promise;
 };
 
+/**
+ * Add the given subscribers to the channel.
+ * @param {string[]|MagnetJS.User[]} subscribers A list of userId or {MagnetJS.User} objects.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
     var self = this;
     var subscriberlist = [];
@@ -671,6 +807,11 @@ MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
     return def.promise;
 };
 
+/**
+ * Unsubscribe the given subscribers from the channel.
+ * @param {string[]|MagnetJS.User[]} A list of subscribers to unsubscribe from the channel.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
     var self = this;
     var subscriberlist = [];
@@ -700,6 +841,10 @@ MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
     return def.promise;
 };
 
+/**
+ * Subscribe the current userto the channel.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.prototype.subscribe = function() {
     var self = this;
     var def = new MagnetJS.Deferred();
@@ -741,6 +886,10 @@ MagnetJS.Channel.prototype.subscribe = function() {
     return def.promise;
 };
 
+/**
+ * Unsubscribe the current user from the channel.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.prototype.unsubscribe = function() {
     var self = this;
     var def = new MagnetJS.Deferred();
@@ -781,6 +930,12 @@ MagnetJS.Channel.prototype.unsubscribe = function() {
     return def.promise;
 };
 
+/**
+ * Publish a message and/or attachments to the channel.
+ * @param {MagnetJS.Message} mmxMessage A {MagnetJS.Message} instance containing message payload.
+ * @param {FileUpload|FileUpload[]} [attachments] A FileUpload object created by an input[type="file"] HTML element.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
     var self = this;
     var def = new MagnetJS.Deferred();
@@ -847,6 +1002,10 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
     return def.promise;
 };
 
+/**
+ * Delete this channel
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.Channel.prototype.delete = function() {
     var self = this;
     var def = new MagnetJS.Deferred();
@@ -886,18 +1045,36 @@ MagnetJS.Channel.prototype.delete = function() {
     return def.promise;
 };
 
+/**
+ * Determines if the currently logged in user is the owner of the channel.
+ * @returns {boolean} True if the currently logged in user is the owner of the channel.
+ */
 MagnetJS.Channel.prototype.isOwner = function() {
     return this.userId == mCurrentUser.userIdentifier || this.creator == Strophe.getBareJidFromJid(mCurrentUser.jid);
 };
 
+/**
+ * Determines if the channel is private.
+ * @returns {boolean} True if the channel is private.
+ */
 MagnetJS.Channel.prototype.isPrivate = function() {
     return this.privateChannel === true;
 };
 
+/**
+ * Get the formal channel name used by REST APIs.
+ * @returns {string} The formal channel name.
+ * @ignore
+ */
 MagnetJS.Channel.prototype.getChannelName = function() {
     return this.privateChannel === true ? (this.userId + '#' + this.name) : this.name;
 };
 
+/**
+ * Get the pubsub node path of the given channel
+ * @returns {string} A pubsub node path.
+ * @ignore
+ */
 MagnetJS.Channel.prototype.getNodePath = function() {
     return '/' + MagnetJS.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
 };

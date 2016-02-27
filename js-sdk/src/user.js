@@ -1,5 +1,15 @@
-var MMS_DEVICE_ID = '1111-2222-3333-4444';
-
+/**
+ * @constructor
+ * @class
+ * The User class is a local representation of a user in the MagnetMax platform. This class provides
+ * various user specific methods, like authentication, signing up, and search.
+ * @param {object} [userObj] An object containing user information.
+ * @param {string} [userObj.username] User's username.
+ * @param {string} [userObj.password] User's preferred password.
+ * @param {string} [userObj.firstName] User's first name.
+ * @param {string} [userObj.lastName] User's last name.
+ * @param {string} [userObj.email] User's email.
+ */
 MagnetJS.User = function(userObj) {
     if (userObj.displayName == 'null null') delete userObj.displayName;
 
@@ -19,6 +29,16 @@ MagnetJS.User = function(userObj) {
     return this;
 };
 
+/**
+ * Registers a new user.
+ * @param {object} userObj An object containing user information.
+ * @param {string} userObj.username User's username.
+ * @param {string} userObj.password User's preferred password.
+ * @param {string} [userObj.firstName] User's first name.
+ * @param {string} [userObj.lastName] User's last name.
+ * @param {string} [userObj.email] User's email.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.User.register = function(userObj) {
     userObj.userName = userObj.username;
     var auth;
@@ -44,6 +64,13 @@ MagnetJS.User.register = function(userObj) {
     return def.promise;
 };
 
+/**
+ * Login as the given user.
+ * @param {object} userObj An object containing user information.
+ * @param {string} userObj.username User's username.
+ * @param {string} userObj.password User's preferred password.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.User.login = function(userObj) {
     userObj = userObj || {};
     userObj.grant_type = 'password';
@@ -86,6 +113,11 @@ MagnetJS.User.login = function(userObj) {
     return def.promise;
 };
 
+/**
+ * Login automatically if the Remember Me setting was enabled during login.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @ignore
+ */
 MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
     var token = Cookie.get('magnet-max-refresh-token');
 
@@ -125,7 +157,11 @@ MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
     return def.promise;
 };
 
-
+/**
+ * Given a list of usernames, return a list of users.
+ * @param {string[]} usernames A list of usernames.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.User.getUsersByUserNames = function(usernames) {
     var qs = '', userlist = [];
 
@@ -151,6 +187,17 @@ MagnetJS.User.getUsersByUserNames = function(usernames) {
     return def.promise;
 };
 
+/**
+ * Search for users with an advanced search query.
+ * @param {object} [queryObj] A search query object.
+ * @param {string} [queryObj.query] A search string. The string should be a user property and the value separated
+ * by colon. For example, to search for a user by username, the string can be 'username:jon.doe'.
+ * @param {number} [queryObj.limit] The number of results to return per page.
+ * @param {number} [queryObj.offset] The starting index of results.
+ * @param {string} [queryObj.orderby] A sort string. The string should be a user property and the sort direction
+ * ['asc', 'desc'] separated by colon. For example, to order by username descending, the string can be 'username:desc'.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.User.search = function(queryObj) {
     var qs = '', userlist = [];
     var keyMap = {
@@ -159,6 +206,17 @@ MagnetJS.User.search = function(queryObj) {
         offset: 'skip',
         orderby: 'sort'
     };
+
+    queryObj = queryObj || {};
+    queryObj.offset = queryObj.offset || 0;
+    queryObj.limit = queryObj.limit || 1;
+    queryObj.query = queryObj.query || 'userName:*';
+
+    if (queryObj.query.indexOf('username:') != -1)
+        queryObj.query.replace('username:', 'userName:');
+
+    if (queryObj.orderby && queryObj.orderby.indexOf('username:') != -1)
+        queryObj.orderby.replace('username:', 'userName:');
 
     for(var key in queryObj)
         qs += '&'+keyMap[key]+'='+queryObj[key];
@@ -193,6 +251,10 @@ MagnetJS.User.getToken = function() {
     return def.promise;
 };
 
+/**
+ * Logout the current logged in user.
+ * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ */
 MagnetJS.User.logout = function() {
     mCurrentUser = null;
 

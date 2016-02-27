@@ -75,6 +75,11 @@ MagnetJS.Config = {
     tlsEnabled             : false
 };
 
+/**
+ * @global
+ * @desc An object containing application-specific information used across the MagnetJS SDK.
+ * @ignore
+ */
 MagnetJS.App = {
     /**
      * @property {boolean} True indicates that the SDK is ready for use.
@@ -787,6 +792,7 @@ MagnetJS.Promise.prototype = {
 /**
  * @class A Deferred object handles execution of resolve and reject methods, which trigger the success or error callbacks.
  * @constructor
+ * @ignore
  */
 MagnetJS.Deferred = function() {
     this.promise = new MagnetJS.Promise();
@@ -1408,6 +1414,7 @@ MagnetJS.Storage.setupConnector();
  * by the SDK without user intervention, problems can be identified and fixed without user involvement.
  * @memberof MagnetJS
  * @namespace Log
+ * @ignore
  */
 MagnetJS.Log = {};
 MagnetJS.Log.store = 'MMSDKLogstore';
@@ -1592,6 +1599,12 @@ if (typeof window !== 'undefined' && typeof window.onError !== 'undefined') {
     };
 }
 
+/**
+ * A class for managing cookies.
+ * @memberof MagnetJS
+ * @namespace Cookie
+ * @ignore
+ */
 var Cookie = {
     create : function(name, val, days) {
         if (days) {
@@ -1640,6 +1653,7 @@ MagnetJS.set = function(obj) {
 /**
  * @method
  * @desc Reset MagnetJS SDK configuration attributes to their default values.
+ * @ignore
  */
 MagnetJS.reset = function() {
     MagnetJS.set({
@@ -1652,6 +1666,7 @@ MagnetJS.reset = function() {
  * @method
  * @desc Load a model or controller resource into memory. For NodeJS only.
  * @param {string} path A relative path to the entity or controller resource.
+ * @ignore
  */
 MagnetJS.define = function(path) {
     var resource = require(path), type = resource.Controllers ? 'Controllers' : 'Models';
@@ -1662,38 +1677,42 @@ MagnetJS.define = function(path) {
 var mCurrentDevice = null;
 var mCurrentUser = null;
 var mXMPPConnection = null;
+var MMS_DEVICE_ID = '1111-2222-3333-4444';
 
 MagnetJS.Events.create(MagnetJS);
 
+/**
+ * @method
+ * @desc Initialize the SDK with client information.
+ */
 MagnetJS.init = function(cfg) {
-    // TODO: prevent second call
     MagnetJS.App.clientId = cfg.clientId;
     MagnetJS.App.clientSecret = cfg.clientSecret;
     MagnetJS.Config.mmxEndpoint = cfg.baseUrl;
     MagnetJS.Device.checkInWithDevice();
 };
 
-MagnetJS.onReady = function(cb) {
-    if (MagnetJS.App.initialized === true) return cb();
+/**
+ * @method
+ * @desc Fires a callback when the SDK is ready to be used.
+ * @param {function} callback The function to be fired.
+ */
+MagnetJS.onReady = function(callback) {
+    if (MagnetJS.App.initialized === true) return callback();
 
     var readyCheck = setInterval(function() {
         if (MagnetJS.App.initialized === true) {
             clearInterval(readyCheck);
-            (cb || function() {})();
+            (callback || function() {})();
         }
     }, 100);
 };
 
+/**
+ * @method
+ * @desc Get user information of the currently logged in user or null if not logged in.
+ * @returns {MagnetJS.User} currently logged in user.
+ */
 MagnetJS.getCurrentUser = function() {
     return mCurrentUser || null;
-};
-
-MagnetJS.start = function() {
-    MagnetJS.App.receiving = true;
-    mXMPPConnection.priority = 0;
-};
-
-MagnetJS.stop = function() {
-    MagnetJS.App.receiving = false;
-    mXMPPConnection.priority = -255;
 };
