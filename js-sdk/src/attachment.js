@@ -91,7 +91,7 @@ MagnetJS.Uploader.prototype.close = function() {
  * Upload the files to the server.
  * @param {MagnetJS.Channel} channel The channel the file will be sent to.
  * @param {string} messageId The XMPP message ID, used to associate an uploaded file with a {MagnetJS.Message}.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning a list of attachment metadata or request error.
  */
 MagnetJS.Uploader.prototype.upload = function(channel, messageId) {
     var self = this;

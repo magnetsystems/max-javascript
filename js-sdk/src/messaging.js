@@ -45,7 +45,7 @@ MagnetJS.registerListener = function(listener) {
  * @param {MagnetJS.MessageListener} listenerId A message listener.
  */
 MagnetJS.unregisterListener = function(listenerId) {
-    if (!xmppStore || !listenerId) return;
+    if (!xmppStore || !listenerId || !mXMPPConnection) return;
     mXMPPConnection.deleteHandler(xmppStore[listenerId]);
 };
 
@@ -76,7 +76,7 @@ MagnetJS.MMXClient = {
      * Connect to MMX server via BOSH http-bind.
      * @param {string} userId The currently logged in user's userIdentifier (id).
      * @param {string} accessToken The currently logged in user's access token.
-     * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+     * @returns {MagnetJS.Promise} A promise object returning "ok" or reason of failure.
      */
     connect: function(userId, accessToken) {
         var self = this;
@@ -137,7 +137,7 @@ MagnetJS.MMXClient = {
      * A wrapper function to register device and connect to MMX server via BOSH http-bind.
      * @param {string} userId The currently logged in user's userIdentifier (id).
      * @param {string} accessToken The currently logged in user's access token.
-     * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+     * @returns {MagnetJS.Promise} A promise object returning current user and device or reason of failure.
      */
     registerDeviceAndConnect: function(userId, accessToken) {
         userId = userId || mCurrentUser.userIdentifier;
@@ -318,7 +318,7 @@ function nodePathToChannel(nodeStr) {
 
 /**
  * Send the message to a user.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning "ok" or reason of failure.
  */
 MagnetJS.Message.prototype.send = function() {
     var self = this;
@@ -383,8 +383,7 @@ MagnetJS.Message.prototype.send = function() {
 // TODO: not implemented
 /**
  * Reply to the message.
- * @param {object} A message content object.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @param {object} content A message content object.
  * @ignore
  */
 MagnetJS.Message.prototype.reply = function(content, cb) {
@@ -414,7 +413,7 @@ MagnetJS.Channel = function(channelObj) {
 /**
  * Find the public channels that start with the specified text.
  * @param {string} channelName The name of the channel.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} or reason of failure.
  */
 MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
     var def = new MagnetJS.Deferred();
@@ -484,7 +483,7 @@ MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
  * @param {string} channelObj.name The name of the channel.
  * @param {boolean} channelObj.private Set to true to make the channel private.
  * @param {boolean} channelObj.subscribe Automatically subscribe the current user upon channel creation.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning the new {MagnetJS.Channel} or reason of failure.
  */
 MagnetJS.Channel.create = function(channelObj) {
     var def = new MagnetJS.Deferred();
@@ -527,7 +526,8 @@ MagnetJS.Channel.create = function(channelObj) {
 
 /**
  * Get all the channels the current user is the subscribed to.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} (containing basic information
+ * only) or reason of failure.
  */
 MagnetJS.Channel.getAllSubscriptions = function() {
     var def = new MagnetJS.Deferred();
@@ -568,7 +568,8 @@ MagnetJS.Channel.getAllSubscriptions = function() {
 /**
  * Get channels the given subscribers are subscribed to.
  * @param {string[]|MagnetJS.User[]} subscribers A list of userId or {MagnetJS.User} objects.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} (containing basic information
+ * only) or reason of failure.
  */
 MagnetJS.Channel.findChannelsBySubscribers = function(subscribers) {
     var subscriberlist = [];
@@ -606,7 +607,7 @@ MagnetJS.Channel.findChannelsBySubscribers = function(subscribers) {
  * @param {MagnetJS.Channel|MagnetJS.Channel[]} channelOrChannels One or more channels.
  * @param {number} subscriberCount The number of subscribers to return.
  * @param {number} messageCount The number of messages to return.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning a list of channel summaries or reason of failure.
  */
 MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, messageCount) {
     var channelIds = [];
@@ -681,7 +682,7 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
  * Get the basic channel information.
  * @param {string} channelName The channel name.
  * @param {string} [userId] The userId of the channel owner if the channel is private.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
  */
 MagnetJS.Channel.getChannel = function(channelName, userId) {
     var def = new MagnetJS.Deferred();
@@ -726,7 +727,7 @@ MagnetJS.Channel.getChannel = function(channelName, userId) {
 
 /**
  * Get a list of the users subscribed to the channel.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
  */
 MagnetJS.Channel.prototype.getAllSubscribers = function() {
     var self = this;
@@ -777,7 +778,7 @@ MagnetJS.Channel.prototype.getAllSubscribers = function() {
 /**
  * Add the given subscribers to the channel.
  * @param {string[]|MagnetJS.User[]} subscribers A list of userId or {MagnetJS.User} objects.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  */
 MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
     var self = this;
@@ -810,8 +811,8 @@ MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
 
 /**
  * Unsubscribe the given subscribers from the channel.
- * @param {string[]|MagnetJS.User[]} A list of subscribers to unsubscribe from the channel.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @param {string[]|MagnetJS.User[]} subscribers A list of subscribers to unsubscribe from the channel.
+ * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  */
 MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
     var self = this;
@@ -844,7 +845,7 @@ MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
 
 /**
  * Subscribe the current userto the channel.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  */
 MagnetJS.Channel.prototype.subscribe = function() {
     var self = this;
@@ -889,7 +890,7 @@ MagnetJS.Channel.prototype.subscribe = function() {
 
 /**
  * Unsubscribe the current user from the channel.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  */
 MagnetJS.Channel.prototype.unsubscribe = function() {
     var self = this;
@@ -935,7 +936,7 @@ MagnetJS.Channel.prototype.unsubscribe = function() {
  * Publish a message and/or attachments to the channel.
  * @param {MagnetJS.Message} mmxMessage A {MagnetJS.Message} instance containing message payload.
  * @param {FileUpload|FileUpload[]} [attachments] A FileUpload object created by an input[type="file"] HTML element.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning "ok" or reason of failure.
  */
 MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
     var self = this;
@@ -1005,7 +1006,7 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
 
 /**
  * Delete this channel
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  */
 MagnetJS.Channel.prototype.delete = function() {
     var self = this;

@@ -37,7 +37,7 @@ MagnetJS.User = function(userObj) {
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
  * @param {string} [userObj.email] User's email.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  */
 MagnetJS.User.register = function(userObj) {
     userObj.userName = userObj.username;
@@ -69,7 +69,7 @@ MagnetJS.User.register = function(userObj) {
  * @param {object} userObj An object containing user information.
  * @param {string} userObj.username User's username.
  * @param {string} userObj.password User's preferred password.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  */
 MagnetJS.User.login = function(userObj) {
     userObj = userObj || {};
@@ -115,7 +115,7 @@ MagnetJS.User.login = function(userObj) {
 
 /**
  * Login automatically if the Remember Me setting was enabled during login.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  * @ignore
  */
 MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
@@ -160,7 +160,7 @@ MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
 /**
  * Given a list of usernames, return a list of users.
  * @param {string[]} usernames A list of usernames.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
  */
 MagnetJS.User.getUsersByUserNames = function(usernames) {
     var qs = '', userlist = [];
@@ -196,7 +196,7 @@ MagnetJS.User.getUsersByUserNames = function(usernames) {
  * @param {number} [queryObj.offset] The starting index of results.
  * @param {string} [queryObj.orderby] A sort string. The string should be a user property and the sort direction
  * ['asc', 'desc'] separated by colon. For example, to order by username descending, the string can be 'username:desc'.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
  */
 MagnetJS.User.search = function(queryObj) {
     var qs = '', userlist = [];
@@ -253,7 +253,7 @@ MagnetJS.User.getToken = function() {
 
 /**
  * Logout the current logged in user.
- * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+ * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  */
 MagnetJS.User.logout = function() {
     var self = this;

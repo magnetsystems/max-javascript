@@ -14,7 +14,7 @@ MagnetJS.Device = {
     },
     /**
      * Registers a new device.
-     * @returns {MagnetJS.Promise} A promise object containing success, error, always, then callbacks.
+     * @returns {MagnetJS.Promise} A promise object returning device information or request error.
      * @ignore
      */
     register: function() {
