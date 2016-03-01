@@ -29,13 +29,13 @@ for a simple tutorial, then move onto Messenger (`/samples/web/messenger`), a co
 
 1. go to directory `/samples/web/getstarted`
 2. open `index.html` and change the clientId and clientSecret in `/samples/web/messenger/www/app.js` with the keys from an app created in the [Magnet Sandbox](https://sandbox.magnet.com/)
-```
-Max.init({
-    clientId: '<your client id>',
-    clientSecret: '<your client secret>',
-    baseUrl: 'https://sandbox.magnet.com/mobile/api'
-});
-```
+    ```
+    Max.init({
+        clientId: '<your client id>',
+        clientSecret: '<your client secret>',
+        baseUrl: 'https://sandbox.magnet.com/mobile/api'
+    });
+    ```
 3. open `index.html` in a web browser.
 4. from the [Magnet Sandbox Get Started page](https://sandbox.magnet.com/message/v2/#/welcome), send and receive messages between the two pages.
 
@@ -43,13 +43,13 @@ Max.init({
 
 1. install [Ionic Framework](http://ionicframework.com/)
 2. edit the clientId and clientSecret in `/samples/web/messenger/www/app.js` with the keys from an app created in the [Magnet Sandbox](https://sandbox.magnet.com/)
-```
-Max.init({
-    clientId: '<your client id>',
-    clientSecret: '<your client secret>',
-    baseUrl: 'https://sandbox.magnet.com/mobile/api'
-});
-```
+    ```
+    Max.init({
+        clientId: '<your client id>',
+        clientSecret: '<your client secret>',
+        baseUrl: 'https://sandbox.magnet.com/mobile/api'
+    });
+    ```
 3. go to directory `/samples/web/messenger`
 4. run `ionic serve`
 5. open a browser and go to `http://localhost:8100`.
