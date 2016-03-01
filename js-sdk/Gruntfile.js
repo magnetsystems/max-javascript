@@ -70,7 +70,8 @@ module.exports = function(grunt){
                     preserveComments : 'some'
                 },
                 files : {
-                    'target/<%= pkg.name %>-<%= pkg.version %>.min.js': ['target/<%= pkg.name %>-<%= pkg.version %>.js']
+                    'target/<%= pkg.name %>-<%= pkg.version %>.min.js': ['target/<%= pkg.name %>-<%= pkg.version %>.js'],
+                    'target/<%= pkg.name %>.min.js': ['target/<%= pkg.name %>-<%= pkg.version %>.js']
                 }
             }
         },
