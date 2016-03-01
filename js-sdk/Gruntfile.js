@@ -51,6 +51,10 @@ module.exports = function(grunt){
                 src  : full,
                 dest : 'target/<%= pkg.name %>-<%= pkg.version %>.js'
             },
+            noversion : {
+                src  : full,
+                dest : 'target/<%= pkg.name %>.js'
+            },
             plugins : {
                 src  : plugins,
                 dest : 'target/test-plugins.js'
