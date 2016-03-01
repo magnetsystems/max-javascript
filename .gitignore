@@ -4,7 +4,7 @@ node_modules
 .DS_Store
 js-sdk/node_modules
 js-sdk/target
-magnet-sdk.js
-magnet-sdk-min.js
+magnet-max-sdk.js
+magnet-max-sdk-min.js
 
-../samples/web/assets/magnet-sdk.js
+../samples/web/assets/magnet-max-sdk.js
