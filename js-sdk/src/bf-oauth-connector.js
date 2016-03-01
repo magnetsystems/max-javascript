@@ -1,23 +1,3 @@
-Strophe.SASLBFOAUTH = function() {};
-
-Strophe.SASLBFOAUTH.prototype = new Strophe.SASLMechanism('X-MMX_BF_OAUTH2', true, 80);
-
-Strophe.SASLBFOAUTH.test = function(connection) {
-  return connection.authcid !== null;
-};
-
-Strophe.SASLBFOAUTH.prototype.onChallenge = function(connection) {
-   var auth_str = '\u0000';
-    auth_str = auth_str + Strophe.getNodeFromJid(connection.jid);
-    auth_str = auth_str + '\u0000';
-    auth_str = auth_str + connection.pass;
-
-  return utf16to8(auth_str);
-};
-
-Strophe.Connection.prototype.mechanisms[Strophe.SASLBFOAUTH.prototype.name] = Strophe.SASLBFOAUTH;
-
-
 Strophe.Connection.prototype.bfOauthConnect = function(jid, accessToken, callback, wait, hold) {
 	this.jid = jid;
     this.connect_callback = callback;
@@ -140,23 +120,3 @@ Strophe.Connection.prototype._connect_bfoauth = function(req) {
             mechanism: 'X-MMX_BF_OAUTH2'
         }).t(hashed_auth_str).tree());
 };
-
-function utf16to8(str) {
-    var i, c;
-    var out = "";
-    var len = str.length;
-    for (i = 0; i < len; i++) {
-        c = str.charCodeAt(i);
-        if ((c >= 0x0000) && (c <= 0x007F)) {
-            out += str.charAt(i);
-        } else if (c > 0x07FF) {
-            out += String.fromCharCode(0xE0 | ((c >> 12) & 0x0F));
-            out += String.fromCharCode(0x80 | ((c >>  6) & 0x3F));
-            out += String.fromCharCode(0x80 | ((c >>  0) & 0x3F));
-        } else {
-            out += String.fromCharCode(0xC0 | ((c >>  6) & 0x1F));
-            out += String.fromCharCode(0x80 | ((c >>  0) & 0x3F));
-        }
-    }
-    return out;
-}

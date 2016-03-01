@@ -1,13 +1,13 @@
 /* unit tests for validating logging features */
 
-var MagnetJS = MagnetJS || require('../../target/magnet-sdk');
+var Max = Max || require('../../target/magnet-sdk');
 
 describe('Magnet Logging', function(){
 
     beforeEach(function(done){
-        MagnetJS.Config.logHandler = 'DB';
-        MagnetJS.Config.logLevel = 'INFO';
-        MagnetJS.Storage.clearTable(MagnetJS.Log.store, function(){
+        Max.Config.logHandler = 'DB';
+        Max.Config.logLevel = 'INFO';
+        Max.Storage.clearTable(Max.Log.store, function(){
             done();
         }, function(e){
             expect(e).toEqual('failed-test');
@@ -16,12 +16,12 @@ describe('Magnet Logging', function(){
     });
 
     it('should respect the configured log level', function(done){
-        MagnetJS.Log.severe('this is a severe');
-        MagnetJS.Log.warning('this is a warning');
-        MagnetJS.Log.info('this is a info');
-        MagnetJS.Log.config('this is a config');
-        MagnetJS.Log.fine('this is a fine');
-        MagnetJS.Storage.get(MagnetJS.Log.store, null, function(data){
+        Max.Log.severe('this is a severe');
+        Max.Log.warning('this is a warning');
+        Max.Log.info('this is a info');
+        Max.Log.config('this is a config');
+        Max.Log.fine('this is a fine');
+        Max.Storage.get(Max.Log.store, null, function(data){
             expect(data.length).toEqual(3);
             expect(data[0].level).toEqual('SEVERE');
             expect(data[1].level).toEqual('WARNING');
@@ -34,9 +34,9 @@ describe('Magnet Logging', function(){
     });
 
     it('should only log to console', function(done){
-        MagnetJS.Config.logHandler = 'Console';
-        MagnetJS.Log.severe('this is a severe');
-        MagnetJS.Storage.get(MagnetJS.Log.store, null, function(data){
+        Max.Config.logHandler = 'Console';
+        Max.Log.severe('this is a severe');
+        Max.Storage.get(Max.Log.store, null, function(data){
             expect(data.length).toEqual(0);
             done();
         }, function(e){
@@ -46,8 +46,8 @@ describe('Magnet Logging', function(){
     });
 
     it('should only log to storage', function(done){
-        MagnetJS.Log.severe('this is a severe');
-        MagnetJS.Storage.get(MagnetJS.Log.store, null, function(data){
+        Max.Log.severe('this is a severe');
+        Max.Storage.get(Max.Log.store, null, function(data){
             expect(data.length).toEqual(1);
             expect(data[0].level).toEqual('SEVERE');
             done();
@@ -58,9 +58,9 @@ describe('Magnet Logging', function(){
     });
 
     it('should only log to both storage and console', function(done){
-        MagnetJS.Config.logHandler = 'Console&DB';
-        MagnetJS.Log.severe('this is a severe');
-        MagnetJS.Storage.get(MagnetJS.Log.store, null, function(data){
+        Max.Config.logHandler = 'Console&DB';
+        Max.Log.severe('this is a severe');
+        Max.Storage.get(Max.Log.store, null, function(data){
             expect(data.length).toEqual(1);
             expect(data[0].level).toEqual('SEVERE');
             done();
@@ -71,11 +71,11 @@ describe('Magnet Logging', function(){
     });
 
     it('should clear the logs without dumping', function(done){
-        MagnetJS.Log.severe('this is a severe');
-        MagnetJS.Storage.get(MagnetJS.Log.store, null, function(data){
+        Max.Log.severe('this is a severe');
+        Max.Storage.get(Max.Log.store, null, function(data){
             expect(data.length).toEqual(1);
-            MagnetJS.Log.clear(function(){
-                MagnetJS.Storage.get(MagnetJS.Log.store, null, function(data){
+            Max.Log.clear(function(){
+                Max.Storage.get(Max.Log.store, null, function(data){
                     expect(data.length).toEqual(0);
                     done();
                 }, function(e){
@@ -94,11 +94,11 @@ describe('Magnet Logging', function(){
     });
 
     it('should log a fully populated log message using Log.log', function(done){
-        MagnetJS.Log.log('SEVERE', ['this is a severe', {
+        Max.Log.log('SEVERE', ['this is a severe', {
             meta1 : 'meta1',
             meta2 : 'meta2'
         }, 'UnitTest', 'some file']);
-        MagnetJS.Storage.get(MagnetJS.Log.store, null, function(data){
+        Max.Storage.get(Max.Log.store, null, function(data){
             expect(data.length).toEqual(1);
             expect(data[0].level).toEqual('SEVERE');
             expect(data[0].msg).toEqual('this is a severe');

@@ -1,6 +1,8 @@
-/* unit tests for MagnetJS */
+/* unit tests for Max */
 
-var MagnetJS = MagnetJS || require('../../target/magnet-sdk');
+var Max = Max || require('../../target/magnet-sdk');
+
+var QUEUE_TABLE_NAME = 'TESTQUEUE';
 
 describe('Utils mergeObj', function(){
     var obj1, obj2;
@@ -17,7 +19,7 @@ describe('Utils mergeObj', function(){
     });
 
     it('should merge the contents of the first object to the second object', function(done){
-        MagnetJS.Utils.mergeObj(obj1, obj2);
+        Max.Utils.mergeObj(obj1, obj2);
         expect(obj1.foo2).toEqual(obj2.foo2);
         done();
     });
@@ -30,12 +32,12 @@ describe('Utils isObject', function(){
         var obj1 = {
             foo : 'foodat'
         };
-        expect(MagnetJS.Utils.isObject(obj1)).toEqual(true);
+        expect(Max.Utils.isObject(obj1)).toEqual(true);
         done();
     });
 
     it('should return false if input is not an object', function(done){
-        expect(MagnetJS.Utils.isObject(3)).toEqual(false);
+        expect(Max.Utils.isObject(3)).toEqual(false);
         done();
     });
 
@@ -45,12 +47,12 @@ describe('Utils isArray', function(){
 
     it('should return true if input is an array', function(done){
         var ary = ['foo'];
-        expect(MagnetJS.Utils.isArray(ary)).toEqual(true);
+        expect(Max.Utils.isArray(ary)).toEqual(true);
         done();
     });
 
     it('should return false if input is not an array', function(done){
-        expect(MagnetJS.Utils.isArray(3)).toEqual(false);
+        expect(Max.Utils.isArray(3)).toEqual(false);
         done();
     });
 
@@ -60,13 +62,24 @@ describe('Utils getValidJSON', function(){
 
     it('should convert a valid string into JSON', function(done){
         var str = '{"foo":"foodat"}', obj = {"foo":"foodat"};
-        expect(MagnetJS.Utils.getValidJSON(str)).toEqual(obj);
+        expect(Max.Utils.getValidJSON(str)).toEqual(obj);
         done();
     });
 
     it('should return false given an invalid string', function(done){
         var invalidStr = '{"foo:"foodat"}';
-        expect(MagnetJS.Utils.getValidJSON(invalidStr)).toEqual(false);
+        expect(Max.Utils.getValidJSON(invalidStr)).toEqual(false);
+        done();
+    });
+
+});
+
+describe('Utils getValidXML', function(){
+
+    it('should convert a valid string into XML', function(done){
+        var str = '<xml><beer>lager</beer></xml>';
+        var xml = Max.Utils.getValidXML(str);
+        expect(xml.getElementsByTagName('beer')[0].childNodes[0].nodeValue).toEqual('lager');
         done();
     });
 
@@ -79,7 +92,7 @@ describe('Utils getAttributes', function(){
             foo : 'foodat',
             bar : 'bardat'
         };
-        var ary = MagnetJS.Utils.getAttributes(obj1);
+        var ary = Max.Utils.getAttributes(obj1);
         expect(ary[0]).toEqual('foo');
         expect(ary[1]).toEqual('bar');
         done();
@@ -87,7 +100,7 @@ describe('Utils getAttributes', function(){
 
     it('should return an empty array given an empty object', function(done){
         var obj1 = {};
-        var out = MagnetJS.Utils.getAttributes(obj1);
+        var out = Max.Utils.getAttributes(obj1);
         expect(out).toEqual([]);
         done();
     });
@@ -97,12 +110,12 @@ describe('Utils getAttributes', function(){
 describe('Utils getDataType', function(){
 
     it('should get string type', function(done){
-        expect(MagnetJS.Utils.getDataType('foo')).toEqual('string');
-        expect(MagnetJS.Utils.getDataType(1)).toEqual('integer');
-        expect(MagnetJS.Utils.getDataType(['foo'])).toEqual('array');
-        expect(MagnetJS.Utils.getDataType({'foo':'bar'})).toEqual('object');
-        expect(MagnetJS.Utils.getDataType(new Date())).toEqual('date');
-        expect(MagnetJS.Utils.getDataType(true)).toEqual('boolean');
+        expect(Max.Utils.getDataType('foo')).toEqual('string');
+        expect(Max.Utils.getDataType(1)).toEqual('integer');
+        expect(Max.Utils.getDataType(['foo'])).toEqual('array');
+        expect(Max.Utils.getDataType({'foo':'bar'})).toEqual('object');
+        expect(Max.Utils.getDataType(new Date())).toEqual('date');
+        expect(Max.Utils.getDataType(true)).toEqual('boolean');
         done();
     });
 
@@ -115,7 +128,7 @@ describe('Utils getValues', function(){
             foo : 'foodat',
             bar : 'bardat'
         };
-        var ary = MagnetJS.Utils.getValues(obj1);
+        var ary = Max.Utils.getValues(obj1);
         expect(ary[0]).toEqual('foodat');
         expect(ary[1]).toEqual('bardat');
         done();
@@ -123,7 +136,7 @@ describe('Utils getValues', function(){
 
     it('should return an empty array given an empty object', function(done){
         var obj1 = {};
-        var out = MagnetJS.Utils.getAttributes(obj1);
+        var out = Max.Utils.getAttributes(obj1);
         expect(out).toEqual([]);
         done();
     });
@@ -137,19 +150,19 @@ describe('Utils isEmptyObject', function(){
             foo : 'foodat',
             bar : 'bardat'
         };
-        expect(MagnetJS.Utils.isEmptyObject(obj1)).toEqual(false);
+        expect(Max.Utils.isEmptyObject(obj1)).toEqual(false);
         done();
     });
 
     it('should return true given an empty object', function(done){
         var obj1 = {};
-        expect(MagnetJS.Utils.isEmptyObject(obj1)).toEqual(true);
+        expect(Max.Utils.isEmptyObject(obj1)).toEqual(true);
         done();
     });
 
     it('should return true given a non-object', function(done){
         var obj1 = 3;
-        expect(MagnetJS.Utils.isEmptyObject(obj1)).toEqual(true);
+        expect(Max.Utils.isEmptyObject(obj1)).toEqual(true);
         done();
     });
 
@@ -171,7 +184,7 @@ describe('Utils convertHeaderStrToObj', function(){
             'Content-Type' : 'text/plain; charset=UTF-8',
             'Expires'      : 'Thu, 01 Jan 1970 00:00:00 GMT'
         };
-        expect(MagnetJS.Utils.convertHeaderStrToObj(xhr)).toEqual(out);
+        expect(Max.Utils.convertHeaderStrToObj(xhr)).toEqual(out);
         done();
     });
 
@@ -191,7 +204,7 @@ describe('Utils cleanData', function(){
         var out = {
             foo : 'foodat'
         };
-        expect(MagnetJS.Utils.cleanData(schema, obj)).toEqual(out);
+        expect(Max.Utils.cleanData(schema, obj)).toEqual(out);
         done();
     });
 
@@ -213,7 +226,7 @@ describe('Utils validate', function(){
             'attribute' : 'foo',
             'reason'    : 'required field blank'
         }];
-        expect(MagnetJS.Utils.validate(schema, obj)).toEqual(out);
+        expect(Max.Utils.validate(schema, obj)).toEqual(out);
         done();
     });
 
@@ -227,7 +240,7 @@ describe('Utils validate', function(){
         var obj = {
             foo : 'foodat'
         };
-        expect(MagnetJS.Utils.validate(schema, obj)).toEqual(false);
+        expect(Max.Utils.validate(schema, obj)).toEqual(false);
         done();
     });
 
@@ -246,7 +259,7 @@ describe('Utils validate', function(){
             attribute : 'foo',
             reason    : 'invalid binary format'
         }];
-        expect(MagnetJS.Utils.validate(schema, obj)).toEqual(out);
+        expect(Max.Utils.validate(schema, obj)).toEqual(out);
         done();
     });
 
@@ -264,7 +277,7 @@ describe('Utils validate', function(){
                 val      : 'valid'
             }
         };
-        expect(MagnetJS.Utils.validate(schema, obj)).toEqual(false);
+        expect(Max.Utils.validate(schema, obj)).toEqual(false);
         done();
     });
 
@@ -279,7 +292,7 @@ describe('Utils validate', function(){
         var obj = {
             foo : '120'
         };
-        expect(MagnetJS.Utils.validate(schema, obj)).toEqual(false);
+        expect(Max.Utils.validate(schema, obj)).toEqual(false);
         done();
     });
 
@@ -298,7 +311,7 @@ describe('Utils validate', function(){
             attribute : 'foo',
             reason    : 'not numeric'
         }];
-        expect(MagnetJS.Utils.validate(schema, obj)).toEqual(out);
+        expect(Max.Utils.validate(schema, obj)).toEqual(out);
         done();
     });
 
@@ -308,7 +321,7 @@ describe('Utils dateToISO8601', function(){
 
     it('should convert a Date object to ISO8601 string', function(done){
         var baseDate = new Date().toISOString();
-        var newDate = MagnetJS.Utils.dateToISO8601(new Date());
+        var newDate = Max.Utils.dateToISO8601(new Date());
         // sometimes there is a 1 millisecond time difference
         expect(baseDate).toContain(newDate.substring(0, newDate.length - 7));
         done();
@@ -320,21 +333,21 @@ describe('Utils ISO8601ToDate', function(){
 
     it('should convert an ISO8601 string into a Date object', function(done){
         var baseDate = new Date().toISOString();
-        var date = MagnetJS.Utils.ISO8601ToDate(baseDate);
+        var date = Max.Utils.ISO8601ToDate(baseDate);
         expect(date.toISOString()).toContain(baseDate.substring(0, baseDate.length - 7));
         done();
     });
 
     it('should return false if it is not a valid date', function(done){
         var baseDate = 'invalid';
-        var date = MagnetJS.Utils.ISO8601ToDate(baseDate);
+        var date = Max.Utils.ISO8601ToDate(baseDate);
         expect(date).toEqual(false);
         done();
     });
 
     it('should return false if it is not a valid date', function(done){
         var baseDate = 'invalid';
-        var date = MagnetJS.Utils.ISO8601ToDate(baseDate);
+        var date = Max.Utils.ISO8601ToDate(baseDate);
         expect(date).toEqual(false);
         done();
     });
@@ -344,12 +357,12 @@ describe('Utils ISO8601ToDate', function(){
 describe('Utils isPrimitiveType', function(){
 
     it('should return true if input is a primitive java type', function(done){
-        expect(MagnetJS.Utils.isPrimitiveType('byte')).toEqual(true);
+        expect(Max.Utils.isPrimitiveType('byte')).toEqual(true);
         done();
     });
 
     it('should return false if input is not a primitive java type', function(done){
-        expect(MagnetJS.Utils.isPrimitiveType('com.magnet.user')).toEqual(false);
+        expect(Max.Utils.isPrimitiveType('com.magnet.user')).toEqual(false);
         done();
     });
 
@@ -359,13 +372,13 @@ describe('Utils stringToBase64', function(){
 
     it('should convert a simple string to base64', function(done){
         var str = 'stringData1';
-        expect(MagnetJS.Utils.stringToBase64(str)).toEqual('c3RyaW5nRGF0YTE=');
+        expect(Max.Utils.stringToBase64(str)).toEqual('c3RyaW5nRGF0YTE=');
         done();
     });
 
     it('should convert special character entities to base64', function(done){
         var str = '←♠♣♥♦‰™¢§';
-        expect(MagnetJS.Utils.stringToBase64(str)).toEqual('4oaQ4pmg4pmj4pml4pmm4oCw4oSiwqLCpw==');
+        expect(Max.Utils.stringToBase64(str)).toEqual('4oaQ4pmg4pmj4pml4pmm4oCw4oSiwqLCpw==');
         done();
     });
 
@@ -375,13 +388,45 @@ describe('Utils base64ToString', function(){
 
     it('should convert a simple string to base64', function(done){
         var str = 'c3RyaW5nRGF0YTE=';
-        expect(MagnetJS.Utils.base64ToString(str)).toEqual('stringData1');
+        expect(Max.Utils.base64ToString(str)).toEqual('stringData1');
         done();
     });
 
     it('should convert special character entities to base64', function(done){
         var str = '4oaQ4pmg4pmj4pml4pmm4oCw4oSiwqLCpw==';
-        expect(MagnetJS.Utils.base64ToString(str)).toEqual('←♠♣♥♦‰™¢§');
+        expect(Max.Utils.base64ToString(str)).toEqual('←♠♣♥♦‰™¢§');
+        done();
+    });
+
+});
+
+describe('Utils getCleanGUID', function(){
+
+    it('should return a GUID of correct format', function(done){
+        var guid = Max.Utils.getCleanGUID();
+        expect(guid.length).toEqual(32);
+        expect(guid).not.toContain('-');
+        done();
+    });
+
+});
+
+describe('Utils getBrowser', function(){
+
+    it('should return a string identifying client information', function(done){
+        var client = Max.Utils.getBrowser();
+        console.log(client);
+        expect(client).toContain('Safari 538.1 (538)');
+        done();
+    });
+
+});
+
+describe('Utils getOS', function(){
+
+    it('should return a string identifying operating system', function(done){
+        var os = Max.Utils.getOS();
+        expect(os.os).toEqual('Mac OS X');
         done();
     });
 
@@ -395,7 +440,16 @@ describe('Utils objectToFormdata', function(){
             param2 : 'u',
             param3 : 'v'
         };
-        expect(MagnetJS.Utils.objectToFormdata.stringify(obj)).toEqual('param1=t&param2=u&param3=v');
+        expect(Max.Utils.objectToFormdata.stringify(obj)).toEqual('param1=t&param2=u&param3=v');
+        done();
+    });
+
+});
+
+describe('Utils utf16to8', function(){
+
+    it('should decode a UTF-16 character to UTF-8', function(done){
+        expect(Max.Utils.utf16to8('〰')).toEqual('ã°');
         done();
     });
 
@@ -405,7 +459,7 @@ describe('Promise and Defer', function(){
 
     it('should resolve a Deferred and execute a success callback', function(done){
         function request(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.resolve(200, 'pass');
             }, 0);
@@ -423,7 +477,7 @@ describe('Promise and Defer', function(){
 
     it('should reject a Deferred and execute a failure callback', function(done){
         function request(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.reject(400, 'failed');
             }, 0);
@@ -439,16 +493,34 @@ describe('Promise and Defer', function(){
         });
     });
 
+    it('should execute always callback', function(done){
+        function request(){
+            var deferred = new Max.Deferred();
+            setTimeout(function(){
+                deferred.reject(400, 'failed');
+            }, 0);
+            return deferred.promise;
+        }
+        request().always(function(a1){
+            expect(a1).toEqual(400);
+            done();
+        }, function(a1, a2){
+            expect(a1).toEqual(400);
+            expect(a2).toEqual('failed');
+            done();
+        });
+    });
+
     it('should chain a promise which executes sequentially and execute success callback', function(done){
         function request(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.resolve(200, 'pass');
             }, 500);
             return deferred.promise;
         }
         function request2(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.resolve(201, 'pass2');
             }, 0);
@@ -463,14 +535,14 @@ describe('Promise and Defer', function(){
 
     it('should chain a promise and execute failure callback', function(done){
         function request(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.resolve(200, 'pass');
             }, 0);
             return deferred.promise;
         }
         function request2(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.reject(400, 'failed');
             }, 0);
@@ -488,7 +560,7 @@ describe('Promise and Defer', function(){
 
     it('should execute the success callback stored in the Promise', function(done){
         function request(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.resolve(200, 'pass');
             }, 1);
@@ -503,7 +575,7 @@ describe('Promise and Defer', function(){
 
     it('should execute the error callback stored in the Promise', function(done){
         function request(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.reject(400, 'failed');
             }, 1);
@@ -518,7 +590,7 @@ describe('Promise and Defer', function(){
 
     it('should execute the success callback and continue with the Promise chain', function(done){
         function request(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.resolve(200, 'pass');
             }, 1);
@@ -536,27 +608,27 @@ describe('Promise and Defer', function(){
 
     it('should execute multiple promises and return an array of resolve/reject arguments', function(done){
         function request(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.resolve(200, 'pass');
             }, 1);
             return deferred.promise;
         }
         function request2(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.resolve(201, 'pass');
             }, 2);
             return deferred.promise;
         }
         function request3(){
-            var deferred = new MagnetJS.Deferred();
+            var deferred = new Max.Deferred();
             setTimeout(function(){
                 deferred.reject(400, 'fail');
             }, 0);
             return deferred.promise;
         }
-        MagnetJS.Deferred.all(request, request2, request3).then(function(successes, errors){
+        Max.Deferred.all(request, request2, request3).then(function(successes, errors){
             expect(successes.length).toEqual(2);
             expect(successes[0][0]).toEqual(200);
             expect(successes[0][1]).toEqual('pass');
@@ -575,7 +647,7 @@ describe('Events', function(){
 
     it('should add event functions to an object', function(done){
         var obj = {};
-        MagnetJS.Events.create(obj);
+        Max.Events.create(obj);
         expect(obj.on).not.toBeUndefined();
         expect(obj.invoke).not.toBeUndefined();
         expect(obj.unbind).not.toBeUndefined();
@@ -584,7 +656,7 @@ describe('Events', function(){
 
     it('should handle a bound event', function(done){
         var obj = {}, called = false, called2 = false;
-        MagnetJS.Events.create(obj);
+        Max.Events.create(obj);
         obj.on('foobar', function(){
             called = true;
         });
@@ -600,7 +672,7 @@ describe('Events', function(){
 
     it('should unbind an event', function(done){
         var obj = {}, called = false;
-        MagnetJS.Events.create(obj);
+        Max.Events.create(obj);
         obj.on('foobar', function(){
             called = true;
         });
@@ -612,7 +684,7 @@ describe('Events', function(){
 
     it('should handle an array of bound events', function(done){
         var obj = {}, called = false, called2 = false;
-        MagnetJS.Events.create(obj);
+        Max.Events.create(obj);
         obj.on('foo', function(){
             called = true;
         });
@@ -627,7 +699,7 @@ describe('Events', function(){
 
     it('should return false attempting to set an invalid object', function(done){
         var invalidObj = {on:'foo'};
-        expect(MagnetJS.Events.create(invalidObj)).toEqual(false);
+        expect(Max.Events.create(invalidObj)).toEqual(false);
         done();
     });
 
@@ -636,12 +708,12 @@ describe('Events', function(){
 describe('Storage MemoryStoreConnector', function(){
 
     beforeEach(function(done){
-        MagnetJS.Storage.connector = MagnetJS.MemoryStoreConnector;
+        Max.Storage.connector = Max.MemoryStoreConnector;
         done();
     });
     afterEach(function(done){
-        MagnetJS.MemoryStoreConnector.memory = {};
-        MagnetJS.Storage.clearTable(MagnetJS.CallManager.queueTableName, function(){
+        Max.MemoryStoreConnector.memory = {};
+        Max.Storage.clearTable(QUEUE_TABLE_NAME, function(){
             done();
         }, function(e){
             expect(e).toEqual('failed-test-setup1');
@@ -653,8 +725,8 @@ describe('Storage MemoryStoreConnector', function(){
         var obj = {
             prop1 : 'val1'
         };
-        MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(){
-            MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, obj, function(records){
+        Max.Storage.create(QUEUE_TABLE_NAME, obj, function(){
+            Max.Storage.get(QUEUE_TABLE_NAME, obj, function(records){
                 expect(records.length).toEqual(1);
                 expect(records[0].prop1).toEqual('val1');
                 done();
@@ -672,16 +744,16 @@ describe('Storage MemoryStoreConnector', function(){
         var obj = {
             prop2 : 'val2'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.remove(MagnetJS.CallManager.queueTableName, obj, function(){
-                    MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, obj, function(records){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.remove(QUEUE_TABLE_NAME, obj, function(){
+                    Max.Storage.get(QUEUE_TABLE_NAME, obj, function(records){
                         expect(records.length).toEqual(0);
                         done();
                     }, function(e){
@@ -703,16 +775,16 @@ describe('Storage MemoryStoreConnector', function(){
         var obj = {
             prop3 : 'val3'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.remove(MagnetJS.CallManager.queueTableName, objCreated.id, function(){
-                    MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, obj, function(records){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.remove(QUEUE_TABLE_NAME, objCreated.id, function(){
+                    Max.Storage.get(QUEUE_TABLE_NAME, obj, function(records){
                         expect(records.length).toEqual(0);
                         done();
                     }, function(e){
@@ -734,21 +806,21 @@ describe('Storage MemoryStoreConnector', function(){
         var obj = {
             prop4 : 'val4'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
                 var queryObj = {
                     id : ['invalid', objCreated.id, 'invalid2']
                 };
-                MagnetJS.Storage.remove(MagnetJS.CallManager.queueTableName, queryObj, function(){
-                    MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, objCreated.id, function(record){
+                Max.Storage.remove(QUEUE_TABLE_NAME, queryObj, function(){
+                    Max.Storage.get(QUEUE_TABLE_NAME, objCreated.id, function(record){
                         expect(record).toBeUndefined();
-                        expect(MagnetJS.MemoryStoreConnector.memory[MagnetJS.CallManager.queueTableName].length).toEqual(0);
+                        expect(Max.MemoryStoreConnector.memory[QUEUE_TABLE_NAME].length).toEqual(0);
                         done();
                     }, function(e){
                         expect(e).toEqual('failed-test3');
@@ -766,7 +838,7 @@ describe('Storage MemoryStoreConnector', function(){
     });
 
     it('should not remove any objects if table does not exist', function(done){
-        MagnetJS.Storage.remove('invalid-table-name', 'invalid-id', function(records){
+        Max.Storage.remove('invalid-table-name', 'invalid-id', function(records){
             expect(records).toEqual('failed-test');
             done();
         }, function(e){
@@ -779,15 +851,15 @@ describe('Storage MemoryStoreConnector', function(){
         var obj = {
             prop5 : 'val5'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(){
-                MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, obj, function(records){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(){
+                Max.Storage.get(QUEUE_TABLE_NAME, obj, function(records){
                     expect(records.length).toEqual(1);
                     expect(records[0].prop5).toEqual('val5');
                     done();
@@ -806,15 +878,15 @@ describe('Storage MemoryStoreConnector', function(){
         var obj = {
             prop6 : 'val6'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, obj, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, objCreated.id, function(record){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.get(QUEUE_TABLE_NAME, objCreated.id, function(record){
                     expect(record.prop6).toEqual('val6');
                     expect(record.id).toEqual(objCreated.id);
                     done();
@@ -833,15 +905,15 @@ describe('Storage MemoryStoreConnector', function(){
         var obj = {
             prop7 : 'val7'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, null, function(records){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.get(QUEUE_TABLE_NAME, null, function(records){
                     expect(records.length).toEqual(1);
                     expect(records[0].prop7).toEqual('val7');
                     expect(records[0].id).toEqual(objCreated.id);
@@ -858,7 +930,7 @@ describe('Storage MemoryStoreConnector', function(){
     });
 
     it('should not retrieve any objects if table does not exist', function(done){
-        MagnetJS.Storage.get('invalid-table-name', 'invalid-id', function(records){
+        Max.Storage.get('invalid-table-name', 'invalid-id', function(records){
             expect(records).toEqual('failed-test');
             done();
         }, function(e){
@@ -875,18 +947,18 @@ describe('Storage MemoryStoreConnector', function(){
             prop8   : 'valModified8',
             another : 'value'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.update(MagnetJS.CallManager.queueTableName, objCreated.id, objModified, function(record){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.update(QUEUE_TABLE_NAME, objCreated.id, objModified, function(record){
                     expect(record.id).toEqual(objCreated.id);
                     expect(record.prop8).toEqual('valModified8');
-                    MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, objCreated.id, function(record2){
+                    Max.Storage.get(QUEUE_TABLE_NAME, objCreated.id, function(record2){
                         expect(record2.prop8).toEqual('valModified8');
                         expect(record2.id).toEqual(objCreated.id);
                         done();
@@ -910,14 +982,14 @@ describe('Storage MemoryStoreConnector', function(){
             prop9   : 'val9',
             another : 'value'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.update(MagnetJS.CallManager.queueTableName, 'invalid-id', obj, function(record){
+            Max.Storage.update(QUEUE_TABLE_NAME, 'invalid-id', obj, function(record){
                 expect(record).toEqual('failed-test');
                 done();
             }, function(e){
@@ -932,7 +1004,7 @@ describe('Storage MemoryStoreConnector', function(){
             prop10  : 'val10',
             another : 'value'
         };
-        MagnetJS.Storage.update('invalid-table-name', 'invalid-id', obj, function(record){
+        Max.Storage.update('invalid-table-name', 'invalid-id', obj, function(record){
             expect(record).toEqual('failed-test');
             done();
         }, function(e){
@@ -943,11 +1015,11 @@ describe('Storage MemoryStoreConnector', function(){
 
     it('should create a table if it does not exist', function(done){
         var table = 'table1';
-        MagnetJS.Storage.createTableIfNotExist(table, {
+        Max.Storage.createTableIfNotExist(table, {
             param1 : 'TEXT',
             param2 : 'TEXT'
         }, null, false, function(){
-            MagnetJS.Storage.get(table, null, function(records){
+            Max.Storage.get(table, null, function(records){
                 expect(records.length).toEqual(0);
                 done();
             }, function(e){
@@ -963,11 +1035,11 @@ describe('Storage MemoryStoreConnector', function(){
             prop11 : 'val11',
             prop12 : 'val12'
         };
-        MagnetJS.Storage.createTableIfNotExist(table, {
+        Max.Storage.createTableIfNotExist(table, {
             prop11 : 'TEXT',
             prop12 : 'TEXT'
         }, obj, true, function(){
-            MagnetJS.Storage.get(table, null, function(records){
+            Max.Storage.get(table, null, function(records){
                 expect(records.length).toEqual(1);
                 expect(records[0].prop11).toEqual('val11');
                 expect(records[0].prop12).toEqual('val12');
@@ -988,11 +1060,11 @@ describe('Storage MemoryStoreConnector', function(){
             prop13 : 'val13r2',
             prop14 : 'val14r2'
         }];
-        MagnetJS.Storage.createTableIfNotExist(table, {
+        Max.Storage.createTableIfNotExist(table, {
             param1 : 'TEXT',
             param2 : 'TEXT'
         }, objAry, true, function(){
-            MagnetJS.Storage.get(table, null, function(records){
+            Max.Storage.get(table, null, function(records){
                 expect(records.length).toEqual(2);
                 expect(records[0].prop13).toEqual('val13r1');
                 expect(records[0].prop14).toEqual('val14r1');
@@ -1013,7 +1085,7 @@ describe('Storage LocalStorageConnector', function(){
     var tempConnector;
 
     beforeEach(function(done){
-        if(MagnetJS.Utils.isNode){
+        if(Max.Utils.isNode){
             window = typeof window !== 'undefined' ? window : {};
             window.localStorage = window.localStorage || {
                 memory : {},
@@ -1025,14 +1097,14 @@ describe('Storage LocalStorageConnector', function(){
                 }
             };
         }
-        tempConnector = MagnetJS.Storage.connector;
-        MagnetJS.Storage.connector = MagnetJS.LocalStorageConnector;
+        tempConnector = Max.Storage.connector;
+        Max.Storage.connector = Max.LocalStorageConnector;
         done();
     });
     afterEach(function(done){
-        MagnetJS.Storage.clearTable(MagnetJS.CallManager.queueTableName, function(){
-            MagnetJS.Storage.connector = tempConnector;
-            if(MagnetJS.Utils.isNode){
+        Max.Storage.clearTable(QUEUE_TABLE_NAME, function(){
+            Max.Storage.connector = tempConnector;
+            if(Max.Utils.isNode){
                 delete window;
             }else{
                 window.localStorage.clear();
@@ -1048,8 +1120,8 @@ describe('Storage LocalStorageConnector', function(){
         var obj = {
             prop1 : 'val1'
         };
-        MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(){
-            MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, obj, function(records){
+        Max.Storage.create(QUEUE_TABLE_NAME, obj, function(){
+            Max.Storage.get(QUEUE_TABLE_NAME, obj, function(records){
                 expect(records.length).toEqual(1);
                 expect(records[0].prop1).toEqual('val1');
                 done();
@@ -1067,16 +1139,16 @@ describe('Storage LocalStorageConnector', function(){
         var obj = {
             prop2 : 'val2'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.remove(MagnetJS.CallManager.queueTableName, obj, function(){
-                    MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, obj, function(records){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.remove(QUEUE_TABLE_NAME, obj, function(){
+                    Max.Storage.get(QUEUE_TABLE_NAME, obj, function(records){
                         expect(records.length).toEqual(0);
                         done();
                     }, function(e){
@@ -1098,16 +1170,16 @@ describe('Storage LocalStorageConnector', function(){
         var obj = {
             prop3 : 'val3'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.remove(MagnetJS.CallManager.queueTableName, objCreated.id, function(){
-                    MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, obj, function(records){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.remove(QUEUE_TABLE_NAME, objCreated.id, function(){
+                    Max.Storage.get(QUEUE_TABLE_NAME, obj, function(records){
                         expect(records.length).toEqual(0);
                         done();
                     }, function(e){
@@ -1129,21 +1201,21 @@ describe('Storage LocalStorageConnector', function(){
         var obj = {
             prop4 : 'val4'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
                 var queryObj = {
                     id : ['invalid', objCreated.id, 'invalid2']
                 };
-                MagnetJS.Storage.remove(MagnetJS.CallManager.queueTableName, queryObj, function(){
-                    MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, objCreated.id, function(record){
+                Max.Storage.remove(QUEUE_TABLE_NAME, queryObj, function(){
+                    Max.Storage.get(QUEUE_TABLE_NAME, objCreated.id, function(record){
                         expect(record).toBeUndefined();
-                        expect(MagnetJS.MemoryStoreConnector.memory[MagnetJS.CallManager.queueTableName].length).toEqual(0);
+                        expect(Max.MemoryStoreConnector.memory[QUEUE_TABLE_NAME].length).toEqual(0);
                         done();
                     }, function(e){
                         expect(e).toEqual('failed-test3');
@@ -1161,7 +1233,7 @@ describe('Storage LocalStorageConnector', function(){
     });
 
     it('should not remove any objects if table does not exist', function(done){
-        MagnetJS.Storage.remove('invalid-table-name', 'invalid-id', function(records){
+        Max.Storage.remove('invalid-table-name', 'invalid-id', function(records){
             expect(records).toEqual('failed-test');
             done();
         }, function(e){
@@ -1174,15 +1246,15 @@ describe('Storage LocalStorageConnector', function(){
         var obj = {
             prop5 : 'val5'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(){
-                MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, obj, function(records){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(){
+                Max.Storage.get(QUEUE_TABLE_NAME, obj, function(records){
                     expect(records.length).toEqual(1);
                     expect(records[0].prop5).toEqual('val5');
                     done();
@@ -1201,15 +1273,15 @@ describe('Storage LocalStorageConnector', function(){
         var obj = {
             prop6 : 'val6'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, obj, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, objCreated.id, function(record){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.get(QUEUE_TABLE_NAME, objCreated.id, function(record){
                     expect(record.prop6).toEqual('val6');
                     expect(record.id).toEqual(objCreated.id);
                     done();
@@ -1228,15 +1300,15 @@ describe('Storage LocalStorageConnector', function(){
         var obj = {
             prop7 : 'val7'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, null, function(records){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.get(QUEUE_TABLE_NAME, null, function(records){
                     expect(records.length).toEqual(1);
                     expect(records[0].prop7).toEqual('val7');
                     expect(records[0].id).toEqual(objCreated.id);
@@ -1253,7 +1325,7 @@ describe('Storage LocalStorageConnector', function(){
     });
 
     it('should not retrieve any objects if table does not exist', function(done){
-        MagnetJS.Storage.get('invalid-table-name', 'invalid-id', function(records){
+        Max.Storage.get('invalid-table-name', 'invalid-id', function(records){
             expect(records).toEqual('failed-test');
             done();
         }, function(e){
@@ -1270,18 +1342,18 @@ describe('Storage LocalStorageConnector', function(){
             prop8   : 'valModified8',
             another : 'value'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.create(MagnetJS.CallManager.queueTableName, obj, function(objCreated){
-                MagnetJS.Storage.update(MagnetJS.CallManager.queueTableName, objCreated.id, objModified, function(record){
+            Max.Storage.create(QUEUE_TABLE_NAME, obj, function(objCreated){
+                Max.Storage.update(QUEUE_TABLE_NAME, objCreated.id, objModified, function(record){
                     expect(record.id).toEqual(objCreated.id);
                     expect(record.prop8).toEqual('valModified8');
-                    MagnetJS.Storage.get(MagnetJS.CallManager.queueTableName, objCreated.id, function(record2){
+                    Max.Storage.get(QUEUE_TABLE_NAME, objCreated.id, function(record2){
                         expect(record2.prop8).toEqual('valModified8');
                         expect(record2.id).toEqual(objCreated.id);
                         done();
@@ -1305,14 +1377,14 @@ describe('Storage LocalStorageConnector', function(){
             prop9   : 'val9',
             another : 'value'
         };
-        MagnetJS.Storage.createTableIfNotExist(MagnetJS.CallManager.queueTableName, {
+        Max.Storage.createTableIfNotExist(QUEUE_TABLE_NAME, {
             callId      : 'TEXT',
             callOptions : 'TEXT',
             options     : 'TEXT',
             metadata    : 'TEXT',
             queueName   : 'TEXT'
         }, null, true, function(){
-            MagnetJS.Storage.update(MagnetJS.CallManager.queueTableName, 'invalid-id', obj, function(record){
+            Max.Storage.update(QUEUE_TABLE_NAME, 'invalid-id', obj, function(record){
                 expect(record).toEqual('failed-test');
                 done();
             }, function(e){
@@ -1327,7 +1399,7 @@ describe('Storage LocalStorageConnector', function(){
             prop10  : 'val10',
             another : 'value'
         };
-        MagnetJS.Storage.update('invalid-table-name', 'invalid-id', obj, function(record){
+        Max.Storage.update('invalid-table-name', 'invalid-id', obj, function(record){
             expect(record).toEqual('failed-test');
             done();
         }, function(e){
@@ -1338,11 +1410,11 @@ describe('Storage LocalStorageConnector', function(){
 
     it('should create a table if it does not exist', function(done){
         var table = 'table1';
-        MagnetJS.Storage.createTableIfNotExist(table, {
+        Max.Storage.createTableIfNotExist(table, {
             param1 : 'TEXT',
             param2 : 'TEXT'
         }, null, false, function(){
-            MagnetJS.Storage.get(table, null, function(records){
+            Max.Storage.get(table, null, function(records){
                 expect(records.length).toEqual(0);
                 done();
             }, function(e){
@@ -1358,11 +1430,11 @@ describe('Storage LocalStorageConnector', function(){
             prop11 : 'val11',
             prop12 : 'val12'
         };
-        MagnetJS.Storage.createTableIfNotExist(table, {
+        Max.Storage.createTableIfNotExist(table, {
             prop11 : 'TEXT',
             prop12 : 'TEXT'
         }, obj, true, function(){
-            MagnetJS.Storage.get(table, null, function(records){
+            Max.Storage.get(table, null, function(records){
                 expect(records.length).toEqual(1);
                 expect(records[0].prop11).toEqual('val11');
                 expect(records[0].prop12).toEqual('val12');
@@ -1383,11 +1455,11 @@ describe('Storage LocalStorageConnector', function(){
             prop13 : 'val13r2',
             prop14 : 'val14r2'
         }];
-        MagnetJS.Storage.createTableIfNotExist(table, {
+        Max.Storage.createTableIfNotExist(table, {
             param1 : 'TEXT',
             param2 : 'TEXT'
         }, objAry, true, function(){
-            MagnetJS.Storage.get(table, null, function(records){
+            Max.Storage.get(table, null, function(records){
                 expect(records.length).toEqual(2);
                 expect(records[0].prop13).toEqual('val13r1');
                 expect(records[0].prop14).toEqual('val14r1');
@@ -1406,38 +1478,54 @@ describe('Storage LocalStorageConnector', function(){
 describe('Log', function(){
 
     it('should log if enabled', function(done){
-        MagnetJS.Config.logging = true;
-        MagnetJS.Log.info('foo');
+        Max.Config.logging = true;
+        Max.Log.info('foo');
+        expect(Max.Config.logging).toEqual(true);
         done();
     });
 
     it('should log multiple inputs if enabled', function(done){
-        MagnetJS.Config.logging = true;
-        MagnetJS.Log.info('foo', {
+        Max.Config.logging = true;
+        Max.Log.info('foo', {
             meta1 : 'meta1'
         }, 'UnitTeest', 'foo');
+        expect(Max.Config.logging).toEqual(true);
         done();
     });
 
     it('should not log if disabled', function(done){
-        MagnetJS.Config.logging = false;
-        MagnetJS.Log.info('foo');
-        MagnetJS.Config.logging = false;
+        Max.Config.logging = false;
+        Max.Log.info('foo');
+        Max.Config.logging = false;
+        expect(Max.Config.logging).toEqual(false);
         done();
     })
+
+});
+
+describe('Cookie', function(){
+
+    it('should create a cookie', function(done){
+        var cookieName = 'testcookie';
+        Max.Cookie.create(cookieName, 'testvalue', 1);
+        expect(Max.Cookie.get(cookieName)).toEqual('testvalue');
+        Max.Cookie.remove(cookieName);
+        expect(Max.Cookie.get(cookieName)).toEqual(null);
+        done();
+    });
 
 });
 
 describe('set', function(){
 
     it('should set config', function(done){
-        MagnetJS.set({
-            endpointUrl : 'foo',
+        Max.set({
+            baseUrl : 'https://foo.magnet.com',
             locationDataCollection : true
         });
-        expect(MagnetJS.Config.endpointUrl).toEqual('foo');
-        MagnetJS.set({
-            endpointUrl : 'https://jumpstart.magnet.com'
+        expect(Max.Config.baseUrl).toEqual('https://foo.magnet.com');
+        Max.set({
+            baseUrl : 'https://jumpstart.magnet.com'
         });
         done();
     });
@@ -1447,10 +1535,10 @@ describe('set', function(){
 describe('reset', function(){
 
     it('should reset config', function(done){
-        MagnetJS.set({endpointUrl : 'https://foo.magnet.com'});
-        MagnetJS.reset();
-        expect(MagnetJS.Config.endpointUrl).toEqual('');
-        MagnetJS.set({endpointUrl : 'https://jumpstart.magnet.com'});
+        Max.set({baseUrl : 'https://foo.magnet.com'});
+        Max.reset();
+        expect(Max.Config.baseUrl).toEqual('');
+        Max.set({baseUrl : 'https://jumpstart.magnet.com'});
         done();
     });
 
@@ -1459,13 +1547,196 @@ describe('reset', function(){
 describe('Transport createAcceptHeader', function(){
 
     it('should return an Accept header given input', function(done){
-        expect(MagnetJS.Transport.createAcceptHeader('xml')).toEqual('application/xml;q=1.0');
+        expect(Max.Transport.createAcceptHeader('xml')).toEqual('application/xml;q=1.0');
         done();
     });
 
     it('should return default Accept header given no input', function(done){
-        expect(MagnetJS.Transport.createAcceptHeader()).toEqual('application/json; magnet-type=controller-result');
+        expect(Max.Transport.createAcceptHeader()).toEqual('application/json;');
         done();
+    });
+
+});
+
+describe('init', function(){
+    it('should initialize SDK', function(done){
+        var clientId = 'test-client-id';
+        var clientSecret = 'test-client-secret';
+        var baseUrl = 'http://localhost:7777';
+        Max.App.initialized = true;
+		Max.Device.checkInWithDevice = sinon.stub(Max.Device, 'checkInWithDevice');
+        Max.init({
+            clientId: clientId,
+            clientSecret: clientSecret,
+            baseUrl: baseUrl
+        });
+        expect(Max.App.clientId).toEqual(clientId);
+        expect(Max.App.clientSecret).toEqual(clientSecret);
+        expect(Max.Config.baseUrl).toEqual(baseUrl);
+        expect(Max.Device.checkInWithDevice.called).toEqual(true);
+		Max.Device.checkInWithDevice.restore();
+        done();
+    });
+});
+
+describe('getCurrentUser', function(){
+    it('should return null if no current user', function(done){
+        var username = 'test-user';
+        var userId = 'test-id';
+        Max.setUser({
+            userName: username,
+            userIdentifier: userId
+        });
+        var user = Max.getCurrentUser();
+        expect(user.userName).toEqual(username);
+        expect(user.userIdentifier).toEqual(userId);
+        done();
+    });
+});
+
+describe('saslBFAuth', function(){
+
+    it('should have an SASL auth mechanism', function(done){
+        expect(Strophe.Connection.prototype.mechanisms['X-MMX_BF_OAUTH2']).not.toBeUndefined();
+        done();
+    });
+
+    it('should validate connection', function(done){
+        var connection = {
+            authcid: 'test-1111'
+        };
+        expect(Max.saslBFAuth.test(connection)).toEqual(true);
+        done();
+    });
+
+    it('should return valid auth string', function(done){
+        var auth = new Max.saslBFAuth();
+        var connection = {
+            pass: 'test-pass',
+            jid: '11111@mmx/test-device'
+        };
+        expect(auth.onChallenge(connection)).toContain('11111');
+        expect(auth.onChallenge(connection)).toContain(connection.pass);
+        done();
+    });
+
+});
+
+describe('Request', function(){
+    var xhr, requests;
+
+	beforeEach(function() {
+        xhr = sinon.useFakeXMLHttpRequest();
+        requests = [];
+        xhr.onCreate = function (xhr) {
+            requests.push(xhr);
+        };
+	});
+
+	afterEach(function() {
+        xhr.restore();
+	});
+
+    it('should return a promise object', function(done){
+        var request = {
+            method: 'GET',
+            url: 'http://www.foo.com'
+        };
+        var success = function() {};
+        var error = function() {};
+        var req = Max.Request(request, success, error);
+        expect(typeof req.resolve).toEqual('function');
+        expect(typeof req.reject).toEqual('function');
+        done();
+    });
+
+    it('should return error if sdk is not ready', function(done){
+        var request = {
+            method: 'GET',
+            url: 'http://www.foo.com'
+        };
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = false;
+        Max.Request(request, function(res) {
+            expect(res).toEqual('failed-test');
+            Max.App.initialized = true;
+            done();
+        }, function(e, details) {
+            expect(e).toEqual('sdk not ready');
+            Max.App.initialized = true;
+            done();
+        });
+    });
+
+    it('should execute successful request', function(done) {
+        var request = {
+            method: 'POST',
+            url: 'http://www.foo.com',
+            data: 'testdata'
+        };
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.Request(request, function (res, details) {
+            expect(details.status).toEqual(200);
+            done();
+        }, function (e, details) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+        setTimeout(function() {
+            expect(requests.length).toEqual(1);
+            requests[0].respond(200);
+        }, 5);
+    });
+
+    it('should execute failed request', function(done) {
+        var request = {
+            method: 'POST',
+            url: 'http://www.foo.com',
+            data: 'testdata'
+        };
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.Request(request, function (res, details) {
+            expect(res).toEqual('failed-test');
+            done();
+        }, function (e, details) {
+            expect(details.status).toEqual(400);
+            done();
+        });
+        setTimeout(function() {
+            expect(requests.length).toEqual(1);
+            requests[0].respond(400);
+        }, 5);
+    });
+
+    it('should handle authorization failure and fire no-auth event', function(done) {
+        var request = {
+            method: 'POST',
+            url: 'http://www.foo.com',
+            data: 'testdata'
+        };
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.on('not-authenticated', function(e, details) {
+            expect(details.status).toEqual(401);
+            done();
+        });
+        Max.Request(request, function (res, details) {
+            expect(res).toEqual('failed-test');
+            done();
+        }, function (e, details) {
+            expect(details.status).toEqual(401);
+        });
+        setTimeout(function() {
+            expect(requests.length).toEqual(1);
+            requests[0].respond(401);
+        }, 5);
     });
 
 });

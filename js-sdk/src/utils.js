@@ -56,7 +56,7 @@ MagnetJS.Config = {
     /**
      * @property {string} httpsBindPort SSL-enabled http-bind port.
      */
-    httpsBindPort          : 443,
+    httpsBindPort          : 7443,
     /**
      * @property {string} httpBindPort http-bind port.
      */
@@ -66,9 +66,9 @@ MagnetJS.Config = {
      */
     mmxHost                : 'localhost',
     /**
-     * @property {string} mmxEndpoint mmxEndpoint.
+     * @property {string} baseUrl baseUrl.
      */
-    mmxEndpoint            : 'http://localhost:7777/api',
+    baseUrl            : 'http://localhost:7777/api',
     /**
      * @property {string} tlsEnabled Determines whether TLS security enabled.
      */
@@ -649,11 +649,13 @@ MagnetJS.Utils = {
 
         switch (os) {
             case 'Mac OS X':
-                osVersion = /Mac OS X (10[\.\_\d]+)/.exec(nAgt)[1];
+                osVersion = /Mac OS X (10[\.\_\d]+)/.exec(nAgt);
+                osVersion = osVersion ? osVersion[1] : null;
                 break;
 
             case 'Android':
-                osVersion = /Android ([\.\_\d]+)/.exec(nAgt)[1];
+                osVersion = /Android ([\.\_\d]+)/.exec(nAgt);
+                osVersion = osVersion ? osVersion[1] : null;
                 break;
 
             case 'iOS':
@@ -666,6 +668,30 @@ MagnetJS.Utils = {
             os: os,
             osVersion: osVersion
         };
+    },
+    /**
+     * Decode UTF-16 string to UTF-8.
+     * @param {string} str A UTF-16 encoded string.
+     * @returns {string} A UTF-8 encoded string.
+     */
+    utf16to8: function(str) {
+        var i, c;
+        var out = "";
+        var len = str.length;
+        for (i = 0; i < len; i++) {
+            c = str.charCodeAt(i);
+            if ((c >= 0x0000) && (c <= 0x007F)) {
+                out += str.charAt(i);
+            } else if (c > 0x07FF) {
+                out += String.fromCharCode(0xE0 | ((c >> 12) & 0x0F));
+                out += String.fromCharCode(0x80 | ((c >>  6) & 0x3F));
+                out += String.fromCharCode(0x80 | ((c >>  0) & 0x3F));
+            } else {
+                out += String.fromCharCode(0xC0 | ((c >>  6) & 0x1F));
+                out += String.fromCharCode(0x80 | ((c >>  0) & 0x3F));
+            }
+        }
+        return out;
     }
 };
 
@@ -1634,7 +1660,11 @@ var Cookie = {
         this.create(name, "", -1);
     }
 };
+Max.Cookie = Cookie;
 
+MagnetJS.setUser = function(userObj) {
+    mCurrentUser = userObj;
+};
 /**
  * @method
  * @desc Set MagnetJS SDK configuration attributes.
@@ -1643,8 +1673,8 @@ var Cookie = {
 MagnetJS.set = function(obj) {
     for(var prop in obj) {
         if (obj.hasOwnProperty(prop)) {
-            if (prop == 'endpointUrl' && /^(ftp|http|https):/.test(obj[prop] === false))
-                throw('invalid endpointUrl - no protocol');
+            if (prop == 'baseUrl' && /^(ftp|http|https):/.test(obj[prop] === false))
+                throw('invalid baseUrl - no protocol');
             MagnetJS.Config[prop] = obj[prop];
         }
     }
@@ -1657,8 +1687,8 @@ MagnetJS.set = function(obj) {
  */
 MagnetJS.reset = function() {
     MagnetJS.set({
-        mmxEndpoint : '',
-        logging     : true
+        baseUrl : '',
+        logging : true
     });
     return this;
 };
@@ -1688,7 +1718,7 @@ MagnetJS.Events.create(MagnetJS);
 MagnetJS.init = function(cfg) {
     MagnetJS.App.clientId = cfg.clientId;
     MagnetJS.App.clientSecret = cfg.clientSecret;
-    MagnetJS.Config.mmxEndpoint = cfg.baseUrl;
+    MagnetJS.Config.baseUrl = cfg.baseUrl;
     MagnetJS.Device.checkInWithDevice();
 };
 

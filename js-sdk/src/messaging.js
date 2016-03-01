@@ -81,7 +81,7 @@ MagnetJS.MMXClient = {
     connect: function(userId, accessToken) {
         var self = this;
         var def = new MagnetJS.Deferred();
-        var secure = MagnetJS.Config.mmxEndpoint.indexOf('https://') != -1 && 1 == 2; // TODO: support SSL
+        var secure = MagnetJS.Config.baseUrl.indexOf('https://') != -1;
         var protocol = (secure ? 'https' : 'http') + '://';
 
         mXMPPConnection = new Strophe.Connection(protocol + MagnetJS.Config.mmxHost + ':' +
@@ -1079,23 +1079,4 @@ MagnetJS.Channel.prototype.getChannelName = function() {
  */
 MagnetJS.Channel.prototype.getNodePath = function() {
     return '/' + MagnetJS.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
-};
-
-MagnetJS.PubSubManager = {
-    store: {},
-    add: function(id, cb) {
-        this.store[id] = cb;
-    },
-    run: function(id, meta) {
-        if (this.store[id]) {
-            this.store[id](meta);
-            this.remove(id);
-        }
-    },
-    remove: function(id) {
-        delete this.store[id];
-    },
-    clear: function() {
-        this.store = {};
-    }
 };

@@ -84,7 +84,7 @@ MagnetJS.Device = {
 
                 MagnetJS.App.catCredentials = data.applicationToken;
                 MagnetJS.App.appId = data.applicationToken.mmx_app_id;
-                MagnetJS.Config.mmxEndpoint = data.config['mms-application-endpoint'];
+                MagnetJS.Config.baseUrl = data.config['mms-application-endpoint'];
                 MagnetJS.Config.mmxHost = data.config['mmx-host'];
                 MagnetJS.Config.securityPolicy = data.config['security-policy'];
                 MagnetJS.Config.tlsEnabled = data.config['tls-enabled'] === 'true';

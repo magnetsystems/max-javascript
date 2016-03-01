@@ -76,7 +76,7 @@ MagnetJS.Uploader.prototype.add = function(fileOrFiles, index, callback) {
     }, false);
 
     //reader.readAsBinaryString(fileOrFiles[i]);
-    reader.readAsDataURL(fileOrFiles[i]);
+    reader.readAsDataURL(fileOrFiles[index]);
     //reader.readAsArrayBuffer(fileOrFiles[i]);
 };
 /**
@@ -125,7 +125,7 @@ MagnetJS.Uploader.prototype.upload = function(channel, messageId) {
  */
 MagnetJS.Attachment = function(attachmentRef) {
     MagnetJS.Utils.mergeObj(this, attachmentRef);
-    this.downloadUrl = MagnetJS.Config.mmxEndpoint+'/com.magnet.server/file/download/'+this.attachmentId
+    this.downloadUrl = MagnetJS.Config.baseUrl+'/com.magnet.server/file/download/'+this.attachmentId
         +'?access_token='+MagnetJS.App.hatCredentials.access_token+'&user_id='+this.senderId;
 };
 /**

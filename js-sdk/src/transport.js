@@ -78,7 +78,7 @@ MagnetJS.Transport = {
     request : function(body, metadata, options, callback, failback) {
         options = options || {};
         metadata._path = metadata._path || metadata.path;
-        metadata._path = (metadata.local === true || /^(ftp|http|https):/.test(metadata._path) === true) ? metadata._path : MagnetJS.Config.mmxEndpoint+metadata._path;
+        metadata._path = (metadata.local === true || /^(ftp|http|https):/.test(metadata._path) === true) ? metadata._path : MagnetJS.Config.baseUrl+metadata._path;
         if (MagnetJS.Utils.isCordova && typeof cordova !== 'undefined') {
             this.requestCordova(body, metadata, options, callback, failback);
         } else if (MagnetJS.Utils.isNode) {

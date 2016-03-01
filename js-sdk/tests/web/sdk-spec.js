@@ -1,17 +1,18 @@
-/* unit tests for MagnetJS */
+/* unit tests for Max */
 
-describe('MagnetJS', function(){
-    it('should set up endpointUrl', function(){
-        MagnetJS.set({
-            endpointUrl : 'https://jumpstart.magnet.com'
+describe('Max', function(){
+    it('should set up baseUrl', function(){
+        Max.set({
+            baseUrl : 'https://jumpstart.magnet.com'
         });
+        expect(Max.Config.baseUrl).toEqual('https://jumpstart.magnet.com');
     });
 });
 
 describe('Utils isAndroid', function(){
 
     it('should return false if running on web', function(done){
-        expect(MagnetJS.Utils.isAndroid).toEqual(false);
+        expect(Max.Utils.isAndroid).toEqual(false);
         done();
     });
 
@@ -20,7 +21,7 @@ describe('Utils isAndroid', function(){
 describe('Utils isIOS', function(){
 
     it('should return false if running on web', function(done){
-        expect(MagnetJS.Utils.isIOS).toEqual(false);
+        expect(Max.Utils.isIOS).toEqual(false);
         done();
     });
 
@@ -29,7 +30,7 @@ describe('Utils isIOS', function(){
 describe('Utils isMobile', function(){
 
     it('should return false if running on web', function(done){
-        expect(MagnetJS.Utils.isMobile).toEqual(false);
+        expect(Max.Utils.isMobile).toEqual(false);
         done();
     });
 
@@ -38,7 +39,7 @@ describe('Utils isMobile', function(){
 describe('Utils isNode', function(){
 
     it('should return false if running on web', function(done){
-        expect(MagnetJS.Utils.isNode).toEqual(false);
+        expect(Max.Utils.isNode).toEqual(false);
         done();
     });
 
@@ -47,12 +48,12 @@ describe('Utils isNode', function(){
 describe('Utils hasFeature', function(){
 
     it('should return true if the feature exists', function(done){
-        expect(MagnetJS.Utils.hasFeature('localStorage')).toEqual(true);
+        expect(Max.Utils.hasFeature('localStorage')).toEqual(true);
         done();
     });
 
     it('should return false if the feature does not exist', function(done){
-        expect(MagnetJS.Utils.hasFeature('missingfeature')).toEqual(false);
+        expect(Max.Utils.hasFeature('missingfeature')).toEqual(false);
         done();
     });
 

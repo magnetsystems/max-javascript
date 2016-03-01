@@ -5,8 +5,26 @@ module.exports = function(grunt){
         'src/utils.js',
         'src/plugins/plugins.js',
         'src/plugins/strophe.min.js',
-        'src/plugins/bf-oauth2.js',
+        'src/bf-oauth2.js',
         'src/plugins/xml2json.js',
+        'src/transport.js',
+        'src/attachment.js',
+        'src/user.js',
+        'src/device.js',
+        'src/messaging.js',
+        'src/core-footer.js'
+    ];
+
+    var plugins = [
+        'src/plugins/plugins.js',
+        'src/plugins/strophe.min.js',
+        'src/plugins/xml2json.js'
+    ];
+
+    var sdkOnly = [
+        'src/core.js',
+        'src/utils.js',
+        'src/bf-oauth2.js',
         'src/transport.js',
         'src/attachment.js',
         'src/user.js',
@@ -32,6 +50,14 @@ module.exports = function(grunt){
             full : {
                 src  : full,
                 dest : 'target/<%= pkg.name %>.js'
+            },
+            plugins : {
+                src  : plugins,
+                dest : 'target/test-plugins.js'
+            },
+            sdkOnly : {
+                src  : sdkOnly,
+                dest : 'target/test-sdk.js'
             }
         },
         uglify : {
@@ -62,21 +88,17 @@ module.exports = function(grunt){
         },
         jasmine : {
             src     : [
-                'target/magnet-sdk.js',
-                'tests/resources/magnet-jumpstart-controllers.js',
-                'tests/resources/generated-models.js',
-                'tests/resources/generated-controllers.js',
-                'tests/resources/magnet-test-controllers.js',
-                'tests/resources/magnet-test-models.js',
-                'tests/resources/multipart-controllers.js',
-                'tests/resources/multipart-models.js',
-                'tests/resources/magnetoauth-controllers.js',
-                'tests/resources/magnetoauth-models.js'
+                'target/test-sdk.js'
             ],
             options : {
                 specs    : [
+                    //'tests/all/user-spec.js'
                     'tests/all/*-spec.js',
                     'tests/web/*-spec.js'
+                ],
+                vendor   : [
+                    'tests/resources/sinon-1.17.3.js',
+                    'target/test-plugins.js'
                 ],
                 helpers  : 'tests/all/helpers.js',
                 junit    : {
@@ -108,7 +130,6 @@ module.exports = function(grunt){
                 specFolders     : [
                     'tests/all',
                     'tests/nodejs'
-//                    'tests/foo'
                 ],
                 specNameMatcher : '*',
                 junitreport : {
@@ -174,8 +195,8 @@ module.exports = function(grunt){
     grunt.registerTask('default', ['concat']);
     grunt.registerTask('min', ['concat', 'uglify']);
     grunt.registerTask('docs', ['clean', 'concat', 'jsdoc:docstrap']);
+    grunt.registerTask('test', ['clean', 'concat', 'jasmine']);
     grunt.registerTask('full', ['clean', 'concat', 'uglify', 'jsdoc:docstrap']);
-    //grunt.registerTask('test', ['clean', 'concat', 'jasmine']);
     //grunt.registerTask('full', ['clean', 'concat', 'uglify', 'jsdoc:docstrap', 'jasmine_node']);
     //grunt.registerTask('nodetests', ['clean', 'concat', 'jasmine_node']);
     //grunt.registerTask('webtests', ['concat', 'jasmine']);
