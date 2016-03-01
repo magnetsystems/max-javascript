@@ -1580,7 +1580,7 @@ describe('init', function(){
 });
 
 describe('getCurrentUser', function(){
-    it('should return null if no current user', function(done){
+    it('should return currently logged in user', function(done){
         var username = 'test-user';
         var userId = 'test-id';
         Max.setUser({

@@ -343,6 +343,7 @@ describe('User search', function() {
         xhr.onCreate = function (xhr) {
             requests.push(xhr);
         };
+        Max.Config.baseUrl = 'http://localhost:7777/api';
         Max.App.hatCredentials = {
             access_token: 'test-token'
         };
@@ -391,6 +392,148 @@ describe('User search', function() {
                 "userAccountData": {}
             }]));
         }, 5);
+    });
+
+});
+
+describe('User getToken', function() {
+    var xhr, requests;
+
+    beforeEach(function () {
+        xhr = sinon.useFakeXMLHttpRequest();
+        requests = [];
+        xhr.onCreate = function (xhr) {
+            requests.push(xhr);
+        };
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+    });
+
+    afterEach(function () {
+        xhr.restore();
+    });
+
+    it('should return a list of users', function (done) {
+        Max.User.getToken().success(function(meta) {
+            expect(meta['mms-application-endpoint']).toEqual('http://192.168.58.1:8443/api');
+            expect(meta['mmx-host']).toEqual('192.168.58.1');
+            done();
+        });
+        setTimeout(function () {
+            expect(requests.length).toEqual(1);
+            requests[0].respond(200, {
+                'Content-Type': 'application/json'
+            }, JSON.stringify({
+                "mms-application-endpoint": "http://192.168.58.1:8443/api",
+                "mmx-host": "192.168.58.1",
+                "mmx-port": "5222",
+                "security-policy": "RELAXED",
+                "tls-enabled": "false",
+                "mmx-domain": "mmx"
+            }));
+        }, 5);
+    });
+});
+
+describe('User logout', function() {
+    var xhr, requests;
+    var username = 'test-user';
+    var userId = 'test-id';
+
+    beforeEach(function() {
+        xhr = sinon.useFakeXMLHttpRequest();
+        requests = [];
+        xhr.onCreate = function (xhr) {
+            requests.push(xhr);
+        };
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: username,
+            userIdentifier: userId
+        });
+    });
+
+    afterEach(function() {
+        xhr.restore();
+        Max.setUser({
+            userName: username,
+            userIdentifier: userId
+        });
+    });
+
+    it('should succeed logout user and clear session data', function(done) {
+        Max.Cookie.create('magnet-max-refresh-token', 'test-refresh-token', 1);
+        Max.User.logout().success(function() {
+            expect(Max.Cookie.get('magnet-max-refresh-token')).toEqual(null);
+            expect(Max.getCurrentUser()).toEqual(null);
+            expect(Max.App.hatCredentials).toEqual(null);
+            done();
+        });
+        setTimeout(function () {
+            expect(requests.length).toEqual(1);
+            requests[0].respond(200, {
+                'Content-Type': 'text/plain'
+            }, 'ok');
+        }, 5);
+    });
+
+    it('should fail logout user and clear session data', function(done) {
+        Max.Cookie.create('magnet-max-refresh-token', 'test-refresh-token', 1);
+        Max.User.logout().error(function() {
+            expect(Max.Cookie.get('magnet-max-refresh-token')).toEqual(null);
+            expect(Max.getCurrentUser()).toEqual(null);
+            expect(Max.App.hatCredentials).toEqual(null);
+            done();
+        });
+        setTimeout(function () {
+            expect(requests.length).toEqual(1);
+            requests[0].respond(400, {
+                'Content-Type': 'text/plain'
+            }, 'error');
+        }, 5);
+    });
+
+});
+
+
+describe('User clearSession', function() {
+    var username = 'test-user';
+    var userId = 'test-id';
+
+    beforeEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: username,
+            userIdentifier: userId
+        });
+    });
+
+    afterEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: username,
+            userIdentifier: userId
+        });
+    });
+
+    it('should succeed logout user and clear session data', function (done) {
+        Max.Cookie.create('magnet-max-refresh-token', 'test-refresh-token', 1);
+        Max.User.clearSession();
+        expect(Max.Cookie.get('magnet-max-auth-token')).toEqual(null);
+        expect(Max.getCurrentUser()).toEqual(null);
+        expect(Max.App.hatCredentials).toEqual(null);
+        done();
     });
 
 });

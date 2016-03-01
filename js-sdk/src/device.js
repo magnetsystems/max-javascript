@@ -52,7 +52,7 @@ MagnetJS.Device = {
             deviceStatus: 'ACTIVE',
             label: browser,
             os: 'ANDROID', // TODO: server must support web client: os.os,
-            osVersion: os.version
+            osVersion: os.os + (os.version || '')
         };
 
         return (callback || function() {})(e, deviceInfo);

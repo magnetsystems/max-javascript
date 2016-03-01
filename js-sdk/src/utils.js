@@ -1665,6 +1665,10 @@ Max.Cookie = Cookie;
 MagnetJS.setUser = function(userObj) {
     mCurrentUser = userObj;
 };
+MagnetJS.setDevice = function(deviceObj) {
+    mCurrentDevice = deviceObj;
+};
+
 /**
  * @method
  * @desc Set MagnetJS SDK configuration attributes.
