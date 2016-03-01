@@ -1662,13 +1662,6 @@ var Cookie = {
 };
 Max.Cookie = Cookie;
 
-MagnetJS.setUser = function(userObj) {
-    mCurrentUser = userObj;
-};
-MagnetJS.setDevice = function(deviceObj) {
-    mCurrentDevice = deviceObj;
-};
-
 /**
  * @method
  * @desc Set MagnetJS SDK configuration attributes.
@@ -1749,4 +1742,23 @@ MagnetJS.onReady = function(callback) {
  */
 MagnetJS.getCurrentUser = function() {
     return mCurrentUser || null;
+};
+
+MagnetJS.setUser = function(userObj) {
+    mCurrentUser = userObj;
+};
+MagnetJS.setDevice = function(deviceObj) {
+    mCurrentDevice = deviceObj;
+};
+MagnetJS.getConnection = function() {
+    return mXMPPConnection || null;
+};
+MagnetJS.setConnection = function(conn) {
+    mXMPPConnection = conn;
+};
+MagnetJS.getStore = function() {
+    return xmppStore || null;
+};
+MagnetJS.setStore = function(store) {
+    xmppStore = store;
 };

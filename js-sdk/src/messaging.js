@@ -7,7 +7,7 @@ var x2js = new X2JS();
  */
 MagnetJS.start = function() {
     MagnetJS.App.receiving = true;
-    mXMPPConnection.priority = 0;
+    if (mXMPPConnection) mXMPPConnection.priority = 0;
 };
 
 /**
@@ -16,7 +16,7 @@ MagnetJS.start = function() {
  */
 MagnetJS.stop = function() {
     MagnetJS.App.receiving = false;
-    mXMPPConnection.priority = -255;
+    if (mXMPPConnection) mXMPPConnection.priority = -255;
 };
 
 /**
@@ -47,6 +47,7 @@ MagnetJS.registerListener = function(listener) {
 MagnetJS.unregisterListener = function(listenerId) {
     if (!xmppStore || !listenerId || !mXMPPConnection) return;
     mXMPPConnection.deleteHandler(xmppStore[listenerId]);
+    delete xmppStore[listenerId];
 };
 
 /**

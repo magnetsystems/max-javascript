@@ -92,7 +92,7 @@ module.exports = function(grunt){
             ],
             options : {
                 specs    : [
-                    //'tests/all/device-spec.js'
+                    //'tests/all/messaging-spec.js'
                     'tests/all/*-spec.js',
                     'tests/web/*-spec.js'
                 ],
