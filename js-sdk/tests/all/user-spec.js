@@ -62,8 +62,10 @@ describe('User register', function() {
             password: 'magnet',
             email: 'jack.doe@magnet.com'
         };
-        Max.User.register(userObj).success(function(res) {
-            expect(res).toEqual('ok');
+        Max.User.register(userObj).success(function(user) {
+            expect(user.userName).toEqual(userObj.username);
+            expect(user.firstName).toEqual(userObj.firstName);
+            expect(user.email).toEqual(userObj.email);
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
@@ -72,8 +74,26 @@ describe('User register', function() {
         setTimeout(function() {
             expect(requests.length).toEqual(1);
             requests[0].respond(200, {
-                'Content-Type': 'text/plain'
-            }, 'ok');
+                'Content-Type': 'application/json'
+            }, JSON.stringify({
+                "challengePreferences": null,
+                "clientId": "76b4e8f6-1066-49e0-a537-160d436ce78c",
+                "email": userObj.email,
+                "externalUserId": null,
+                "firstName": userObj.firstName,
+                "lastName": userObj.lastName,
+                "otpCode": "n/a",
+                "password": "n/a",
+                "roles": [
+                    "USER"
+                ],
+                "tags": null,
+                "userAccountData": null,
+                "userIdentifier": "4028ba81531e7be0015333f9440e0017",
+                "userName": userObj.username,
+                "userRealm": "DB",
+                "userStatus": "ACTIVE"
+            }));
         }, 5);
     });
 

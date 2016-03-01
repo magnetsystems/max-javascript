@@ -37,7 +37,7 @@ MagnetJS.User = function(userObj) {
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
  * @param {string} [userObj.email] User's email.
- * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
+ * @returns {MagnetJS.Promise} A promise object returning the new {MagnetJS.User} or reason of failure.
  */
 MagnetJS.User.register = function(userObj) {
     userObj.userName = userObj.username;
@@ -56,8 +56,9 @@ MagnetJS.User.register = function(userObj) {
         url: '/com.magnet.server/user/enrollment',
         data: userObj,
         headers: auth
-    }, function() {
-        def.resolve.apply(def, arguments);
+    }, function(newUserObj, details) {
+        console.log(JSON.stringify(newUserObj));
+        def.resolve.apply(def, [new MagnetJS.User(newUserObj), details]);
     }, function() {
         def.reject.apply(def, arguments);
     });

@@ -1626,11 +1626,14 @@ describe('Request', function(){
     var xhr, requests;
 
 	beforeEach(function() {
+        Max.App.initialized = true;
+        Max.setConnection(null);
         xhr = sinon.useFakeXMLHttpRequest();
         requests = [];
         xhr.onCreate = function (xhr) {
             requests.push(xhr);
         };
+        Max.Cookie.remove('magnet-max-refresh-token');
 	});
 
 	afterEach(function() {
