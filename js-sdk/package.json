@@ -1,5 +1,5 @@
 {
-  "name": "magnet-sdk",
+  "name": "magnet-max-sdk",
   "version": "1.0.0-SNAPSHOT",
   "devDependencies": {
     "grunt": "~0.4.5",

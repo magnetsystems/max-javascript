@@ -49,7 +49,7 @@ module.exports = function(grunt){
             },
             full : {
                 src  : full,
-                dest : 'target/<%= pkg.name %>.js'
+                dest : 'target/<%= pkg.name %>-<%= pkg.version %>.js'
             },
             plugins : {
                 src  : plugins,
@@ -66,19 +66,19 @@ module.exports = function(grunt){
                     preserveComments : 'some'
                 },
                 files : {
-                    'target/<%= pkg.name %>.min.js': ['target/<%= pkg.name %>.js']
+                    'target/<%= pkg.name %>-<%= pkg.version %>.min.js': ['target/<%= pkg.name %>-<%= pkg.version %>.js']
                 }
             }
         },
         jsdoc : {
             dist : {
-                src : ['target/<%= pkg.name %>.js'],
+                src : ['target/<%= pkg.name %>-<%= pkg.version %>.js'],
                 options : {
                     destination : 'target/docs'
                 }
             },
             docstrap: {
-                src : ['target/<%= pkg.name %>.js'],
+                src : ['target/<%= pkg.name %>-<%= pkg.version %>.js'],
                 options : {
                     destination : 'target/docs',
                     template    : 'config/template',

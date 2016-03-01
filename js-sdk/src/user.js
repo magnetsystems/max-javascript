@@ -275,6 +275,7 @@ MagnetJS.User.logout = function() {
 
 /**
  * Removes user session information.
+ * @ignore
  */
 MagnetJS.User.clearSession = function() {
     mCurrentUser = null;
