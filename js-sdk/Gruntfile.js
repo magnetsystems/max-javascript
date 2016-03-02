@@ -39,9 +39,13 @@ module.exports = function(grunt){
             options : {
                 stripBanners : false
             },
+            webGetStarted : {
+                src  : full,
+                dest : '../samples/web/getstarted/<%= pkg.name %>.js'
+            },
             webKitchenSink : {
                 src  : full,
-                dest : '../samples/web/assets/<%= pkg.name %>.js'
+                dest : '../samples/web/kitchen-sink/<%= pkg.name %>.js'
             },
             webMessenger : {
                 src  : full,
