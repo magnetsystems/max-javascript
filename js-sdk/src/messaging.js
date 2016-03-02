@@ -329,15 +329,13 @@ MagnetJS.Message.prototype.send = function() {
 
     setTimeout(function() {
         if (!self.recipients.length)
-            return deferred.reject('no recipients');
+            return deferred.reject('no-recipients');
         if (!mCurrentUser)
-            return deferred.reject('session expired');
-        if (self.receivedMessage)
-            return deferred.reject('unable to send: this was a received message.');
+            return deferred.reject('session-expired');
 
         if (!mXMPPConnection || !mXMPPConnection.connected) {
             // TODO: replace with reliable offline
-            return deferred.reject('not connected');
+            return deferred.reject('not-connected');
         }
 
         self.sender = mCurrentUser;
@@ -422,8 +420,8 @@ MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
     var channels = [];
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject('session-expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not-connected');
 
         try {
             var mmxMeta = {
@@ -536,7 +534,7 @@ MagnetJS.Channel.getAllSubscriptions = function() {
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session timeout');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not-connected');
 
         try {
             var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'get', id: msgId})
@@ -691,7 +689,7 @@ MagnetJS.Channel.getChannel = function(channelName, userId) {
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session timeout');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not-connected');
 
         try {
             var mmxMeta = {
@@ -737,8 +735,8 @@ MagnetJS.Channel.prototype.getAllSubscribers = function() {
     var users = [];
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject('session-expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not-connected');
 
         try {
             var mmxMeta = {
@@ -854,8 +852,8 @@ MagnetJS.Channel.prototype.subscribe = function() {
     var iqId = MagnetJS.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject('session-expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not-connected');
 
         try {
             var mmxMeta = {
@@ -899,8 +897,8 @@ MagnetJS.Channel.prototype.unsubscribe = function() {
     var iqId = MagnetJS.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject('session-expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not-connected');
 
         try {
             var mmxMeta = {
@@ -947,8 +945,8 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
     var dt = MagnetJS.Utils.dateToISO8601(new Date());
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject('session-expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not-connected');
 
         function sendMessage(msgMeta) {
             try {
@@ -1015,8 +1013,8 @@ MagnetJS.Channel.prototype.delete = function() {
     var iqId = MagnetJS.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject('session-expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not-connected');
 
         try {
             var mmxMeta = {

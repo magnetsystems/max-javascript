@@ -233,14 +233,287 @@ describe('MMXClient getBaredJid', function() {
 
 });
 
-xdescribe('Message', function() {
+describe('Message', function() {
 
     it('should instantiate a new Message object', function (done) {
-        var recipients = [''];
-        Max.Config.mmxDomain = 'mmx';
-        var uid = 'test-user-id';
-        expect(Max.MMXClient.getBaredJid(uid)).toEqual('test-user-id%test-app-id@mmx');
+        var testUserId = 'test-user-id-1';
+        var messageContent = 'test-message';
+        Max.setUser({
+            userIdentifier: testUserId
+        });
+        var content = {
+            my: messageContent
+        };
+        var recipients = [{
+            userName: 'username1',
+            userIdentifier: testUserId
+        }, {
+            userName: 'username2',
+            userIdentifier: 'test-user-id-2'
+        }];
+        var msg = new Max.Message(content, recipients);
+        expect(msg.recipients.length).toEqual(2);
+        expect(msg.recipients[0].userId).toEqual(testUserId);
+        expect(msg.messageContent.my).toEqual(messageContent);
         done();
+    });
+
+    it('should instantiate a new Message object with single recipient', function (done) {
+        var testUserId = 'test-user-id-1';
+        var messageContent = 'test-message';
+        Max.setUser({
+            userIdentifier: testUserId
+        });
+        var content = {
+            my: messageContent
+        };
+        var recipient = {
+            userName: 'username1',
+            userIdentifier: testUserId
+        };
+        var msg = new Max.Message(content, recipient);
+        expect(msg.recipients.length).toEqual(1);
+        expect(msg.recipients[0].userId).toEqual(testUserId);
+        expect(msg.messageContent.my).toEqual(messageContent);
+        done();
+    });
+
+});
+
+describe('Message formatMessage', function() {
+
+    it('should parse an incoming message', function (done) {
+        Max.App.hatCredentials = {
+            access_token: 'test-access-token'
+        };
+        var fromUid = '402881295313de0d015315c820bc0004';
+        var attachmentMeta = {
+            _attachments: [{"mimeType":"text/plain","senderId":"test-id","attachmentId":"test-attachment-id"}]
+        };
+        var channelName = '1456521126999';
+        var channelOwnerUid = '402881295313de0d015315c820bc0004';
+        var msgText = {
+            "event": {
+                "items": {
+                    "item": {
+                        "mmx": {
+                            "mmxmeta": "{\"From\":{\"userId\":\""+fromUid+"\",\"devId\":\"js-680a5326-ffbb-42e5-82a1-b81122fbfb8a\",\"displayName\":\"web@magnet.com\"}}",
+                            "meta": JSON.stringify(attachmentMeta),
+                            "payload": {
+                                "_mtype": "unknown",
+                                "_stamp": "2016-03-02T04:54:50Z",
+                                "_chunk": "0/0/0"
+                            },
+                            "_xmlns": "com.magnet:msg:payload"
+                        },
+                        "_id": "3b22786f64a241d3c322fdc24bda98db"
+                    },
+                    "_node": "/gmbil1ewswo/" + channelOwnerUid + "/" + channelName
+                },
+                "_xmlns": "http://jabber.org/protocol/pubsub#event"
+            },
+            "headers": {
+                "header": {
+                    "_name": "SubID",
+                    "__text": "1NMwX0i5PB46C5rMdJ7SmHgR5KeQiN0ycJnu4cHC"
+                },
+                "_xmlns": "http://jabber.org/protocol/shim"
+            },
+            "_xmlns": "jabber:client",
+            "_from": "pubsub.mmx",
+            "_to": "402881295313de0d015315c820bc0004%gmbil1ewswo@mmx",
+            "_id": "/gmbil1ewswo/402881295313de0d015315c820bc0004/1456521126999__402881295313de0d015315c820bc0004%gmbil1ewswo@mmx__53yFQ"
+        };
+        var msg = new Max.Message();
+        msg.formatMessage(msgText, function() {
+            expect(msg.receivedMessage).toEqual(true);
+            expect(msg.sender.userIdentifier).toEqual(fromUid);
+            expect(msg.attachments).not.toBeUndefined();
+            expect(msg.channel).not.toBeUndefined();
+            expect(msg.channel.name).toEqual(channelName);
+            expect(msg.channel.userId).toEqual(channelOwnerUid);
+            expect(msg.channel.privateChannel).toEqual(true);
+            done();
+        });
+    });
+
+});
+
+
+describe('Message send', function() {
+
+    var testUserId = 'test-user-id-1';
+    var messageContent = 'test-message';
+
+    beforeEach(function() {
+        Max.setUser({
+            userIdentifier: testUserId
+        });
+        Max.setConnection(null);
+    });
+    afterEach(function() {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should send a message', function (done) {
+        Max.setUser({
+            userIdentifier: testUserId
+        });
+        var sendSpy = sinon.spy();
+        var connStub = {
+            addHandler: function(cb) {
+                var xml = document.implementation.createDocument(null, 'message');
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        var content = {
+            my: messageContent
+        };
+        var recipients = [{
+            userName: 'username1',
+            userIdentifier: testUserId
+        }];
+        var msg = new Max.Message(content, recipients);
+        msg.send().success(function(res) {
+            expect(res).toEqual('ok');
+            expect(sendSpy.calledOnce).toEqual(true);
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should fail with no recipients', function (done) {
+        var content = {
+            my: messageContent
+        };
+        var msg = new Max.Message(content, []);
+        msg.send().success(function(res) {
+            expect(res).toEqual('failed-test');
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('no-recipients');
+            done();
+        });
+    });
+
+    it('should fail if not logged in', function (done) {
+        var content = {
+            my: messageContent
+        };
+        Max.setUser(null);
+        var recipients = [{
+            userName: 'username1',
+            userIdentifier: testUserId
+        }];
+        var msg = new Max.Message(content, recipients);
+        msg.send().success(function(res) {
+            expect(res).toEqual('failed-test');
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('session-expired');
+            done();
+        });
+    });
+
+    it('should fail if there is no connection', function (done) {
+        var content = {
+            my: messageContent
+        };
+        var recipients = [{
+            userName: 'username1',
+            userIdentifier: testUserId
+        }];
+        Max.setConnection({
+            connected: false
+        });
+        var msg = new Max.Message(content, recipients);
+        msg.send().success(function(res) {
+            expect(res).toEqual('failed-test');
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('not-connected');
+            done();
+        });
+    });
+
+});
+
+describe('Channel', function() {
+
+    it('should instantiate a Channel object', function(done) {
+        var channelName = 'test-channel';
+        var channelObj = {
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": "402881295313de27015315659c71000a",
+            "subscriptionEnabled": true,
+            "topicName": channelName,
+            "privateChannel": false
+        };
+        var channel = new Max.Channel(channelObj);
+        expect(channel.name).toEqual(channelName);
+        expect(channel.privateChannel).toEqual(true);
+        done();
+    });
+
+});
+
+describe('Channel findPublicChannelsByName', function() {
+    var sendSpy;
+    var testUserId = 'test-user-id-1';
+    var channelName = 'test-channel';
+
+    beforeEach(function() {
+        Max.setUser({
+            userIdentifier: testUserId
+        });
+        Max.setConnection({
+            connected: true
+        });
+        sendSpy = sinon.spy();
+    });
+    afterEach(function() {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should return public channels', function(done) {
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<mmx xmlns='com.magnet:pubsub' command='searchTopic' ctype='application/json'>" +
+                    "{&quot;total&quot;:1,&quot;results&quot;:[{&quot;isCollection&quot;:false,&quot;" +
+                    "description&quot;:&quot;&quot;,&quot;isPersistent&quot;:true,&quot;maxItems&quot;:-1," +
+                    "&quot;maxPayloadSize&quot;:2097152,&quot;creationDate&quot;:&quot;2016-02-26T21:27:23.014Z" +
+                    "&quot;,&quot;modificationDate&quot;:&quot;2016-02-26T21:27:23.015Z&quot;,&quot;" +
+                    "publisherType&quot;:&quot;subscribers&quot;,&quot;creator&quot;:&quot;402881295313de" +
+                    "27015315659c71000a%gmbil1ewswo@mmx&quot;,&quot;subscriptionEnabled&quot;:true,&quot;" +
+                    "topicName&quot;:&quot;"+channelName+"&quot;}]}</mmx>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        Max.Channel.findPublicChannelsByName(channelName).success(function(channels) {
+            expect(channels.length).toEqual(1);
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
     });
 
 });
