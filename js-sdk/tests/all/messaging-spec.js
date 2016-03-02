@@ -220,3 +220,27 @@ describe('MMXClient registerDeviceAndConnect', function() {
     });
 
 });
+
+describe('MMXClient getBaredJid', function() {
+
+    it('should return a bared Jid', function (done) {
+        Max.App.appId = 'test-app-id';
+        Max.Config.mmxDomain = 'mmx';
+        var uid = 'test-user-id';
+        expect(Max.MMXClient.getBaredJid(uid)).toEqual('test-user-id%test-app-id@mmx');
+        done();
+    });
+
+});
+
+xdescribe('Message', function() {
+
+    it('should instantiate a new Message object', function (done) {
+        var recipients = [''];
+        Max.Config.mmxDomain = 'mmx';
+        var uid = 'test-user-id';
+        expect(Max.MMXClient.getBaredJid(uid)).toEqual('test-user-id%test-app-id@mmx');
+        done();
+    });
+
+});
