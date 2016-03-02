@@ -51,6 +51,9 @@ MagnetJS.Request = function(request, callback, failback) {
             if (details.status == 403 && !request.isLogin)
                 MagnetJS.invoke('not-authorized', e, details);
 
+            if (details.status == 413)
+                e = 'max-filesize-exceeded';
+
             options.call.state = MagnetJS.CallState.FAILED;
             (failback || function() {})(e, details);
 
