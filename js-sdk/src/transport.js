@@ -39,7 +39,7 @@ MagnetJS.Request = function(request, callback, failback) {
             });
 
             // TODO: need to rework the .status === 0 once CORS is full implemented by server
-            if ((details.status == 401 || details.status === 0) && !request.isLogin) {
+            if ((details.status === 401) && !request.isLogin) {
                 MagnetJS.User.clearSession();
 
                 if (Cookie.get('magnet-max-refresh-token'))
@@ -48,10 +48,10 @@ MagnetJS.Request = function(request, callback, failback) {
                 MagnetJS.invoke('not-authenticated', e, details);
             }
 
-            if (details.status == 403 && !request.isLogin)
+            if (details.status === 403 && !request.isLogin)
                 MagnetJS.invoke('not-authorized', e, details);
 
-            if (details.status == 413)
+            if (details.status === 413 || details.status === 0)
                 e = 'max-filesize-exceeded';
 
             options.call.state = MagnetJS.CallState.FAILED;
