@@ -1,4 +1,4 @@
-/* unit tests for validating messaging features */
+/* unit tests for validating message class */
 
 var Max = Max || require('../../target/magnet-sdk');
 
@@ -144,7 +144,7 @@ describe('MMXClient connect', function() {
             Strophe.Connection.prototype.send.restore();
             done();
         }).error(function(e) {
-            expect(e).toEqual('not-authorized');
+            expect(e).toEqual('not authorized');
             expect(Max.getCurrentUser().connected).toBeFalsy();
             expect(sendSpy.calledOnce).toEqual(false);
             Strophe.Connection.prototype.connect.restore();
@@ -397,7 +397,7 @@ describe('Message send', function() {
             expect(res).toEqual('failed-test');
             done();
         }).error(function(e) {
-            expect(e).toEqual('no-recipients');
+            expect(e).toEqual('no recipients');
             done();
         });
     });
@@ -416,7 +416,7 @@ describe('Message send', function() {
             expect(res).toEqual('failed-test');
             done();
         }).error(function(e) {
-            expect(e).toEqual('session-expired');
+            expect(e).toEqual('session expired');
             done();
         });
     });
@@ -437,81 +437,7 @@ describe('Message send', function() {
             expect(res).toEqual('failed-test');
             done();
         }).error(function(e) {
-            expect(e).toEqual('not-connected');
-            done();
-        });
-    });
-
-});
-
-describe('Channel', function() {
-
-    it('should instantiate a Channel object', function(done) {
-        var channelName = 'test-channel';
-        var channelObj = {
-            "isCollection": false,
-            "description": "",
-            "isPersistent": true,
-            "maxItems": -1,
-            "maxPayloadSize": 2097152,
-            "creationDate": "2016-02-26T21:27:23.014Z",
-            "modificationDate": "2016-02-26T21:27:23.015Z",
-            "publisherType": "subscribers",
-            "userId": "402881295313de27015315659c71000a",
-            "subscriptionEnabled": true,
-            "topicName": channelName,
-            "privateChannel": false
-        };
-        var channel = new Max.Channel(channelObj);
-        expect(channel.name).toEqual(channelName);
-        expect(channel.privateChannel).toEqual(true);
-        done();
-    });
-
-});
-
-describe('Channel findPublicChannelsByName', function() {
-    var sendSpy;
-    var testUserId = 'test-user-id-1';
-    var channelName = 'test-channel';
-
-    beforeEach(function() {
-        Max.setUser({
-            userIdentifier: testUserId
-        });
-        Max.setConnection({
-            connected: true
-        });
-        sendSpy = sinon.spy();
-    });
-    afterEach(function() {
-        Max.setUser(null);
-        Max.setConnection(null);
-    });
-
-    it('should return public channels', function(done) {
-        var connStub = {
-            addHandler: function(cb) {
-                var xmlStr = "<mmx xmlns='com.magnet:pubsub' command='searchTopic' ctype='application/json'>" +
-                    "{&quot;total&quot;:1,&quot;results&quot;:[{&quot;isCollection&quot;:false,&quot;" +
-                    "description&quot;:&quot;&quot;,&quot;isPersistent&quot;:true,&quot;maxItems&quot;:-1," +
-                    "&quot;maxPayloadSize&quot;:2097152,&quot;creationDate&quot;:&quot;2016-02-26T21:27:23.014Z" +
-                    "&quot;,&quot;modificationDate&quot;:&quot;2016-02-26T21:27:23.015Z&quot;,&quot;" +
-                    "publisherType&quot;:&quot;subscribers&quot;,&quot;creator&quot;:&quot;402881295313de" +
-                    "27015315659c71000a%gmbil1ewswo@mmx&quot;,&quot;subscriptionEnabled&quot;:true,&quot;" +
-                    "topicName&quot;:&quot;"+channelName+"&quot;}]}</mmx>";
-                var xml = Max.Utils.getValidXML(xmlStr);
-                cb(xml);
-            },
-            send: sendSpy,
-            connected: true
-        };
-        Max.setConnection(connStub);
-        Max.Channel.findPublicChannelsByName(channelName).success(function(channels) {
-            expect(channels.length).toEqual(1);
-            done();
-        }).error(function(e) {
-            expect(e).toEqual('failed-test');
+            expect(e).toEqual('not connected');
             done();
         });
     });

@@ -339,40 +339,6 @@ MagnetJS.Utils = {
         return result;
     },
     /**
-     * Handles basic validation of object attributes based on the specified schema.
-     * @param {object} schema The controller or model schema consistent with the server.
-     * @param {object} attributes The current set of controller or model attributes.
-     * @param {boolean} isUpdate If enabled, do not fail validation on missing required fields. Default is disabled (false).
-     * @returns {object|boolean} An array of invalid property objects, or false if validation passes.
-     */
-    validate : function(schema, attributes, isUpdate) {
-        var invalid = [], obj;
-        attributes = attributes || {};
-        for(var attr in schema) {
-            if (schema.hasOwnProperty(attr)) {
-                obj = {
-                    attribute : attr
-                };
-                var type = schema[attr].type;
-                if (typeof schema !== 'undefined' && typeof schema[attr] !== 'undefined' && typeof schema[attr].type !== 'undefined')
-                    type = type.trim();
-                if (schema[attr].optional === false && (typeof attributes[attr] === 'undefined' || attributes[attr] === '')) {
-                    if (!isUpdate) obj.reason = 'required field blank';
-                } else if (attributes[attr] && ((type == 'integer' || type == 'biginteger' || type == 'bigdecimal' || type == 'double' || type == 'long' || type == 'float' || type == 'short' || type == 'byte') && !MagnetJS.Utils.isNumeric(attributes[attr]))) {
-                    obj.reason = 'not numeric';
-                } else if (attributes[attr] && type == 'boolean' && attributes[attr] !== 'true' && attributes[attr] !== true && attributes[attr] !== 'false' && attributes[attr] !== false) {
-                    obj.reason = 'not boolean';
-                } else if (attributes[attr] && (type == 'java.util.List' ||  type == 'array') && (!attributes[attr] || attributes[attr].length == 0 || this.isArray(attributes[attr]) === false)) {
-                    obj.reason = 'empty list';
-                } else if (attributes[attr] && (type == '_data' || type == 'binary') && (!attributes[attr].mimeType || !attributes[attr].val)) {
-                    obj.reason = 'invalid binary format';
-                }
-                if (obj.reason) invalid.push(obj);
-            }
-        }
-        return invalid.length == 0 ? false : invalid;
-    },
-    /**
      * Determines whether the specified feature is available in the current browser or mobile client.
      * @param {string} str Name of a global variable.
      */
@@ -412,34 +378,6 @@ MagnetJS.Utils = {
             case '[object Boolean]'   : type = 'boolean'; break;
         }
         return type;
-    },
-    /**
-     * Determines whether the specified attribute is of type date.
-     * @param {string} str The attribute type.
-     */
-    isDateType : function(str) {
-        return ('|date|'.indexOf('|'+str+'|') != -1) === true;
-    },
-    /**
-     * Determines whether the specified attribute is of type binary.
-     * @param {string} str The attribute type.
-     */
-    isBinaryType : function(str) {
-        return ('|binary|_data|'.indexOf('|'+str+'|') != -1) === true;
-    },
-    /**
-     * Determines whether the specified attribute is a generic object type.
-     * @param {string} str The attribute type.
-     */
-    isGenericObject : function(str) {
-        return ('|object|'.indexOf('|'+str+'|') != -1) === true;
-    },
-    /**
-     * Determines whether the specified attribute is of type Model or Collection.
-     * @param {string} str The attribute type.
-     */
-    isModelOrCollection : function(str) {
-        return (MagnetJS.Models[str] || MagnetJS.Models[this.getArrayType(str)]) ? true : false;
     },
     /**
      * Converts the specified Date object as an ISO 8601 Extended Format string. This is a shim for clients that do not support .toISOString.
@@ -519,15 +457,18 @@ MagnetJS.Utils = {
     },
     /**
      * Collect browser and version.
+     * @param {string} [userAgent] specify a userAgent string.
+     * @param {string} [appVersion] specify an userAgent string.
+     * @param {string} [appName] specify an appName string.
      * @returns {string} browser and version.
      */
-    getBrowser : function() {
+    getBrowser : function(userAgent, appVersion, appName) {
         //browser
-        var nVer = navigator.appVersion;
-        var nAgt = navigator.userAgent;
-        var browser = navigator.appName;
-        var version = '' + parseFloat(navigator.appVersion);
-        var majorVersion = parseInt(navigator.appVersion, 10);
+        var nVer = appVersion || navigator.appVersion;
+        var nAgt = userAgent || navigator.userAgent;
+        var browser = appName || navigator.appName;
+        var version = '' + parseFloat(appVersion || navigator.appVersion);
+        var majorVersion = parseInt(appVersion || navigator.appVersion, 10);
         var nameOffset, verOffset, ix;
 
         // Opera
@@ -576,7 +517,7 @@ MagnetJS.Utils = {
             browser = nAgt.substring(nameOffset, verOffset);
             version = nAgt.substring(verOffset + 1);
             if (browser.toLowerCase() == browser.toUpperCase()) {
-                browser = navigator.appName;
+                browser = appName || navigator.appName;
             }
         }
         // trim the version string
@@ -586,8 +527,8 @@ MagnetJS.Utils = {
 
         majorVersion = parseInt('' + version, 10);
         if (isNaN(majorVersion)) {
-            version = '' + parseFloat(navigator.appVersion);
-            majorVersion = parseInt(navigator.appVersion, 10);
+            version = '' + parseFloat(appVersion || navigator.appVersion);
+            majorVersion = parseInt(appVersion || navigator.appVersion, 10);
         }
 
         // mobile version
@@ -1572,35 +1513,6 @@ function getLevelOrWeight(levelOrWeight) {
 }
 /**
  * @method
- * @desc Sends all records in the log store to the Magnet Mobile App Server. On a successful dump, the logs in the log store will be cleared.
- * @param {function} [callback] Callback to fire after a successful dump.
- * @param {function} [failback] Callback to fire after a failed attempt.
- */
-MagnetJS.Log.dump = function(callback, failback) {
-    MagnetJS.Storage.get(MagnetJS.Log.store, null, function(data) {
-        var text = '';
-        for(var i=0;i<data.length;++i)
-            text += JSON.stringify(data[i])+'\r\n';
-        MagnetJS.LoggingService.logBatch({
-            file : {
-                mimeType : 'text/plain',
-                val      : text
-            }
-        }, {
-            success : function(data, details) {
-                MagnetJS.Storage.clearTable(MagnetJS.Log.store, function() {
-                    if (typeof callback === typeof Function) callback(data, details);
-                }, failback);
-            },
-            error : failback
-        });
-    }, function(e) {
-        console.error('failed to send log data');
-        if (typeof failback === typeof Function) failback(e);
-    });
-};
-/**
- * @method
  * @desc Clear all records in the log store without dumping to the server.
  * @param {function} [callback] Callback to fire after a successful dump.
  * @param {function} [failback] Callback to fire after a failed attempt.
@@ -1689,22 +1601,13 @@ MagnetJS.reset = function() {
     });
     return this;
 };
-/**
- * @method
- * @desc Load a model or controller resource into memory. For NodeJS only.
- * @param {string} path A relative path to the entity or controller resource.
- * @ignore
- */
-MagnetJS.define = function(path) {
-    var resource = require(path), type = resource.Controllers ? 'Controllers' : 'Models';
-    MagnetJS.Utils.mergeObj(MagnetJS[type], resource[type]);
-    return this;
-};
 
 var mCurrentDevice = null;
 var mCurrentUser = null;
 var mXMPPConnection = null;
 var MMS_DEVICE_ID = '1111-2222-3333-4444';
+var xmppStore;
+var x2js = new X2JS();
 
 MagnetJS.Events.create(MagnetJS);
 
@@ -1744,6 +1647,7 @@ MagnetJS.getCurrentUser = function() {
     return mCurrentUser || null;
 };
 
+// getters/setters used
 MagnetJS.setUser = function(userObj) {
     mCurrentUser = userObj;
 };
@@ -1758,7 +1662,4 @@ MagnetJS.setConnection = function(conn) {
 };
 MagnetJS.getStore = function() {
     return xmppStore || null;
-};
-MagnetJS.setStore = function(store) {
-    xmppStore = store;
 };

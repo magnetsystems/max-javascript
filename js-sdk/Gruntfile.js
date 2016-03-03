@@ -11,7 +11,8 @@ module.exports = function(grunt){
         'src/attachment.js',
         'src/user.js',
         'src/device.js',
-        'src/messaging.js',
+        'src/message.js',
+        'src/channel.js',
         'src/core-footer.js'
     ];
 
@@ -29,7 +30,8 @@ module.exports = function(grunt){
         'src/attachment.js',
         'src/user.js',
         'src/device.js',
-        'src/messaging.js',
+        'src/message.js',
+        'src/channel.js',
         'src/core-footer.js'
     ];
 
@@ -101,7 +103,7 @@ module.exports = function(grunt){
             ],
             options : {
                 specs    : [
-                    //'tests/all/messaging-spec.js'
+                    //'tests/all/channel-spec.js'
                     'tests/all/*-spec.js',
                     'tests/web/*-spec.js'
                 ],

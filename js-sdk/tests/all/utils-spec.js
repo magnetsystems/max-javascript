@@ -210,113 +210,6 @@ describe('Utils cleanData', function(){
 
 });
 
-describe('Utils validate', function(){
-
-    it('should fail validation given invalid obj', function(done){
-        var schema = {
-            foo : {
-                optional : false
-            },
-            bar : {}
-        };
-        var obj = {
-            bar : 'bardat'
-        };
-        var out = [{
-            'attribute' : 'foo',
-            'reason'    : 'required field blank'
-        }];
-        expect(Max.Utils.validate(schema, obj)).toEqual(out);
-        done();
-    });
-
-    it('should pass validation given a valid obj', function(done){
-        var schema = {
-            foo : {
-                optional : false
-            },
-            bar : {}
-        };
-        var obj = {
-            foo : 'foodat'
-        };
-        expect(Max.Utils.validate(schema, obj)).toEqual(false);
-        done();
-    });
-
-    it('should fail validation given an invalid binary/_data format', function(done){
-        var schema = {
-            foo : {
-                type     : 'binary',
-                optional : false
-            },
-            bar : {}
-        };
-        var obj = {
-            foo : 'invalid'
-        };
-        var out = [{
-            attribute : 'foo',
-            reason    : 'invalid binary format'
-        }];
-        expect(Max.Utils.validate(schema, obj)).toEqual(out);
-        done();
-    });
-
-    it('should pass validation given a valid binary/_data format', function(done){
-        var schema = {
-            foo : {
-                type     : 'binary',
-                optional : false
-            },
-            bar : {}
-        };
-        var obj = {
-            foo : {
-                mimeType : 'text/plain',
-                val      : 'valid'
-            }
-        };
-        expect(Max.Utils.validate(schema, obj)).toEqual(false);
-        done();
-    });
-
-    it('should pass validation given a numeric data type using a string containing a number', function(done){
-        var schema = {
-            foo : {
-                type     : 'float',
-                optional : false
-            },
-            bar : {}
-        };
-        var obj = {
-            foo : '120'
-        };
-        expect(Max.Utils.validate(schema, obj)).toEqual(false);
-        done();
-    });
-
-    it('should fail validation given a numeric data type using a string containing text', function(done){
-        var schema = {
-            foo : {
-                type     : 'integer',
-                optional : false
-            },
-            bar : {}
-        };
-        var obj = {
-            foo : 'invalidvalue'
-        };
-        var out = [{
-            attribute : 'foo',
-            reason    : 'not numeric'
-        }];
-        expect(Max.Utils.validate(schema, obj)).toEqual(out);
-        done();
-    });
-
-});
-
 describe('Utils dateToISO8601', function(){
 
     it('should convert a Date object to ISO8601 string', function(done){
@@ -413,10 +306,25 @@ describe('Utils getCleanGUID', function(){
 
 describe('Utils getBrowser', function(){
 
-    it('should return a string identifying client information', function(done){
+    it('should return a string identifying safari client information', function(done){
         var client = Max.Utils.getBrowser();
-        console.log(client);
         expect(client).toContain('Safari 538.1 (538)');
+        done();
+    });
+
+    it('should return a string identifying chrome client information', function(done){
+        expect(Max.Utils.getBrowser(
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36',
+        '5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/48.0.2564.97 Safari/537.36',
+        'Netscape')).toContain('Chrome 48.0.2564.97 (48)');
+        done();
+    });
+
+    it('should return a string identifying firefox client information', function(done){
+        expect(Max.Utils.getBrowser(
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:44.0) Gecko/20100101 Firefox/44.0', '5.0 (Macintosh)',
+        '5.0 (Macintosh)',
+        'Netscape')).toContain('Firefox 44.0 (44)');
         done();
     });
 
@@ -425,6 +333,13 @@ describe('Utils getBrowser', function(){
 describe('Utils getOS', function(){
 
     it('should return a string identifying operating system', function(done){
+        var os = Max.Utils.getOS();
+        expect(os.os).toEqual('Mac OS X');
+        done();
+    });
+
+    it('should return a string identifying operating system', function(done){
+
         var os = Max.Utils.getOS();
         expect(os.os).toEqual('Mac OS X');
         done();
@@ -1551,6 +1466,16 @@ describe('Transport createAcceptHeader', function(){
         done();
     });
 
+    it('should return a text/plain Accept header given input', function(done){
+        expect(Max.Transport.createAcceptHeader('html')).toEqual('text/plain;q=1.0');
+        done();
+    });
+
+    it('should return a text Accept header given input', function(done){
+        expect(Max.Transport.createAcceptHeader('text')).toEqual('text/plain;q=1.0');
+        done();
+    });
+
     it('should return default Accept header given no input', function(done){
         expect(Max.Transport.createAcceptHeader()).toEqual('application/json;');
         done();
@@ -1576,6 +1501,19 @@ describe('init', function(){
         expect(Max.Device.checkInWithDevice.called).toEqual(true);
 		Max.Device.checkInWithDevice.restore();
         done();
+    });
+});
+
+describe('onReady', function(){
+    it('should fire after sdk is ready', function(done){
+        Max.App.initialized = false;
+        Max.onReady(function() {
+            expect(Max.App.initialized).toEqual(true);
+            done();
+        });
+        setTimeout(function() {
+            Max.App.initialized = true;
+        }, 1);
     });
 });
 

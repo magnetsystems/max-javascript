@@ -77,7 +77,8 @@ MagnetJS.Device = {
                 url: '/com.magnet.server/applications/session-device',
                 data: deviceInfo,
                 headers: {
-                    Authorization: 'Basic '+MagnetJS.Utils.stringToBase64(MagnetJS.App.clientId+':'+MagnetJS.App.clientSecret)
+                    Authorization: 'Basic ' +
+                    MagnetJS.Utils.stringToBase64(MagnetJS.App.clientId+':'+MagnetJS.App.clientSecret)
                 },
                 bypassReady: true
             }, function(data) {
@@ -117,7 +118,7 @@ MagnetJS.Device = {
                             initialize();
                         })
                         .error(function(e) {
-                            if (e == 'not-authorized')
+                            if (e == 'not authorized')
                                 MagnetJS.User.clearSession();
                         });
 

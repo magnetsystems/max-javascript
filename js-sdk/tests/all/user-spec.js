@@ -378,8 +378,8 @@ describe('User search', function() {
         Max.User.search({
             limit: 7,
             offset: 1,
-            orderby: 'userName:desc',
-            query: 'userName:*'
+            orderby: 'username:desc',
+            query: 'username:*'
         }).success(function (users) {
             expect(users.length).toEqual(1);
             var user1 = users[0];

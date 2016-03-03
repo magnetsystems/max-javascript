@@ -57,7 +57,6 @@ MagnetJS.User.register = function(userObj) {
         data: userObj,
         headers: auth
     }, function(newUserObj, details) {
-        console.log(JSON.stringify(newUserObj));
         def.resolve.apply(def, [new MagnetJS.User(newUserObj), details]);
     }, function() {
         def.reject.apply(def, arguments);
@@ -94,7 +93,7 @@ MagnetJS.User.login = function(userObj) {
 
         MagnetJS.App.hatCredentials = data;
         mCurrentUser = new MagnetJS.User(data.user);
-        Cookie.create('magnet-max-auth-token', data.access_token, 1);
+        Cookie.create('magnet-max-auth-token', data.access_token, 2);
 
         if (data.refresh_token)
             Cookie.create('magnet-max-refresh-token', data.access_token, 365);
@@ -214,10 +213,10 @@ MagnetJS.User.search = function(queryObj) {
     queryObj.query = queryObj.query || 'userName:*';
 
     if (queryObj.query.indexOf('username:') != -1)
-        queryObj.query.replace('username:', 'userName:');
+        queryObj.query = queryObj.query.replace('username:', 'userName:');
 
     if (queryObj.orderby && queryObj.orderby.indexOf('username:') != -1)
-        queryObj.orderby.replace('username:', 'userName:');
+        queryObj.orderby = queryObj.orderby.replace('username:', 'userName:');
 
     for(var key in queryObj)
         qs += '&'+keyMap[key]+'='+queryObj[key];
@@ -259,6 +258,7 @@ MagnetJS.User.getToken = function() {
 MagnetJS.User.logout = function() {
     var self = this;
     Cookie.remove('magnet-max-refresh-token');
+    MagnetJS.MMXClient.disconnect();
 
     var def = MagnetJS.Request({
         method: 'DELETE',
@@ -275,12 +275,10 @@ MagnetJS.User.logout = function() {
 
 /**
  * Removes user session information.
- * @ignore
+ * @ign
  */
 MagnetJS.User.clearSession = function() {
     mCurrentUser = null;
     MagnetJS.App.hatCredentials = null;
-    MagnetJS.MMXClient.disconnect();
-    mXMPPConnection = null;
     Cookie.remove('magnet-max-auth-token');
 };
