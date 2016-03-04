@@ -68,7 +68,8 @@ MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
 
                 if (json.mmx) {
                     payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
-                    if (payload && payload.results && payload.results.length) {
+                    if (payload && payload.results && payload.results) {
+                        payload.results = MagnetJS.Utils.objToObjAry(payload.results);
                         for (var i=0;i<payload.results.length;++i)
                             channels.push(new MagnetJS.Channel(payload.results[i]));
                     }
@@ -90,8 +91,9 @@ MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
  * Create a public or private channel.
  * @param {object} channelObj An object containing channel information.
  * @param {string} channelObj.name The name of the channel.
- * @param {boolean} channelObj.private Set to true to make the channel private.
- * @param {boolean} channelObj.subscribe Automatically subscribe the current user upon channel creation.
+ * @param {boolean} [channelObj.isPublic] Set to true to make the channel public. Defaults to true.
+ * @param {string} [channelObj.publishPermissions] Permissions level required to be able to post, must be in
+ * ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
  * @returns {MagnetJS.Promise} A promise object returning the new {MagnetJS.Channel} or reason of failure.
  */
 MagnetJS.Channel.create = function(channelObj) {
@@ -101,21 +103,18 @@ MagnetJS.Channel.create = function(channelObj) {
     setTimeout(function() {
         if (!channelObj.name)
             return def.reject('channel name required');
-        if (channelObj.publishPermission
-            && (['anyone', 'owner', 'subscribers'].indexOf(channelObj.publishPermission) == -1))
-            return def.reject('publishPermission must be in ["anyone", "owner", "subscribers"]');
+        if (channelObj.publishPermissions
+            && (['anyone', 'owner', 'subscribers'].indexOf(channelObj.publishPermissions) == -1))
+            return def.reject('publishPermissions must be in ["anyone", "owner", "subscribers"]');
 
         channelObj.channelName = channelObj.name;
         channelObj.ownerId = mCurrentUser.userIdentifier;
-        channelObj.privateChannel = (channelObj.private === true || channelObj.private === false)
-            ? channelObj.private : false;
-        channelObj.subscribeOnCreate = (channelObj.subscribe === true || channelObj.subscribe === false)
-            ? channelObj.subscribe : true;
+        channelObj.privateChannel = (channelObj.isPublic === true || channelObj.isPublic === false)
+            ? !channelObj.isPublic : false;
         channelObj.creationDate = dt;
         channelObj.lastTimeActive = dt;
-
-        if (channelObj.privateChannel)
-            channelObj.userId = mCurrentUser.userIdentifier;
+        if (channelObj.summary) channelObj.description = channelObj.summary;
+        if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userIdentifier;
 
         MagnetJS.Request({
             method: 'POST',
@@ -156,7 +155,7 @@ MagnetJS.Channel.getAllSubscriptions = function() {
                 var channels = [];
 
                 if (json.pubsub && json.pubsub.subscriptions && json.pubsub.subscriptions.subscription) {
-                    var subs =json.pubsub.subscriptions.subscription;
+                    var subs = MagnetJS.Utils.objToObjAry(json.pubsub.subscriptions.subscription);
                     for (var i=0;i<subs.length;++i)
                         channels.push(nodePathToChannel(subs[i]._node));
                 }
@@ -371,7 +370,8 @@ MagnetJS.Channel.prototype.getAllSubscribers = function() {
                 var payload, json = x2js.xml2json(msg);
 
                 payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
-                if (payload && payload.subscribers && payload.subscribers.length) {
+                if (payload && payload.subscribers) {
+                    payload.subscribers = MagnetJS.Utils.objToObjAry(payload.subscribers);
                     for (var i=0;i<payload.subscribers.length;++i) {
                         users.push(new MagnetJS.User(payload.subscribers[i]));
                     }

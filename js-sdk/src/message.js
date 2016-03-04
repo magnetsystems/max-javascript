@@ -1,3 +1,4 @@
+var x2js = new X2JS();
 
 /**
  * @method

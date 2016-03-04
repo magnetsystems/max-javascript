@@ -633,6 +633,10 @@ MagnetJS.Utils = {
             }
         }
         return out;
+    },
+    objToObjAry: function(objOrAry) {
+        if (!objOrAry) return objOrAry;
+        return this.isArray(objOrAry) ? objOrAry : [objOrAry];
     }
 };
 
@@ -1607,7 +1611,6 @@ var mCurrentUser = null;
 var mXMPPConnection = null;
 var MMS_DEVICE_ID = '1111-2222-3333-4444';
 var xmppStore;
-var x2js = new X2JS();
 
 MagnetJS.Events.create(MagnetJS);
 
