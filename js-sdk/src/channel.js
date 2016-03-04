@@ -673,9 +673,18 @@ MagnetJS.Channel.prototype.isOwner = function() {
 /**
  * Determines if the channel is private.
  * @returns {boolean} True if the channel is private.
+ * @ignore
  */
 MagnetJS.Channel.prototype.isPrivate = function() {
     return this.privateChannel === true;
+};
+
+/**
+ * Determines if the channel is public.
+ * @returns {boolean} True if the channel is public.
+ */
+MagnetJS.Channel.prototype.isPublic = function() {
+    return this.privateChannel === false;
 };
 
 /**
