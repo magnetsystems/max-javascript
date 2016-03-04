@@ -177,7 +177,7 @@ describe('MMXClient registerDeviceAndConnect', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setDevice({
             deviceId: testDeviceId
@@ -206,7 +206,7 @@ describe('MMXClient registerDeviceAndConnect', function() {
             return connectDef.promise;
         });
         Max.MMXClient.registerDeviceAndConnect(testUserId, accessToken).success(function(user, device) {
-            expect(user.userIdentifier).toEqual(testUserId);
+            expect(user.userId).toEqual(testUserId);
             expect(device.deviceId).toEqual(testDeviceId);
             Max.Device.register.restore();
             Max.MMXClient.connect.restore();
@@ -239,17 +239,17 @@ describe('Message', function() {
         var testUserId = 'test-user-id-1';
         var messageContent = 'test-message';
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         var content = {
             my: messageContent
         };
         var recipients = [{
             userName: 'userName1',
-            userIdentifier: testUserId
+            userId: testUserId
         }, {
             userName: 'userName2',
-            userIdentifier: 'test-user-id-2'
+            userId: 'test-user-id-2'
         }];
         var msg = new Max.Message(content, recipients);
         expect(msg.recipients.length).toEqual(2);
@@ -262,14 +262,14 @@ describe('Message', function() {
         var testUserId = 'test-user-id-1';
         var messageContent = 'test-message';
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         var content = {
             my: messageContent
         };
         var recipient = {
             userName: 'userName1',
-            userIdentifier: testUserId
+            userId: testUserId
         };
         var msg = new Max.Message(content, recipient);
         expect(msg.recipients.length).toEqual(1);
@@ -327,12 +327,12 @@ describe('Message formatMessage', function() {
         var msg = new Max.Message();
         msg.formatMessage(msgText, function() {
             expect(msg.receivedMessage).toEqual(true);
-            expect(msg.sender.userIdentifier).toEqual(fromUid);
+            expect(msg.sender.userId).toEqual(fromUid);
             expect(msg.attachments).not.toBeUndefined();
             expect(msg.channel).not.toBeUndefined();
             expect(msg.channel.name).toEqual(channelName);
             expect(msg.channel.userId).toEqual(channelOwnerUid);
-            expect(msg.channel.privateChannel).toEqual(true);
+            expect(msg.channel.isPublic).toEqual(false);
             done();
         });
     });
@@ -347,7 +347,7 @@ describe('Message send', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection(null);
     });
@@ -358,7 +358,7 @@ describe('Message send', function() {
 
     it('should send a message', function (done) {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         var sendSpy = sinon.spy();
         var connStub = {
@@ -375,7 +375,7 @@ describe('Message send', function() {
         };
         var recipients = [{
             userName: 'userName1',
-            userIdentifier: testUserId
+            userId: testUserId
         }];
         var msg = new Max.Message(content, recipients);
         msg.send().success(function(msgId) {
@@ -409,7 +409,7 @@ describe('Message send', function() {
         Max.setUser(null);
         var recipients = [{
             userName: 'userName1',
-            userIdentifier: testUserId
+            userId: testUserId
         }];
         var msg = new Max.Message(content, recipients);
         msg.send().success(function(res) {
@@ -427,7 +427,7 @@ describe('Message send', function() {
         };
         var recipients = [{
             userName: 'userName1',
-            userIdentifier: testUserId
+            userId: testUserId
         }];
         Max.setConnection({
             connected: false

@@ -33,7 +33,7 @@ MagnetJS.Uploader = function(fileOrFiles, callback) {
             this.message.append('file', fileOrFiles[i], 'attachment' + i);
             this.attachmentRefs.push({
                 mimeType: fileOrFiles[i].type,
-                senderId: mCurrentUser.userIdentifier
+                senderId: mCurrentUser.userId
             });
         }
 
@@ -68,7 +68,7 @@ MagnetJS.Uploader.prototype.add = function(fileOrFiles, index, callback) {
 
         self.attachmentRefs.push({
             mimeType: fileOrFiles[index].type,
-            senderId: mCurrentUser.userIdentifier
+            senderId: mCurrentUser.userId
         });
 
         if (++index == self.fileCount) callback();

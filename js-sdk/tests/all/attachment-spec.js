@@ -26,7 +26,7 @@ describe('Uploader', function() {
         };
         Max.setUser({
             userName: 'test-user',
-            userIdentifier: 'test-id'
+            userId: 'test-id'
         });
         new Max.Uploader(mockFile, function(e, fileUpload) {
             expect(e).toEqual(null);
@@ -53,7 +53,7 @@ describe('Uploader', function() {
         };
         Max.setUser({
             userName: 'test-user',
-            userIdentifier: 'test-id'
+            userId: 'test-id'
         });
         new Max.Uploader(mockFile, function(e, newUl) {
             expect(e).toEqual(null);
@@ -87,7 +87,7 @@ describe('Uploader', function() {
         };
         Max.setUser({
             userName: 'test-user',
-            userIdentifier: testUserId
+            userId: testUserId
         });
         new Max.Uploader(mockFile, function(e, uploader) {
             expect(uploader.message).toContain('mock-payload');

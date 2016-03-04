@@ -22,13 +22,26 @@ MagnetJS.Channel = function(channelObj) {
         channelObj.ownerUserID = channelObj.creator;
         delete channelObj.creator;
     }
+    if (channelObj.userId) {
+        channelObj.ownerUserID = channelObj.userId;
+    }
     if (channelObj.description) {
         channelObj.summary = channelObj.description;
         delete channelObj.description;
     }
+    if (channelObj.publisherType) {
+        channelObj.publishPermissions = channelObj.publisherType;
+        delete channelObj.publisherType;
+    }
+    if (channelObj.privateChannel !== false && channelObj.privateChannel !== true)
+        channelObj.privateChannel = channelObj.userId ? true : false;
+    if (channelObj.privateChannel === true)
+        channelObj.userId = channelObj.userId || channelObj.ownerUserID;
+    if (channelObj.privateChannel === false)
+        delete channelObj.userId;
 
-    channelObj.privateChannel = channelObj.userId ? true : false;
     channelObj.isPublic = !channelObj.privateChannel;
+    delete channelObj.privateChannel;
 
     MagnetJS.Utils.mergeObj(this, channelObj);
 
@@ -125,13 +138,13 @@ MagnetJS.Channel.create = function(channelObj) {
             return def.reject('publishPermission must be in ["anyone", "owner", "subscribers"]');
 
         channelObj.channelName = channelObj.name;
-        channelObj.ownerId = mCurrentUser.userIdentifier;
+        channelObj.ownerId = mCurrentUser.userId;
         channelObj.privateChannel = (channelObj.isPublic === true || channelObj.isPublic === false)
             ? !channelObj.isPublic : false;
         channelObj.creationDate = dt;
         channelObj.lastTimeActive = dt;
         if (channelObj.summary) channelObj.description = channelObj.summary;
-        if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userIdentifier;
+        if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userId;
 
         MagnetJS.Request({
             method: 'POST',
@@ -139,6 +152,8 @@ MagnetJS.Channel.create = function(channelObj) {
             data: channelObj
         }, function (data, details) {
             delete channelObj.ownerId;
+            delete channelObj.channelName;
+            channelObj.creator = mCurrentUser.userId;
 
             def.resolve(new MagnetJS.Channel(channelObj), details);
         }, function () {
@@ -150,7 +165,9 @@ MagnetJS.Channel.create = function(channelObj) {
 };
 
 /**
- * Get all the channels the current user is the subscribed to.
+ * Get all the channels the current user is the subscribed to. The returned {MagnetJS.Channel} object
+ * only contains basic channel information. Use the {MagnetJS.Channel.getPublicChannel} and
+ * {MagnetJS.Channel.getPrivateChannel} methods to obtain the full information.
  * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} (containing basic information
  * only) or reason of failure.
  */
@@ -205,7 +222,7 @@ MagnetJS.Channel.findChannelsBySubscribers = function(subscribers) {
         subscribers = [subscribers];
 
     for (var i in subscribers)
-        subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
+        subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
 
     setTimeout(function() {
         MagnetJS.Request({
@@ -249,7 +266,7 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
         channelIds.push({
             channelName: channelOrChannels[i].name,
             userId: channelOrChannels[i].userId,
-            privateChannel: channelOrChannels[i].privateChannel
+            privateChannel: !channelOrChannels[i].isPublic
         });
 
     setTimeout(function() {
@@ -315,7 +332,7 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
  * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
  */
 MagnetJS.Channel.getPrivateChannel = function(channelName) {
-    return MagnetJS.Channel.getChannel(channelName, mCurrentUser.userIdentifier);
+    return MagnetJS.Channel.getChannel(channelName, mCurrentUser.userId);
 };
 
 /**
@@ -441,7 +458,7 @@ MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
         if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
 
         for (var i in subscribers)
-            subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
+            subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
 
         MagnetJS.Request({
             method: 'POST',
@@ -475,7 +492,7 @@ MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
         if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
 
         for (var i in subscribers)
-            subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
+            subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
 
         MagnetJS.Request({
             method: 'POST',
@@ -605,7 +622,7 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
                 var meta = JSON.stringify(msgMeta);
                 var mmxMeta = {
                     From: {
-                        userId: mCurrentUser.userIdentifier,
+                        userId: mCurrentUser.userId,
                         devId: mCurrentDevice.deviceId,
                         displayName: mCurrentUser.userName
                     }
@@ -703,7 +720,7 @@ MagnetJS.Channel.prototype.delete = function() {
  * @returns {boolean} True if the currently logged in user is the owner of the channel.
  */
 MagnetJS.Channel.prototype.isOwner = function() {
-    return this.userId == mCurrentUser.userIdentifier || (this.ownerUserID && this.ownerUserID == mCurrentUser.userIdentifier);
+    return this.userId == mCurrentUser.userId || (this.ownerUserID && this.ownerUserID == mCurrentUser.userId);
 };
 
 /**
@@ -712,7 +729,7 @@ MagnetJS.Channel.prototype.isOwner = function() {
  * @ignore
  */
 MagnetJS.Channel.prototype.getChannelName = function() {
-    return this.privateChannel === true ? (this.userId + '#' + this.name) : this.name;
+    return this.isPublic === true ? this.name : (this.userId + '#' + this.name);
 };
 
 /**

@@ -1523,11 +1523,11 @@ describe('getCurrentUser', function(){
         var userId = 'test-id';
         Max.setUser({
             userName: userName,
-            userIdentifier: userId
+            userId: userId
         });
         var user = Max.getCurrentUser();
         expect(user.userName).toEqual(userName);
-        expect(user.userIdentifier).toEqual(userId);
+        expect(user.userId).toEqual(userId);
         done();
     });
 });

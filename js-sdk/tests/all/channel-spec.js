@@ -22,7 +22,7 @@ describe('Channel', function() {
         };
         var channel = new Max.Channel(channelObj);
         expect(channel.name).toEqual(channelName);
-        expect(channel.privateChannel).toEqual(true);
+        expect(channel.isPublic).toEqual(true);
         done();
     });
 
@@ -35,7 +35,7 @@ describe('Channel findPublicChannelsByName', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true
@@ -83,7 +83,7 @@ describe('Channel create', function() {
 
 	beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.App.hatCredentials = {
             access_token: 'test-token'
@@ -99,8 +99,8 @@ describe('Channel create', function() {
         requestStub.callsArg(1);
         Max.Channel.create(channelObj).success(function(channel) {
             expect(channel.userId).toBeUndefined();
-            expect(channel.channelName).toEqual(channelObj.name);
-            expect(channel.privateChannel).toEqual(false);
+            expect(channel.name).toEqual(channelObj.name);
+            expect(channel.isPublic).toEqual(true);
             Max.Request.restore();
             done();
         }).error(function(e) {
@@ -120,8 +120,8 @@ describe('Channel create', function() {
         requestStub.callsArg(1);
         Max.Channel.create(channelObj).success(function(channel) {
             expect(channel.userId).toEqual(testUserId);
-            expect(channel.channelName).toEqual(channelObj.name);
-            expect(channel.privateChannel).toEqual(true);
+            expect(channel.name).toEqual(channelObj.name);
+            expect(channel.isPublic).toEqual(false);
             Max.Request.restore();
             done();
         }).error(function(e) {
@@ -176,7 +176,7 @@ describe('Channel getAllSubscriptions', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true
@@ -207,10 +207,10 @@ describe('Channel getAllSubscriptions', function() {
         Max.Channel.getAllSubscriptions().success(function(channels) {
             expect(channels.length).toEqual(2);
             expect(channels[0].name).toEqual('1456984203652');
-            expect(channels[0].privateChannel).toEqual(true);
+            expect(channels[0].isPublic).toEqual(false);
             expect(channels[0].userId).toEqual('4028812953356a8901533b0617650002');
             expect(channels[1].name).toEqual('1456984181155');
-            expect(channels[1].privateChannel).toEqual(true);
+            expect(channels[1].isPublic).toEqual(false);
             expect(sendSpy.calledOnce).toEqual(true);
             done();
         }).error(function(e) {
@@ -227,7 +227,7 @@ describe('Channel findChannelsBySubscribers', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
     });
     afterEach(function() {
@@ -258,7 +258,7 @@ describe('Channel findChannelsBySubscribers', function() {
             expect(channels.length).toEqual(1);
             expect(channels[0].name).toEqual(testChannelId);
             expect(channels[0].ownerUserID).toEqual(testUserId);
-            expect(channels[0].privateChannel).toEqual(false);
+            expect(channels[0].isPublic).toEqual(true);
             Max.Request.restore();
             done();
         }).error(function(e) {
@@ -276,7 +276,7 @@ describe('Channel getChannelSummary', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
     });
     afterEach(function() {
@@ -349,7 +349,7 @@ describe('Channel getChannelSummary', function() {
         Max.Channel.getChannelSummary(testUserId, 3, 1).success(function(channels) {
             expect(channels.length).toEqual(1);
             expect(channels[0].channel.name).toEqual(testChannelId);
-            expect(channels[0].owner.userIdentifier).toEqual(testUserId);
+            expect(channels[0].owner.userId).toEqual(testUserId);
             expect(channels[0].subscribers.length).toEqual(3);
             expect(channels[0].messages.length).toEqual(1);
             Max.Request.restore();
@@ -370,7 +370,7 @@ describe('Channel getChannel', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true
@@ -402,7 +402,7 @@ describe('Channel getChannel', function() {
         Max.setConnection(connStub);
         Max.Channel.getChannel(testChannelName, testUserId).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
-            expect(channel.privateChannel).toEqual(false);
+            expect(channel.isPublic).toEqual(true);
             expect(channel.ownerUserID).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
             done();
@@ -432,7 +432,7 @@ describe('Channel getChannel', function() {
         Max.setConnection(connStub);
         Max.Channel.getPrivateChannel(testChannelName).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
-            expect(channel.privateChannel).toEqual(true);
+            expect(channel.isPublic).toEqual(false);
             expect(channel.ownerUserID).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
             done();
@@ -462,7 +462,7 @@ describe('Channel getChannel', function() {
         Max.setConnection(connStub);
         Max.Channel.getPublicChannel(testChannelName).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
-            expect(channel.privateChannel).toEqual(false);
+            expect(channel.isPublic).toEqual(true);
             expect(channel.ownerUserID).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
             done();
@@ -481,7 +481,7 @@ describe('Channel getAllSubscribers', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true
@@ -524,8 +524,8 @@ describe('Channel getAllSubscribers', function() {
         Max.setConnection(connStub);
         channel.getAllSubscribers().success(function(users) {
             expect(users.length).toEqual(2);
-            expect(users[0].userIdentifier).toEqual(testUserId2);
-            expect(users[1].userIdentifier).toEqual(testUserId);
+            expect(users[0].userId).toEqual(testUserId2);
+            expect(users[1].userId).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
             done();
         }).error(function(e) {
@@ -544,7 +544,7 @@ describe('Channel addSubscribers', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true
@@ -635,7 +635,7 @@ describe('Channel removeSubscribers', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true
@@ -725,7 +725,7 @@ describe('Channel subscribe', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true
@@ -783,7 +783,7 @@ describe('Channel unsubscribe', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true
@@ -841,7 +841,7 @@ describe('Channel publish', function() {
 
     beforeEach(function() {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true
@@ -863,10 +863,10 @@ describe('Channel publish', function() {
         };
         var recipients = [{
             userName: 'userName1',
-            userIdentifier: testUserId
+            userId: testUserId
         }, {
             userName: 'userName2',
-            userIdentifier: 'test-user-id-2'
+            userId: 'test-user-id-2'
         }];
         var msg = new Max.Message(content, recipients);
         var connStub = {
@@ -925,10 +925,10 @@ describe('Channel publish', function() {
         };
         var recipients = [{
             userName: 'userName1',
-            userIdentifier: testUserId
+            userId: testUserId
         }, {
             userName: 'userName2',
-            userIdentifier: 'test-user-id-2'
+            userId: 'test-user-id-2'
         }];
         var msg = new Max.Message(content, recipients);
         var connStub = {
@@ -975,10 +975,10 @@ describe('Channel publish', function() {
         };
         var recipients = [{
             userName: 'userName1',
-            userIdentifier: testUserId
+            userId: testUserId
         }, {
             userName: 'userName2',
-            userIdentifier: 'test-user-id-2'
+            userId: 'test-user-id-2'
         }];
         var msg = new Max.Message(content, recipients);
         var connStub = {
@@ -1024,7 +1024,7 @@ describe('Channel delete', function() {
 
     beforeEach(function () {
         Max.setUser({
-            userIdentifier: testUserId
+            userId: testUserId
         });
         Max.setConnection({
             connected: true

@@ -74,7 +74,7 @@ MagnetJS.MessageListener = function(idOrHandler, handler) {
 MagnetJS.MMXClient = {
     /**
      * Connect to MMX server via BOSH http-bind.
-     * @param {string} userId The currently logged in user's userIdentifier (id).
+     * @param {string} userId The currently logged in user's userId (id).
      * @param {string} accessToken The currently logged in user's access token.
      * @returns {MagnetJS.Promise} A promise object returning "ok" or reason of failure.
      */
@@ -120,7 +120,7 @@ MagnetJS.MMXClient = {
                 //if (mCurrentUser) {
                 //    mCurrentUser.connected = false;
                 //    if (MagnetJS.App.hatCredentials && MagnetJS.App.hatCredentials.access_token)
-                //        self.registerDeviceAndConnect(mCurrentUser.userIdentifier, MagnetJS.App.hatCredentials);
+                //        self.registerDeviceAndConnect(mCurrentUser.userId, MagnetJS.App.hatCredentials);
                 //}
             } else if (status == Strophe.Status.CONNECTED) {
                 MagnetJS.Log.info('MMX is connected.');
@@ -139,12 +139,12 @@ MagnetJS.MMXClient = {
     },
     /**
      * A wrapper function to register device and connect to MMX server via BOSH http-bind.
-     * @param {string} userId The currently logged in user's userIdentifier (id).
+     * @param {string} userId The currently logged in user's userId (id).
      * @param {string} accessToken The currently logged in user's access token.
      * @returns {MagnetJS.Promise} A promise object returning current user and device or reason of failure.
      */
     registerDeviceAndConnect: function(userId, accessToken) {
-        userId = userId || mCurrentUser.userIdentifier;
+        userId = userId || mCurrentUser.userId;
         var def = new MagnetJS.Deferred();
         MagnetJS.Device.register().success(function() {
             MagnetJS.MMXClient.connect(userId, accessToken).success(function() {
@@ -164,8 +164,8 @@ MagnetJS.MMXClient = {
         if (mXMPPConnection) mXMPPConnection.disconnect();
     },
     /**
-     * Given a userIdentifier (id), return a Bared Jid.
-     * @param {string} userId A user's userIdentifier (id).
+     * Given a userId (id), return a Bared Jid.
+     * @param {string} userId A user's userId (id).
      * @returns {string} a user's Bared Jid.
      */
     getBaredJid: function(userId) {
@@ -181,7 +181,7 @@ MagnetJS.MMXClient = {
  * various message specific methods, like send or reply.
  * @param {object} contents an object containing your custom message body.
  * @param {MagnetJS.User|MagnetJS.User[]|string|string[]} recipientOrRecipients One or more {MagnetJS.User}
- * objects or userIdentifiers to be recipients for your message.
+ * objects or userIds to be recipients for your message.
  */
 MagnetJS.Message = function(contents, recipientOrRecipients) {
     this.meta = {};
@@ -206,11 +206,11 @@ MagnetJS.Message = function(contents, recipientOrRecipients) {
 };
 
 /**
- * Given {MagnetJS.User} object or userIdentifier, return a formatted object containing userId.
+ * Given {MagnetJS.User} object or userId, return a formatted object containing userId.
  */
 function formatUser(userOrUserId) {
     return {
-        userId: typeof userOrUserId == 'string' ? userOrUserId : userOrUserId.userIdentifier
+        userId: typeof userOrUserId == 'string' ? userOrUserId : userOrUserId.userId
     };
 }
 
@@ -346,7 +346,7 @@ MagnetJS.Message.prototype.send = function() {
             var mmxMeta = {
                 To: self.recipients,
                 From: {
-                    userId: mCurrentUser.userIdentifier
+                    userId: mCurrentUser.userId
                 },
                 NoAck: true,
                 mmxdistributed: true

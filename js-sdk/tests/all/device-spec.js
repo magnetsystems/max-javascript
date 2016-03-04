@@ -282,7 +282,7 @@ describe('Device checkInWithDevice', function() {
             setTimeout(function() {
                 expect(Max.App.initialized).toEqual(false);
                 expect(Max.getCurrentUser().userName).toEqual('jack.doe');
-                expect(Max.getCurrentUser().userIdentifier).toEqual('40288192510694f6015106960150000a');
+                expect(Max.getCurrentUser().userId).toEqual('40288192510694f6015106960150000a');
                 regDef.resolve('ok');
                 setTimeout(function() {
                     expect(Max.App.initialized).toEqual(true);

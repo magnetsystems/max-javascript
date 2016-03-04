@@ -106,12 +106,14 @@ MagnetJS.Device = {
                 Max.User.search({
                     limit: 1,
                     offset: 0,
-                    query: 'userIdentifier:'+data.device.userId,
+                    query: {
+                        userId: data.device.userId
+                    },
                     bypassReady: true
                 }).success(function(users) {
                     if (!users.length) return initialize();
 
-                    mCurrentUser = users[0];
+                    mCurrentUser = new MagnetJS.User(users[0]);
 
                     MagnetJS.MMXClient.registerDeviceAndConnect(data.device.userId, token)
                         .success(function() {

@@ -9,6 +9,11 @@
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
  * @param {string} [userObj.email] User's email.
+ * @property {string} userId User's user identifier.
+ * @property {string} userName User's username.
+ * @property {string} [firstName] User's first name.
+ * @property {string} [lastName] User's last name.
+ * @property {string} [email] User's email.
  */
 MagnetJS.User = function(userObj) {
     if (userObj.displayName == 'null null') delete userObj.displayName;
@@ -22,7 +27,8 @@ MagnetJS.User = function(userObj) {
     if (userObj.userId && userObj.userId.indexOf('%') != -1)
         userObj.userId = userObj.userId.split('%')[0];
 
-    if (userObj.userId && !userObj.userIdentifier) userObj.userIdentifier = userObj.userId;
+    if (!userObj.userId && userObj.userIdentifier) userObj.userId = userObj.userIdentifier;
+    delete userObj.userIdentifier;
     userObj.userName = userObj.userName || userObj.username || userObj.displayName;
 
     MagnetJS.Utils.mergeObj(this, userObj);
@@ -191,12 +197,14 @@ MagnetJS.User.getUsersByUserNames = function(usernames) {
 /**
  * Search for users with an advanced search query.
  * @param {object} [queryObj] A search query object.
- * @param {string} [queryObj.query] A search string. The string should be a user property and the value separated
- * by colon. For example, to search for a user by username, the string can be 'username:jon.doe'.
+ * @param {object} [queryObj.query] An object containing the user property and the search value as a key-value pair.
+ * For example, to search for a user by username, the object can be {userName:'jon.doe'}. See {MagnetJS.User} properties
+ * for acceptable search properties.
  * @param {number} [queryObj.limit] The number of results to return per page.
  * @param {number} [queryObj.offset] The starting index of results.
- * @param {string} [queryObj.orderby] A sort string. The string should be a user property and the sort direction
- * ['asc', 'desc'] separated by colon. For example, to order by username descending, the string can be 'userName:desc'.
+ * @param {object} [queryObj.orderby] An object containing the user property and the sort direction
+ * ['asc', 'desc'] as a key-value pair. For example, to order by username descending, the object can be
+ * {userName:'desc'}. See {MagnetJS.User} properties for acceptable search properties.
  * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
  */
 MagnetJS.User.search = function(queryObj) {
@@ -211,16 +219,26 @@ MagnetJS.User.search = function(queryObj) {
     queryObj = queryObj || {};
     queryObj.offset = queryObj.offset || 0;
     queryObj.limit = queryObj.limit || 1;
-    queryObj.query = queryObj.query || 'userName:*';
+    queryObj.query = queryObj.query || {userName : '*'};
 
-    if (queryObj.query.indexOf('username:') != -1)
-        queryObj.query = queryObj.query.replace('username:', 'userName:');
+    if (queryObj.query.userId)
+        queryObj.query.userIdentifier = queryObj.query.userId;
+    if (queryObj.orderby.userId)
+        queryObj.orderby.userIdentifier = queryObj.orderby.userId;
 
-    if (queryObj.orderby && queryObj.orderby.indexOf('username:') != -1)
-        queryObj.orderby = queryObj.orderby.replace('username:', 'userName:');
+    for(var key in queryObj) {
+        if (typeof queryObj[key] === 'string' ||
+            typeof queryObj[key] === 'number' ||
+            typeof queryObj[key] === 'boolean') {
+            qs += '&'+keyMap[key]+'='+queryObj[key];
+        } else if (queryObj[key] && typeof queryObj[key] == 'object') {
+            for (var propKey in queryObj[key]) {
+                if (propKey !== 'userId')
+                    qs += '&'+keyMap[key]+'='+propKey+':'+queryObj[key][propKey];
+            }
 
-    for(var key in queryObj)
-        qs += '&'+keyMap[key]+'='+queryObj[key];
+        }
+    }
     qs = qs != '' ? qs.replace('&', '?') : qs;
 
     var def = MagnetJS.Request({
