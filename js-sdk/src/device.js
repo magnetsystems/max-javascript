@@ -118,16 +118,18 @@ MagnetJS.Device = {
                             initialize();
                         })
                         .error(function(e) {
-                            if (e == 'not authorized')
-                                MagnetJS.User.clearSession();
+                            MagnetJS.User.clearSession();
+                            initialize();
                         });
 
                 }).error(function(e) {
-                    MagnetJS.Log.severe('checkInWithDevice failed', e);
+                    MagnetJS.User.clearSession();
+                    initialize();
                 });
 
             }, function(e) {
-                MagnetJS.Log.severe('checkInWithDevice failed', e);
+                MagnetJS.User.clearSession();
+                initialize();
             });
 
         });
