@@ -245,10 +245,10 @@ describe('Message', function() {
             my: messageContent
         };
         var recipients = [{
-            userName: 'username1',
+            userName: 'userName1',
             userIdentifier: testUserId
         }, {
-            userName: 'username2',
+            userName: 'userName2',
             userIdentifier: 'test-user-id-2'
         }];
         var msg = new Max.Message(content, recipients);
@@ -268,7 +268,7 @@ describe('Message', function() {
             my: messageContent
         };
         var recipient = {
-            userName: 'username1',
+            userName: 'userName1',
             userIdentifier: testUserId
         };
         var msg = new Max.Message(content, recipient);
@@ -374,12 +374,12 @@ describe('Message send', function() {
             my: messageContent
         };
         var recipients = [{
-            userName: 'username1',
+            userName: 'userName1',
             userIdentifier: testUserId
         }];
         var msg = new Max.Message(content, recipients);
-        msg.send().success(function(res) {
-            expect(res).toEqual('ok');
+        msg.send().success(function(msgId) {
+            expect(msg.msgId).toEqual(msgId);
             expect(sendSpy.calledOnce).toEqual(true);
             done();
         }).error(function(e) {
@@ -408,7 +408,7 @@ describe('Message send', function() {
         };
         Max.setUser(null);
         var recipients = [{
-            userName: 'username1',
+            userName: 'userName1',
             userIdentifier: testUserId
         }];
         var msg = new Max.Message(content, recipients);
@@ -426,7 +426,7 @@ describe('Message send', function() {
             my: messageContent
         };
         var recipients = [{
-            userName: 'username1',
+            userName: 'userName1',
             userIdentifier: testUserId
         }];
         Max.setConnection({

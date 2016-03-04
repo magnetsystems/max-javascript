@@ -6,14 +6,14 @@ describe('User', function() {
 
     it('should instantiate a new User', function(done) {
         var userObj = {
-            username: 'jack.doe',
+            userName: 'jack.doe',
             firstName: 'Jack',
             lastName: 'Doe',
             password: 'magnet',
             email: 'jack.doe@magnet.com'
         };
         var user = new Max.User(userObj);
-        expect(user.userName).toEqual(userObj.username);
+        expect(user.userName).toEqual(userObj.userName);
         expect(user.firstName).toEqual(userObj.firstName);
         expect(user.lastName).toEqual(userObj.lastName);
         expect(user.password).toEqual(userObj.password);
@@ -56,14 +56,14 @@ describe('User register', function() {
 
     it('should register a new user', function(done) {
         var userObj = {
-            username: 'jack.doe',
+            userName: 'jack.doe',
             firstName: 'Jack',
             lastName: 'Doe',
             password: 'magnet',
             email: 'jack.doe@magnet.com'
         };
         Max.User.register(userObj).success(function(user) {
-            expect(user.userName).toEqual(userObj.username);
+            expect(user.userName).toEqual(userObj.userName);
             expect(user.firstName).toEqual(userObj.firstName);
             expect(user.email).toEqual(userObj.email);
             done();
@@ -90,7 +90,7 @@ describe('User register', function() {
                 "tags": null,
                 "userAccountData": null,
                 "userIdentifier": "4028ba81531e7be0015333f9440e0017",
-                "userName": userObj.username,
+                "userName": userObj.userName,
                 "userRealm": "DB",
                 "userStatus": "ACTIVE"
             }));
@@ -100,7 +100,7 @@ describe('User register', function() {
     it('should fail registration', function(done) {
         var err = 'existing user';
         var userObj = {
-            username: 'jack.doe',
+            userName: 'jack.doe',
             firstName: 'Jack',
             lastName: 'Doe',
             password: 'magnet',
@@ -144,7 +144,7 @@ describe('User login', function() {
 
     it('should login a new user', function(done) {
         var userObj = {
-            username: 'jack.doe',
+            userName: 'jack.doe',
             password: 'magnet'
         };
         var regClient = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect');
@@ -165,7 +165,7 @@ describe('User login', function() {
                 'Content-Type': 'application/json'
             }, JSON.stringify({
                 user: {
-                    username: 'jack.doe',
+                    userName: 'jack.doe',
                     firstName: 'Jack',
                     lastName: 'Doe',
                     password: 'magnet',
@@ -178,7 +178,7 @@ describe('User login', function() {
 
     it('should fail login given incorrect credentials', function(done) {
         var userObj = {
-            username: 'jack.doe',
+            userName: 'jack.doe',
             password: 'magnet2'
         };
         Max.User.login(userObj).success(function(res) {
@@ -378,8 +378,8 @@ describe('User search', function() {
         Max.User.search({
             limit: 7,
             offset: 1,
-            orderby: 'username:desc',
-            query: 'username:*'
+            orderby: 'userName:desc',
+            query: 'userName:*'
         }).success(function (users) {
             expect(users.length).toEqual(1);
             var user1 = users[0];
@@ -459,7 +459,7 @@ describe('User getToken', function() {
 
 describe('User logout', function() {
     var xhr, requests;
-    var username = 'test-user';
+    var userName = 'test-user';
     var userId = 'test-id';
 
     beforeEach(function() {
@@ -473,7 +473,7 @@ describe('User logout', function() {
         };
         Max.App.initialized = true;
         Max.setUser({
-            userName: username,
+            userName: userName,
             userIdentifier: userId
         });
     });
@@ -481,7 +481,7 @@ describe('User logout', function() {
     afterEach(function() {
         xhr.restore();
         Max.setUser({
-            userName: username,
+            userName: userName,
             userIdentifier: userId
         });
     });
@@ -522,7 +522,7 @@ describe('User logout', function() {
 
 
 describe('User clearSession', function() {
-    var username = 'test-user';
+    var userName = 'test-user';
     var userId = 'test-id';
 
     beforeEach(function () {
@@ -531,7 +531,7 @@ describe('User clearSession', function() {
         };
         Max.App.initialized = true;
         Max.setUser({
-            userName: username,
+            userName: userName,
             userIdentifier: userId
         });
     });
@@ -542,7 +542,7 @@ describe('User clearSession', function() {
         };
         Max.App.initialized = true;
         Max.setUser({
-            userName: username,
+            userName: userName,
             userIdentifier: userId
         });
     });

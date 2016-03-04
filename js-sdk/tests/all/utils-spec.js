@@ -1519,14 +1519,14 @@ describe('onReady', function(){
 
 describe('getCurrentUser', function(){
     it('should return currently logged in user', function(done){
-        var username = 'test-user';
+        var userName = 'test-user';
         var userId = 'test-id';
         Max.setUser({
-            userName: username,
+            userName: userName,
             userIdentifier: userId
         });
         var user = Max.getCurrentUser();
-        expect(user.userName).toEqual(username);
+        expect(user.userName).toEqual(userName);
         expect(user.userIdentifier).toEqual(userId);
         done();
     });

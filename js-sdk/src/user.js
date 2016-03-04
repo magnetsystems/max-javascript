@@ -4,7 +4,7 @@
  * The User class is a local representation of a user in the MagnetMax platform. This class provides
  * various user specific methods, like authentication, signing up, and search.
  * @param {object} [userObj] An object containing user information.
- * @param {string} [userObj.username] User's username.
+ * @param {string} [userObj.userName] User's username.
  * @param {string} [userObj.password] User's preferred password.
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
@@ -32,7 +32,7 @@ MagnetJS.User = function(userObj) {
 /**
  * Registers a new user.
  * @param {object} userObj An object containing user information.
- * @param {string} userObj.username User's username.
+ * @param {string} userObj.userName User's username.
  * @param {string} userObj.password User's preferred password.
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
@@ -40,7 +40,7 @@ MagnetJS.User = function(userObj) {
  * @returns {MagnetJS.Promise} A promise object returning the new {MagnetJS.User} or reason of failure.
  */
 MagnetJS.User.register = function(userObj) {
-    userObj.userName = userObj.username;
+    userObj.userName = userObj.userName || userObj.username;
     var auth;
 
     MagnetJS.MMXClient.disconnect();
@@ -67,7 +67,7 @@ MagnetJS.User.register = function(userObj) {
 /**
  * Login as the given user.
  * @param {object} userObj An object containing user information.
- * @param {string} userObj.username User's username.
+ * @param {string} userObj.userName User's username.
  * @param {string} userObj.password User's preferred password.
  * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
  */
@@ -76,6 +76,7 @@ MagnetJS.User.login = function(userObj) {
     userObj.grant_type = 'password';
     userObj.client_id = MagnetJS.App.clientId;
     userObj.remember_me = userObj.remember_me || false;
+    userObj.username = userObj.userName || userObj.username;
 
     MagnetJS.MMXClient.disconnect();
 
@@ -85,7 +86,7 @@ MagnetJS.User.login = function(userObj) {
         data: userObj,
         contentType: 'application/x-www-form-urlencoded',
         headers: {
-           'Authorization': 'Basic ' + MagnetJS.Utils.stringToBase64(userObj.username+':'+userObj.password),
+           'Authorization': 'Basic ' + MagnetJS.Utils.stringToBase64(userObj.userName+':'+userObj.password),
            'MMS-DEVICE-ID': MMS_DEVICE_ID
         },
         isLogin: true
@@ -195,7 +196,7 @@ MagnetJS.User.getUsersByUserNames = function(usernames) {
  * @param {number} [queryObj.limit] The number of results to return per page.
  * @param {number} [queryObj.offset] The starting index of results.
  * @param {string} [queryObj.orderby] A sort string. The string should be a user property and the sort direction
- * ['asc', 'desc'] separated by colon. For example, to order by username descending, the string can be 'username:desc'.
+ * ['asc', 'desc'] separated by colon. For example, to order by username descending, the string can be 'userName:desc'.
  * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
  */
 MagnetJS.User.search = function(queryObj) {

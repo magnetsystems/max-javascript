@@ -3,17 +3,33 @@
  * @class
  * The Channel class is the local representation of a channel. This class provides
  * various channel specific methods, like publishing and subscribing users.
+ * @param {object} channelObj An object containing channel information.
+ * @property {string} name The name of the channel.
+ * @property {boolean} isPublic Set to true to make the channel public. Defaults to true.
+ * @property {string} [summary] An optional summary of the channel.
+ * @property {string} [publishPermission] Permissions level required to be able to post, must be in
+ * ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
+ * @property {string} [ownerUserID] The userID for the owner/creator of the channel.
  */
 MagnetJS.Channel = function(channelObj) {
     if (channelObj.topicName) {
         channelObj.name = channelObj.topicName;
         delete channelObj.topicName;
     }
-
     if (channelObj.creator && channelObj.creator.indexOf('%') != -1)
         channelObj.creator = channelObj.creator.split('%')[0];
+    if (channelObj.creator) {
+        channelObj.ownerUserID = channelObj.creator;
+        delete channelObj.creator;
+    }
+    if (channelObj.description) {
+        channelObj.summary = channelObj.description;
+        delete channelObj.description;
+    }
 
     channelObj.privateChannel = channelObj.userId ? true : false;
+    channelObj.isPublic = !channelObj.privateChannel;
+
     MagnetJS.Utils.mergeObj(this, channelObj);
 
     return this;
@@ -91,8 +107,9 @@ MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
  * Create a public or private channel.
  * @param {object} channelObj An object containing channel information.
  * @param {string} channelObj.name The name of the channel.
+ * @param {string} [channelObj.summary] An optional summary of the channel.
  * @param {boolean} [channelObj.isPublic] Set to true to make the channel public. Defaults to true.
- * @param {string} [channelObj.publishPermissions] Permissions level required to be able to post, must be in
+ * @param {string} [channelObj.publishPermission] Permissions level required to be able to post, must be in
  * ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
  * @returns {MagnetJS.Promise} A promise object returning the new {MagnetJS.Channel} or reason of failure.
  */
@@ -103,9 +120,9 @@ MagnetJS.Channel.create = function(channelObj) {
     setTimeout(function() {
         if (!channelObj.name)
             return def.reject('channel name required');
-        if (channelObj.publishPermissions
-            && (['anyone', 'owner', 'subscribers'].indexOf(channelObj.publishPermissions) == -1))
-            return def.reject('publishPermissions must be in ["anyone", "owner", "subscribers"]');
+        if (channelObj.publishPermission
+            && (['anyone', 'owner', 'subscribers'].indexOf(channelObj.publishPermission) == -1))
+            return def.reject('publishPermission must be in ["anyone", "owner", "subscribers"]');
 
         channelObj.channelName = channelObj.name;
         channelObj.ownerId = mCurrentUser.userIdentifier;
@@ -293,10 +310,29 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
 };
 
 /**
+ * Get the basic information about a private channel.
+ * @param {string} channelName The channel name.
+ * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ */
+MagnetJS.Channel.getPrivateChannel = function(channelName) {
+    return MagnetJS.Channel.getChannel(channelName, mCurrentUser.userIdentifier);
+};
+
+/**
+ * Get the basic information about a public channel.
+ * @param {string} channelName The channel name.
+ * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ */
+MagnetJS.Channel.getPublicChannel = function(channelName) {
+    return MagnetJS.Channel.getChannel(channelName);
+};
+
+/**
  * Get the basic channel information.
  * @param {string} channelName The channel name.
  * @param {string} [userId] The userId of the channel owner if the channel is private.
  * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ * @ignore
  */
 MagnetJS.Channel.getChannel = function(channelName, userId) {
     var def = new MagnetJS.Deferred();
@@ -402,7 +438,7 @@ MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
 
     setTimeout(function() {
         if (!self.name) return def.reject('invalid channel');
-        if (!self.isOwner() && self.isPrivate()) return def.reject('insufficient privileges');
+        if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
 
         for (var i in subscribers)
             subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
@@ -411,7 +447,7 @@ MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
             method: 'POST',
             url: '/com.magnet.server/channel/'+self.name+'/subscribers/add',
             data: {
-                privateChannel: self.isPrivate(),
+                privateChannel: !self.isPublic,
                 subscribers: subscriberlist
             }
         }, function() {
@@ -436,7 +472,7 @@ MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
 
     setTimeout(function() {
         if (!self.name) return def.reject('invalid channel');
-        if (!self.isOwner() && self.isPrivate()) return def.reject('insufficient privileges');
+        if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
 
         for (var i in subscribers)
             subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userIdentifier : subscribers[i]);
@@ -445,7 +481,7 @@ MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
             method: 'POST',
             url: '/com.magnet.server/channel/'+self.name+'/subscribers/remove',
             data: {
-                privateChannel: self.isPrivate(),
+                privateChannel: !self.isPublic,
                 subscribers: subscriberlist
             }
         }, function() {
@@ -460,7 +496,7 @@ MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
 
 /**
  * Subscribe the current userto the channel.
- * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
+ * @returns {MagnetJS.Promise} A promise object returning subscription Id or reason of failure.
  */
 MagnetJS.Channel.prototype.subscribe = function() {
     var self = this;
@@ -490,7 +526,7 @@ MagnetJS.Channel.prototype.subscribe = function() {
                 if (json.mmx)
                     payload = JSON.parse(json.mmx);
 
-                def.resolve(payload);
+                def.resolve(payload.subscriptionId);
             }, null, null, null, iqId,  null);
 
             mXMPPConnection.send(payload.tree());
@@ -534,7 +570,7 @@ MagnetJS.Channel.prototype.unsubscribe = function() {
                 if (json.mmx)
                     payload = JSON.parse(json.mmx);
 
-                def.resolve(payload);
+                def.resolve(payload.message);
             }, null, null, null, iqId,  null);
 
             mXMPPConnection.send(payload.tree());
@@ -557,7 +593,7 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
     var self = this;
     var def = new MagnetJS.Deferred();
     var iqId = MagnetJS.Utils.getCleanGUID();
-    var messageId = MagnetJS.Utils.getCleanGUID();
+    self.msgId = MagnetJS.Utils.getCleanGUID();
     var dt = MagnetJS.Utils.dateToISO8601(new Date());
 
     setTimeout(function() {
@@ -579,7 +615,7 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
                 var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'set', id: iqId})
                     .c('pubsub', {xmlns: 'http://jabber.org/protocol/pubsub'})
                     .c('publish', {node: self.getNodePath()})
-                    .c('item', {id: messageId})
+                    .c('item', {id: self.msgId})
                     .c('mmx', {xmlns: 'com.magnet:msg:payload'})
                     .c('mmxmeta', mmxMeta).up()
                     .c('meta', meta).up()
@@ -591,7 +627,7 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
                     if (json.error)
                         return def.reject(json.error._code + ' : ' + json.error._type);
 
-                    def.resolve('ok');
+                    def.resolve(self.msgId);
                 }, null, null, null, iqId, null);
 
                 mXMPPConnection.send(payload.tree());
@@ -649,7 +685,7 @@ MagnetJS.Channel.prototype.delete = function() {
                 if (json.mmx)
                     payload = JSON.parse(json.mmx);
 
-                def.resolve(payload);
+                def.resolve(payload.message);
             }, null, null, null, iqId,  null);
 
             mXMPPConnection.send(payload.tree());
@@ -667,24 +703,7 @@ MagnetJS.Channel.prototype.delete = function() {
  * @returns {boolean} True if the currently logged in user is the owner of the channel.
  */
 MagnetJS.Channel.prototype.isOwner = function() {
-    return this.userId == mCurrentUser.userIdentifier || (this.creator && this.creator == Strophe.getBareJidFromJid(mCurrentUser.jid));
-};
-
-/**
- * Determines if the channel is private.
- * @returns {boolean} True if the channel is private.
- * @ignore
- */
-MagnetJS.Channel.prototype.isPrivate = function() {
-    return this.privateChannel === true;
-};
-
-/**
- * Determines if the channel is public.
- * @returns {boolean} True if the channel is public.
- */
-MagnetJS.Channel.prototype.isPublic = function() {
-    return this.privateChannel === false;
+    return this.userId == mCurrentUser.userIdentifier || (this.ownerUserID && this.ownerUserID == mCurrentUser.userIdentifier);
 };
 
 /**

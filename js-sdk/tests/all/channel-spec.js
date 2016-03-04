@@ -113,7 +113,7 @@ describe('Channel create', function() {
     it('should create a private channel', function(done) {
         var channelObj = {
             "name": channelName,
-            publishPermissions: 'subscribers',
+            publishPermission: 'subscribers',
             isPublic: false
         };
         var requestStub = sinon.stub(Max, 'Request');
@@ -134,7 +134,7 @@ describe('Channel create', function() {
     it('should fail creation given invalid publish permissions', function(done) {
         var channelObj = {
             "name": channelName,
-            publishPermissions: 'myself',
+            publishPermission: 'myself',
             isPublic: false
         };
         var requestStub = sinon.stub(Max, 'Request');
@@ -144,7 +144,7 @@ describe('Channel create', function() {
             Max.Request.restore();
             done();
         }).error(function(e) {
-            expect(e).toContain('publishPermissions must be');
+            expect(e).toContain('publishPermission must be');
             Max.Request.restore();
             done();
         });
@@ -152,7 +152,7 @@ describe('Channel create', function() {
 
     it('should fail creation if name not set', function(done) {
         var channelObj = {
-            publishPermissions: 'myself',
+            publishPermission: 'myself',
             isPublic: false
         };
         var requestStub = sinon.stub(Max, 'Request');
@@ -257,7 +257,7 @@ describe('Channel findChannelsBySubscribers', function() {
         Max.Channel.findChannelsBySubscribers(testUserId).success(function(channels) {
             expect(channels.length).toEqual(1);
             expect(channels[0].name).toEqual(testChannelId);
-            expect(channels[0].creator).toEqual(testUserId);
+            expect(channels[0].ownerUserID).toEqual(testUserId);
             expect(channels[0].privateChannel).toEqual(false);
             Max.Request.restore();
             done();
@@ -382,7 +382,7 @@ describe('Channel getChannel', function() {
         Max.setConnection(null);
     });
 
-    it('should get all subscribed channels', function(done) {
+    it('should get channel given channel name', function(done) {
         var connStub = {
             addHandler: function(cb) {
                 var xmlStr = "<mmx xmlns='com.magnet:pubsub' command='getTopic' ctype='application/json'>" +
@@ -403,7 +403,7 @@ describe('Channel getChannel', function() {
         Max.Channel.getChannel(testChannelName, testUserId).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
             expect(channel.privateChannel).toEqual(false);
-            expect(channel.creator).toEqual(testUserId);
+            expect(channel.ownerUserID).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
             done();
         }).error(function(e) {
@@ -412,6 +412,65 @@ describe('Channel getChannel', function() {
         });
     });
 
+    it('should get channel given private channel name', function(done) {
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<mmx xmlns='com.magnet:pubsub' command='getTopic' ctype='application/json'>" +
+                    "{&quot;isCollection&quot;:false,&quot;userId&quot;:&quot;"+testUserId+"&quot;,&quot;" +
+                    "description&quot;:&quot;&quot;,&quot;isPersistent&quot;:true,&quot;maxItems&quot;:-1," +
+                    "&quot;maxPayloadSize&quot;:2097152,&quot;creationDate&quot;:&quot;2016-02-26T21:27:23.014Z" +
+                    "&quot;,&quot;modificationDate&quot;:&quot;2016-02-26T21:27:23.015Z&quot;,&quot;" +
+                    "publisherType&quot;:&quot;subscribers&quot;,&quot;creator&quot;:&quot;"+testUserId+
+                    "%gmbil1ewswo@mmx&quot;,&quot;subscriptionEnabled&quot;:true,&quot;" +
+                    "topicName&quot;:&quot;"+testChannelName+"&quot;}</mmx>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        Max.Channel.getPrivateChannel(testChannelName).success(function(channel) {
+            expect(channel.name).toEqual(testChannelName);
+            expect(channel.privateChannel).toEqual(true);
+            expect(channel.ownerUserID).toEqual(testUserId);
+            expect(sendSpy.calledOnce).toEqual(true);
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should get channel given public channel name', function(done) {
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<mmx xmlns='com.magnet:pubsub' command='getTopic' ctype='application/json'>" +
+                    "{&quot;isCollection&quot;:false,&quot;" +
+                    "description&quot;:&quot;&quot;,&quot;isPersistent&quot;:true,&quot;maxItems&quot;:-1," +
+                    "&quot;maxPayloadSize&quot;:2097152,&quot;creationDate&quot;:&quot;2016-02-26T21:27:23.014Z" +
+                    "&quot;,&quot;modificationDate&quot;:&quot;2016-02-26T21:27:23.015Z&quot;,&quot;" +
+                    "publisherType&quot;:&quot;subscribers&quot;,&quot;creator&quot;:&quot;"+testUserId+
+                    "%gmbil1ewswo@mmx&quot;,&quot;subscriptionEnabled&quot;:true,&quot;" +
+                    "topicName&quot;:&quot;"+testChannelName+"&quot;}</mmx>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        Max.Channel.getPublicChannel(testChannelName).success(function(channel) {
+            expect(channel.name).toEqual(testChannelName);
+            expect(channel.privateChannel).toEqual(false);
+            expect(channel.ownerUserID).toEqual(testUserId);
+            expect(sendSpy.calledOnce).toEqual(true);
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
 });
 
 describe('Channel getAllSubscribers', function() {
@@ -705,8 +764,8 @@ describe('Channel subscribe', function() {
             "privateChannel": false
         });
         Max.setConnection(connStub);
-        channel.subscribe().success(function(status) {
-            expect(status.msg).toEqual('Success');
+        channel.subscribe().success(function(subscriptionId) {
+            expect(status).not.toBeUndefined();
             expect(sendSpy.calledOnce).toEqual(true);
             done();
         }).error(function(e) {
@@ -763,7 +822,7 @@ describe('Channel unsubscribe', function() {
         });
         Max.setConnection(connStub);
         channel.unsubscribe().success(function(status) {
-            expect(status.message).toEqual('1 subscription is cancelled');
+            expect(status).toEqual('1 subscription is cancelled');
             expect(sendSpy.calledOnce).toEqual(true);
             done();
         }).error(function(e) {
@@ -803,10 +862,10 @@ describe('Channel publish', function() {
             my: messageContent
         };
         var recipients = [{
-            userName: 'username1',
+            userName: 'userName1',
             userIdentifier: testUserId
         }, {
-            userName: 'username2',
+            userName: 'userName2',
             userIdentifier: 'test-user-id-2'
         }];
         var msg = new Max.Message(content, recipients);
@@ -834,8 +893,8 @@ describe('Channel publish', function() {
             "privateChannel": false
         });
         Max.setConnection(connStub);
-        channel.publish(msg).success(function(status) {
-            expect(status).toEqual('ok');
+        channel.publish(msg).success(function(msgId) {
+            expect(channel.msgId).toEqual(msgId);
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
@@ -865,10 +924,10 @@ describe('Channel publish', function() {
             my: messageContent
         };
         var recipients = [{
-            userName: 'username1',
+            userName: 'userName1',
             userIdentifier: testUserId
         }, {
-            userName: 'username2',
+            userName: 'userName2',
             userIdentifier: 'test-user-id-2'
         }];
         var msg = new Max.Message(content, recipients);
@@ -899,8 +958,8 @@ describe('Channel publish', function() {
             type: 'text/plain'
         };
         Max.setConnection(connStub);
-        channel.publish(msg, mockFile).success(function(status) {
-            expect(status).toEqual('ok');
+        channel.publish(msg, mockFile).success(function(msgId) {
+            expect(channel.msgId).toEqual(msgId);
             Max.Uploader = oUploader;
             done();
         }).error(function(e) {
@@ -915,10 +974,10 @@ describe('Channel publish', function() {
             my: messageContent
         };
         var recipients = [{
-            userName: 'username1',
+            userName: 'userName1',
             userIdentifier: testUserId
         }, {
-            userName: 'username2',
+            userName: 'userName2',
             userIdentifier: 'test-user-id-2'
         }];
         var msg = new Max.Message(content, recipients);
@@ -947,8 +1006,8 @@ describe('Channel publish', function() {
             "privateChannel": false
         });
         Max.setConnection(connStub);
-        channel.publish(msg).success(function(status) {
-            expect(status).toEqual('failed-test');
+        channel.publish(msg).success(function(msgId) {
+            expect(msgId).toEqual('failed-test');
             done();
         }).error(function(e) {
             expect(e).toEqual('500 : wait');
@@ -1007,7 +1066,7 @@ describe('Channel delete', function() {
         });
         Max.setConnection(connStub);
         channel.delete().success(function (status) {
-            expect(status.message).toEqual('1 topic is deleted');
+            expect(status).toEqual('1 topic is deleted');
             done();
         }).error(function (e) {
             expect(e).toEqual('failed-test');

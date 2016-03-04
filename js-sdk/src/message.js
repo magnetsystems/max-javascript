@@ -327,8 +327,8 @@ function nodePathToChannel(nodeStr) {
 MagnetJS.Message.prototype.send = function() {
     var self = this;
     var deferred = new MagnetJS.Deferred();
-    var msgId = MagnetJS.Utils.getCleanGUID();
     var dt = MagnetJS.Utils.dateToISO8601(new Date());
+    self.msgId = MagnetJS.Utils.getCleanGUID();
 
     setTimeout(function() {
         if (!self.recipients.length)
@@ -336,10 +336,8 @@ MagnetJS.Message.prototype.send = function() {
         if (!mCurrentUser)
             return deferred.reject('session expired');
 
-        if (!mXMPPConnection || !mXMPPConnection.connected) {
-            // TODO: replace with reliable offline
+        if (!mXMPPConnection || !mXMPPConnection.connected)
             return deferred.reject('not connected');
-        }
 
         self.sender = mCurrentUser;
 
@@ -355,7 +353,7 @@ MagnetJS.Message.prototype.send = function() {
             };
             mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $msg({type: 'chat', id: msgId})
+            var payload = $msg({type: 'chat', id: self.msgId})
                 .c('mmx', {xmlns: 'com.magnet:msg:payload'})
                 .c('mmxmeta', mmxMeta).up()
                 .c('meta', meta).up()
@@ -369,8 +367,8 @@ MagnetJS.Message.prototype.send = function() {
                 if (json.error)
                     return deferred.reject(json.error._code + ' : ' + json.error._type);
 
-                deferred.resolve('ok');
-            }, null, null, null, msgId, null);
+                deferred.resolve(self.msgId);
+            }, null, null, null, self.msgId, null);
 
             mXMPPConnection.send(payload.tree());
 
