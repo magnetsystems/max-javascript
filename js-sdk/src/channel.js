@@ -49,14 +49,48 @@ MagnetJS.Channel = function(channelObj) {
 };
 
 /**
- * Find the public channels that start with the specified text.
- * @param {string} channelName The name of the channel.
+ * Find public channels based on search criteria.
+ * @param {string} [channelName] The name of the channel.
+ * @param {string[]} [tags] An array of tags to filter by.
+ * @param {number} [limit] The number of users to return in the request. Defaults to 10.
+ * @param {number} [offset]	The starting index of users to return.
+ * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ */
+MagnetJS.Channel.findPublicChannels = function(channelName, tags, limit, offset) {
+    return MagnetJS.Channel.findChannels(channelName, tags, limit, offset, 'public');
+};
+
+/**
+ * Find private channels based on search criteria. Only private channels created by the current
+ * user will be returned.
+ * @param {string} [channelName] The name of the channel.
+ * @param {string[]} [tags] An array of tags to filter by.
+ * @param {number} [limit] The number of users to return in the request. Defaults to 10.
+ * @param {number} [offset]	The starting index of users to return.
+ * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ */
+MagnetJS.Channel.findPrivateChannels = function(channelName, tags, limit, offset) {
+    return MagnetJS.Channel.findChannels(channelName, tags, limit, offset, 'private');
+};
+
+/**
+ * Find public or  channels that start with the specified text.
+ * @param {string} [channelName] The name of the channel.
+ * @param {string[]} [tags] An array of tags to filter by.
+ * @param {number} [limit] The number of users to return in the request. Defaults to 10.
+ * @param {number} [offset]	The starting index of users to return.
+ * @param {string} [type] The type of search. Must be in ['private', 'public', 'both']. Defaults to both.
  * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} or reason of failure.
  */
-MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
+MagnetJS.Channel.findChannels = function(channelName, tags, limit, offset, type) {
     var def = new MagnetJS.Deferred();
     var iqId = MagnetJS.Utils.getCleanGUID();
     var channels = [];
+    limit = limit || 10;
+    offset = offset || 0;
+    type = type || 'both';
+    type = type == 'private' ? 'personal' : type;
+    type = type == 'public' ? 'global' : type;
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
@@ -65,26 +99,26 @@ MagnetJS.Channel.findPublicChannelsByName = function(channelName) {
         try {
             var mmxMeta = {
                 operator: 'AND',
-                limit: -1,       // -1 for max # of records imposed by system, or > 0
-                offset: 0,       // optional, starting from zero
-                type: 'global'  // personal|global|both, default is global
+                limit: limit,     // -1 for max # of records imposed by system, or > 0
+                offset: offset,
+                type: type
             };
             if (channelName)
                 mmxMeta.topicName = {
                     match: 'EXACT',
                     value: channelName
                 };
-
-            // TODO: implement tags
+            if (tags && tags.length)
+                mmxMeta.tags = {
+                    match: 'EXACT',
+                    value: tags
+                };
             /*
                 description: {
                     match: EXACT|PREFIX|SUFFIX,     // optional
                     value: topic description
                 },
-                tags: {
-                    match: EXACT,                       // optional
-                    values: [ tag1, tag2...]            // multi-values
-                }
+                t
              */
 
             mmxMeta = JSON.stringify(mmxMeta);
@@ -294,25 +328,11 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
                         name: data[i].channelName,
                         userId: (data[i].owner && data[i].owner.userId) ? data[i].owner.userId : null
                     });
-                    if (data[i].messages && data[i].messages.length) {
-                        for (j = 0; j < data[i].messages.length; ++j) {
-                            var mmxMsg = new MagnetJS.Message();
-                            mmxMsg.sender = new MagnetJS.User(data[i].messages[j].publisher);
-                            mmxMsg.timestamp = data[i].messages[j].metaData.creationDate;
-                            mmxMsg.channel = data[i].channel;
-                            mmxMsg.messageID = data[i].messages[j].itemId;
-                            if (data[i].messages[j].content) {
-                                attachmentRefsToAttachment(mmxMsg, data[i].messages[j].content);
-                                mmxMsg.messageContent = data[i].messages[j].content;
-                            }
-                            data[i].messages[j] = mmxMsg;
-                        }
-                    }
-                    if (data[i].subscribers && data[i].subscribers.length) {
-                        for (j = 0; j < data[i].subscribers.length; ++j) {
-                            data[i].subscribers[j] = new MagnetJS.User(data[i].subscribers[j]);
-                        }
-                    }
+                    data[i].messages = parseMessageList(data[i].messages, data[i].channel);
+                    data[i].subscribers = MagnetJS.Utils.objToObjAry(data[i].subscribers);
+                    for (j = 0; j < data[i].subscribers.length; ++j)
+                        data[i].subscribers[j] = new MagnetJS.User(data[i].subscribers[j]);
+
                     channelSummaries.push(data[i]);
                 }
             }
@@ -326,8 +346,28 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
     return def.promise;
 };
 
+// converts an ary of message data into Message object
+function parseMessageList(ary, channel) {
+    if (!ary) return [];
+    if (!MagnetJS.Utils.isArray(ary)) ary = [ary];
+    for (j = 0; j < ary.length; ++j) {
+        var mmxMsg = new MagnetJS.Message();
+        mmxMsg.sender = new MagnetJS.User(ary[j].publisher);
+        mmxMsg.timestamp = MagnetJS.Utils.ISO8601ToDate(ary[j].metaData.creationDate);
+        mmxMsg.channel = channel;
+        mmxMsg.messageID = ary[j].itemId;
+        if (ary[j].content) {
+            attachmentRefsToAttachment(mmxMsg, ary[j].content);
+            mmxMsg.messageContent = ary[j].content;
+        }
+        ary[j] = mmxMsg;
+    }
+    return ary;
+}
+
 /**
- * Get the basic information about a private channel.
+ * Get the basic information about a private channel. Only private channels created by the current
+ * user will be returned.
  * @param {string} channelName The channel name.
  * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
  */
@@ -394,13 +434,17 @@ MagnetJS.Channel.getChannel = function(channelName, userId) {
 
 /**
  * Get a list of the users subscribed to the channel.
+ * @param {number} [limit] The number of users to return in the request. Defaults to 10.
+ * @param {number} [offset]	The starting index of users to return.
  * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
  */
-MagnetJS.Channel.prototype.getAllSubscribers = function() {
+MagnetJS.Channel.prototype.getAllSubscribers = function(limit, offset) {
     var self = this;
     var def = new MagnetJS.Deferred();
     var iqId = MagnetJS.Utils.getCleanGUID();
     var users = [];
+    limit = limit || 10;
+    offset = offset || 0;
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
@@ -410,8 +454,8 @@ MagnetJS.Channel.prototype.getAllSubscribers = function() {
             var mmxMeta = {
                 userId: self.userId,     // null for global topic, or a user topic under a user ID
                 topicName: self.name,    // without /appID/* or /appID/userID
-                limit: -1,               // -1 for unlimited, or > 0
-                offset: 0                // offset starting from zero
+                limit: limit,            // -1 for unlimited, or > 0
+                offset: offset           // offset starting from zero
             };
 
             mmxMeta = JSON.stringify(mmxMeta);
@@ -610,7 +654,7 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
     var self = this;
     var def = new MagnetJS.Deferred();
     var iqId = MagnetJS.Utils.getCleanGUID();
-    self.msgId = MagnetJS.Utils.getCleanGUID();
+    self.msgId = MagnetJS.Utils.getCleanGUID()+'c';
     var dt = MagnetJS.Utils.dateToISO8601(new Date());
 
     setTimeout(function() {
@@ -671,6 +715,86 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
 
     return def.promise;
 };
+
+/**
+ * Retrieve all of the messages for this channel within date range.
+ * @param {Date} [startDate] Filter based on start date, or null for no filter.
+ * @param {Date} [endDate] Filter based on end date, or null for no filter.
+ * @param {number} [limit] The number of messages to return in the request.
+ * @param {number} [offset]	The starting index of messages to return.
+ * @param {boolean} [ascending] Set to false to sort by descending order. Defaults to true.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Message} and total number of messages
+ * payloador reason of failure.
+ */
+MagnetJS.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, ascending) {
+    var self = this;
+    var def = new MagnetJS.Deferred();
+    var iqId = MagnetJS.Utils.getCleanGUID();
+    startDate = MagnetJS.Utils.dateToISO8601(startDate);
+    endDate = MagnetJS.Utils.dateToISO8601(endDate);
+    limit = limit || 10;
+    offset = offset || 0;
+    ascending = typeof ascending !== 'boolean' ? true : ascending;
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session timeout');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+
+        try {
+            var mmxMeta = {
+                userId: self.userId,         // null for global topic, or a user topic under a user ID
+                topicName: self.name,        // without /appID/* or /appID/userID
+                options: {
+                    subscriptionId: null,    // optional (if null, any subscriptions to the topic will be assumed)
+                    since: startDate,        // optional (inclusive, 2015-03-06T13:23:45.783Z)
+                    until: endDate,          // optional (inclusive)
+                    ascending: ascending,    // optional.  Default is false (i.e. descending)
+                    maxItems: limit,         // optional.  -1 (default) for system specified max, or > 0.
+                    offset: offset           // optional.  offset starting from zero
+                }
+            };
+
+            mmxMeta = JSON.stringify(mmxMeta);
+
+            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: iqId})
+                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'fetch', ctype: 'application/json'}, mmxMeta);
+
+            mXMPPConnection.addHandler(function(msg, json) {
+                json = json || x2js.xml2json(msg);
+
+                if (json.mmx) {
+                    payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
+                    if (payload) {
+                        payload.items = MagnetJS.Utils.objToObjAry(payload.items);
+                        formatMessage([], self, payload.items, 0, function(messages) {
+                            def.resolve(messages, payload.totalCount);
+                        });
+                    }
+                }
+            }, null, null, null, iqId,  null);
+
+            mXMPPConnection.send(payload.tree());
+
+        } catch (e) {
+            def.reject(e);
+        }
+    }, 0);
+
+    return def.promise;
+};
+
+// recursively convert message metadata into Message object
+function formatMessage(messages, channel, msgAry, index, cb) {
+    if (!msgAry[index] || !msgAry[index].payloadXML) return cb(messages);
+    var jsonObj = x2js.xml_str2json(msgAry[index].payloadXML);
+    var mmxMsg = new MagnetJS.Message();
+
+    mmxMsg.formatMessage(jsonObj, channel, function() {
+        mmxMsg.messageID = msgAry[index].itemId;
+        messages.push(mmxMsg);
+        formatMessage(messages, channel, msgAry, ++index, cb);
+    });
+}
 
 /**
  * Delete this channel

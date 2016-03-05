@@ -39,7 +39,7 @@ describe('registerListener', function() {
             }
         });
         var messageStub = sinon.stub(Max.Message.prototype, 'formatMessage');
-        messageStub.callsArg(1);
+        messageStub.callsArg(2);
         var testHandlerId = 'testHandler';
         var listener = new Max.MessageListener(testHandlerId, function(mmxMessage) {
             expect(JSON.stringify(mmxMessage)).toContain('recipients');
@@ -75,7 +75,7 @@ describe('unregisterListener', function() {
             }
         });
         var messageStub = sinon.stub(Max.Message.prototype, 'formatMessage');
-        messageStub.callsArg(1);
+        messageStub.callsArg(2);
         var testHandlerId = 'testHandler';
         var listener = new Max.MessageListener(testHandlerId, function(mmxMessage) {
             expect(JSON.stringify(mmxMessage)).toContain('recipients');
@@ -325,7 +325,7 @@ describe('Message formatMessage', function() {
             "_id": "/gmbil1ewswo/402881295313de0d015315c820bc0004/1456521126999__402881295313de0d015315c820bc0004%gmbil1ewswo@mmx__53yFQ"
         };
         var msg = new Max.Message();
-        msg.formatMessage(msgText, function() {
+        msg.formatMessage(msgText, null, function() {
             expect(msg.receivedMessage).toEqual(true);
             expect(msg.sender.userId).toEqual(fromUid);
             expect(msg.attachments).not.toBeUndefined();
@@ -343,11 +343,15 @@ describe('Message formatMessage', function() {
 describe('Message send', function() {
 
     var testUserId = 'test-user-id-1';
+    var testDeviceId = 'test-device-id-1';
     var messageContent = 'test-message';
 
     beforeEach(function() {
         Max.setUser({
             userId: testUserId
+        });
+        Max.setDevice({
+            deviceId: testDeviceId
         });
         Max.setConnection(null);
     });

@@ -332,16 +332,20 @@ describe('Utils getBrowser', function(){
 
 describe('Utils getOS', function(){
 
+    var either = function(str) {
+        return ['Mac OS X', 'Linux'].indexOf(str) != -1;
+    };
+
     it('should return a string identifying operating system', function(done){
         var os = Max.Utils.getOS();
-        expect(os.os).toEqual('Mac OS X');
+        expect(either(os.os)).toEqual(true);
         done();
     });
 
     it('should return a string identifying operating system', function(done){
 
         var os = Max.Utils.getOS();
-        expect(os.os).toEqual('Mac OS X');
+        expect(either(os.os)).toEqual(true);
         done();
     });
 
@@ -1520,8 +1524,9 @@ describe('init', function(){
 		var checkInWithDeviceStub  = sinon.stub(Max.Device, 'checkInWithDevice', function(cb) {
             cb();
         });
-		var loginWithAccessTokenStub = sinon.stub(Max.User, 'loginWithAccessToken');
-        loginWithAccessTokenStub.callsArgWith(0, 'auth token missing');
+		var loginWithAccessTokenStub = sinon.stub(Max.User, 'loginWithAccessToken', function(cb) {
+            cb('auth token missing');
+        });
         Max.setUser({
             userId: 'test-user-id'
         });

@@ -285,6 +285,125 @@ describe('User loginWithRefreshToken', function() {
 
 });
 
+describe('User loginWithAccessToken', function() {
+    beforeEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+    });
+
+    it('should return error if token missing', function (done) {
+        Max.Cookie.remove('magnet-max-auth-token');
+        Max.User.loginWithAccessToken(function(e) {
+            expect(e).toEqual('auth token missing');
+            done();
+        });
+    });
+
+    it('should return error if unable to get user info', function (done) {
+        Max.Cookie.create('magnet-max-auth-token', 'test-token', 1);
+        var err = 'connection failure';
+        var getUserInfoStub = sinon.stub(Max.User, 'getUserInfo', function() {
+            var d = new Max.Deferred();
+            setTimeout(function(){d.reject(err) }, 0);
+            return d.promise;
+        });
+        Max.User.loginWithAccessToken(function(e) {
+            expect(e).toEqual(err);
+            Max.User.getUserInfo.restore();
+            done();
+        });
+    });
+
+    it('should return error if unable to connect to mmx', function (done) {
+        Max.Cookie.create('magnet-max-auth-token', 'test-token', 1);
+        var err = 'auth failure';
+        var getUserInfoStub = sinon.stub(Max.User, 'getUserInfo', function() {
+            var d = new Max.Deferred();
+            setTimeout(function(){d.resolve() }, 0);
+            return d.promise;
+        });
+        var registerDeviceAndConnectStub = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect', function() {
+            var d = new Max.Deferred();
+            setTimeout(function(){d.reject(err) }, 0);
+            return d.promise;
+        });
+        Max.User.loginWithAccessToken(function(e) {
+            expect(e).toEqual(err);
+            Max.User.getUserInfo.restore();
+            Max.MMXClient.registerDeviceAndConnect.restore();
+            done();
+        });
+    });
+
+    it('should return error if unable to connect to mmx', function (done) {
+        Max.Cookie.create('magnet-max-auth-token', 'test-token', 1);
+        var getUserInfoStub = sinon.stub(Max.User, 'getUserInfo', function() {
+            var d = new Max.Deferred();
+            setTimeout(function(){d.resolve() }, 0);
+            return d.promise;
+        });
+        var registerDeviceAndConnectStub = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect', function() {
+            var d = new Max.Deferred();
+            setTimeout(function(){d.resolve() }, 0);
+            return d.promise;
+        });
+        Max.User.loginWithAccessToken(function(e) {
+            expect(e).toBeUndefined();
+            Max.User.getUserInfo.restore();
+            Max.MMXClient.registerDeviceAndConnect.restore();
+            done();
+        });
+    });
+
+});
+
+describe('User getUserInfo', function() {
+    beforeEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+    });
+
+    it('should login user with refresh token', function (done) {
+        var userId = "40288192510694f6015106960150000a";
+        var userName = "jack.doe";
+        var clientId = "a7a9e901-abc5-4485-af1c-0b088b34f44d";
+        var requestStub = sinon.stub(Max, 'Request', function(req, cb) {
+            setTimeout(function() {
+                cb({
+                    "userIdentifier": userId,
+                    "clientId": clientId,
+                    "firstName": "Jack",
+                    "lastName": "Doe",
+                    "email": "jack.doe@magnet.com",
+                    "userName": userName,
+                    "password": "n/a",
+                    "userRealm": "DB",
+                    "roles": [
+                        "USER"
+                    ],
+                    "otpCode": "n/a",
+                    "userAccountData": {}
+                });
+            }, 0);
+            return new Max.Deferred();
+        });
+        Max.User.getUserInfo().success(function (user) {
+            expect(user.userId).toEqual(userId);
+            expect(user.userName).toEqual(userName);
+            expect(user.clientId).toEqual(clientId);
+            Max.Request.restore();
+            done();
+        }).error(function (e) {
+            expect(e).toEqual('failed-test');
+            Max.Request.restore();
+            done();
+        });
+    });
+
+});
+
 describe('User getUsersByUserNames', function() {
     var xhr, requests;
 

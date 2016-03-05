@@ -30,7 +30,7 @@ MagnetJS.registerListener = function(listener) {
         var jsonObj = x2js.xml2json(msg);
         var mmxMsg = new MagnetJS.Message();
 
-        mmxMsg.formatMessage(jsonObj, function() {
+        mmxMsg.formatMessage(jsonObj, null, function() {
             listener.handler(mmxMsg);
         });
         return true;
@@ -182,6 +182,17 @@ MagnetJS.MMXClient = {
  * various message specific methods, like send or reply.
  * @param {object} contents an object containing your custom message body.
  * @param {MagnetJS.User|MagnetJS.User[]|string|string[]} recipientOrRecipients One or more {MagnetJS.User}
+ * @property {object|MagnetJS.User} sender The message sender.
+ * @property {object} messageContent The custom message body object sent by the sender.
+ * @property {string} messageID An identifier for the message. It can be used to determine whether a message
+ * has already been displayed on a chat screen.
+ * @property {MagnetJS.Attachment[]} [attachments] An array of message attachments.
+ * @property {MagnetJS.Channel} [channel] If the message was sent to a channel, the channel object will be
+ * populated with basic channel information. Use the {MagnetJS.Channel.getChannel} method to obtain full channel
+ * information.
+ * @property {Date} timestamp ISO-8601 formatted timestamp.
+ * @property {object[]|MagnetJS.User[]} [recipients] An array of recipients, if the message was sent to
+ * individual users instead of through a channel.
  * objects or userIds to be recipients for your message.
  */
 MagnetJS.Message = function(contents, recipientOrRecipients) {
@@ -218,16 +229,18 @@ function formatUser(userOrUserId) {
 /**
  * Given an XMPP payload converted to JSON, set the properties of the {MagnetJS.Message} object.
  * @param {object} msg A JSON representation of an xmpp payload.
+ * @param {MagnetJS.Channel} [channel] The channel this message belongs to.
  * @param {function} callback This function fires after the format is complete.
  * @ignore
  */
-MagnetJS.Message.prototype.formatMessage = function(msg, callback) {
+MagnetJS.Message.prototype.formatMessage = function(msg, channel, callback) {
     var self = this;
 
     try {
         this.receivedMessage = true;
         this.messageType = msg._type;
-        this.messageID = msg._id;
+        this.messageID = (msg.event && msg.event.items && msg.event.items.item)
+            ? msg.event.items.item._id : msg._id;
         this.channel = null;
         this.attachments = null;
 
@@ -255,19 +268,19 @@ MagnetJS.Message.prototype.formatMessage = function(msg, callback) {
         if (msg.mmx && msg.mmx.mmxmeta) {
             var mmxMeta = JSON.parse(msg.mmx.mmxmeta);
             this.recipients = mmxMeta.To;
-            this.sender = new MagnetJS.User(mmxMeta.From);
+            if (mmxMeta.From) this.sender = new MagnetJS.User(mmxMeta.From);
         }
 
         if (msg.mmx && msg.mmx.payload) {
-            this.timestamp = msg.mmx.payload._stamp;
+            this.timestamp = MagnetJS.Utils.ISO8601ToDate(msg.mmx.payload._stamp);
         }
 
-        if (msg.event && msg.event.items && msg.event.items._node) {
+        if (channel) {
+            self.channel = channel;
+        } else if (msg.event && msg.event.items && msg.event.items._node) {
             self.channel = nodePathToChannel(msg.event.items._node);
-            callback();
-        } else {
-            callback();
         }
+        callback();
 
     } catch(e) {
         MagnetJS.Log.fine('MMXMessage.formatMessage', e);
@@ -340,15 +353,20 @@ MagnetJS.Message.prototype.send = function() {
         if (!mXMPPConnection || !mXMPPConnection.connected)
             return deferred.reject('not connected');
 
-        self.sender = mCurrentUser;
+        self.sender = {
+            userId: mCurrentUser.userId,
+            devId: mCurrentDevice.deviceId,
+            displayName: (mCurrentUser.firstName || '') + ' ' + (mCurrentUser.lastName || ''),
+            firstName: mCurrentUser.firstName,
+            lastName: mCurrentUser.lastName,
+            userName: mCurrentUser.userName
+        };
 
         try {
             var meta = JSON.stringify(self.messageContent);
             var mmxMeta = {
                 To: self.recipients,
-                From: {
-                    userId: mCurrentUser.userId
-                },
+                From: self.sender,
                 NoAck: true,
                 mmxdistributed: true
             };

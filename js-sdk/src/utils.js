@@ -381,10 +381,11 @@ MagnetJS.Utils = {
     },
     /**
      * Converts the specified Date object as an ISO 8601 Extended Format string. This is a shim for clients that do not support .toISOString.
-     * @param {Date} date The Date object to be converted to an ISO 8601 Extended Format string.
-     * @returns {string} An equivalent ISO 8601 Extended Format string.
+     * @param {Date} d The Date object to be converted to an ISO 8601 Extended Format string.
+     * @returns {string} An equivalent ISO 8601 Extended Format string or null if not valid.
      */
     dateToISO8601 : function(d) {
+        if (!d || !d.getMonth) return null;
         function pad(n) {return n<10 ? '0'+n : n}
         return d.getUTCFullYear()+'-'
             + pad(d.getUTCMonth()+1)+'-'
@@ -635,7 +636,7 @@ MagnetJS.Utils = {
         return out;
     },
     objToObjAry: function(objOrAry) {
-        if (!objOrAry) return objOrAry;
+        if (!objOrAry) return [];
         return this.isArray(objOrAry) ? objOrAry : [objOrAry];
     }
 };

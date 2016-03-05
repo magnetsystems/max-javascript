@@ -90,13 +90,17 @@ describe('Device register', function() {
 
 describe('Device collectDeviceInfo', function() {
 
+    var either = function(str) {
+        return ['Mac OS X', 'Linux'].indexOf(str) != -1;
+    };
+
     it('should obtain device information', function(done) {
         var deviceId = 'test-device-id';
         Max.Cookie.create('magnet-max-device-id', deviceId, 1);
         Max.Device.collectDeviceInfo(function(e, deviceInfo) {
             expect(deviceInfo.deviceId).toEqual(deviceId);
             expect(deviceInfo.label).toEqual('Safari 538.1 (538) ');
-            expect(deviceInfo.osVersion).toEqual('Mac OS X');
+            expect(either(deviceInfo.osVersion)).toEqual(true);
             done();
         });
     });
@@ -107,7 +111,7 @@ describe('Device collectDeviceInfo', function() {
         Max.Device.collectDeviceInfo(function(e, deviceInfo) {
             expect(deviceInfo.deviceId).not.toEqual(deviceId);
             expect(deviceInfo.label).toEqual('Safari 538.1 (538) ');
-            expect(deviceInfo.osVersion).toEqual('Mac OS X');
+            expect(either(deviceInfo.osVersion)).toEqual(true);
             done();
         });
     });
