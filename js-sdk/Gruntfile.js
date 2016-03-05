@@ -206,6 +206,6 @@ module.exports = function(grunt){
     grunt.registerTask('min', ['concat', 'uglify']);
     grunt.registerTask('docs', ['clean', 'concat', 'jsdoc:docstrap']);
     grunt.registerTask('test', ['clean', 'concat', 'jasmine']);
-    grunt.registerTask('full', ['clean', 'concat', 'uglify', 'jasmine', 'jsdoc:docstrap']);
+    grunt.registerTask('full', ['clean', 'concat', 'uglify', 'jsdoc:docstrap']);
 
 };
