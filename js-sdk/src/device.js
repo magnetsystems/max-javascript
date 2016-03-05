@@ -13,7 +13,7 @@ MagnetJS.Device = {
         return mCurrentDevice || null;
     },
     /**
-     * Registers a new device.
+     * Associates a device with the current user against the server.
      * @returns {MagnetJS.Promise} A promise object returning device information or request error.
      * @ignore
      */
@@ -59,18 +59,12 @@ MagnetJS.Device = {
     },
     /**
      * Initiates a session with the server using the currently registered device.
+     * @param {function} callback fires upon device initiation.
      * @ignore
      */
-    checkInWithDevice: function() {
-        if (MagnetJS.App.initialized) return;
-
+    checkInWithDevice: function(callback) {
         MagnetJS.Device.collectDeviceInfo(function(e, deviceInfo) {
             if (e) throw (e);
-
-            function initialize() {
-                MagnetJS.App.initialized = true;
-                MagnetJS.Log.info('sdk initialized');
-            }
 
             MagnetJS.Request({
                 method: 'POST',
@@ -83,6 +77,7 @@ MagnetJS.Device = {
                 bypassReady: true
             }, function(data) {
 
+                mCurrentDevice = deviceInfo;
                 MagnetJS.App.catCredentials = data.applicationToken;
                 MagnetJS.App.appId = data.applicationToken.mmx_app_id;
                 MagnetJS.Config.baseUrl = data.config['mms-application-endpoint'];
@@ -92,48 +87,11 @@ MagnetJS.Device = {
                 MagnetJS.Config.mmxDomain = data.config['mmx-domain'];
                 MagnetJS.Config.mmxPort = parseInt(data.config['mmx-port']);
 
-                mCurrentDevice = deviceInfo;
-
-                var token = Cookie.get('magnet-max-auth-token');
-
-                if (!token || !data.device.userId)
-                    return initialize();
-
-                MagnetJS.App.hatCredentials = {
-                    access_token: token
-                };
-
-                Max.User.search({
-                    limit: 1,
-                    offset: 0,
-                    query: {
-                        userId: data.device.userId
-                    },
-                    bypassReady: true
-                }).success(function(users) {
-                    if (!users.length) return initialize();
-
-                    mCurrentUser = new MagnetJS.User(users[0]);
-
-                    MagnetJS.MMXClient.registerDeviceAndConnect(data.device.userId, token)
-                        .success(function() {
-                            initialize();
-                        })
-                        .error(function(e) {
-                            MagnetJS.User.clearSession();
-                            initialize();
-                        });
-
-                }).error(function(e) {
-                    MagnetJS.User.clearSession();
-                    initialize();
-                });
-
+                callback();
             }, function(e) {
-                MagnetJS.User.clearSession();
-                initialize();
-            });
 
+                callback(e);
+            });
         });
     }
 };

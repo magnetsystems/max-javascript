@@ -103,7 +103,6 @@ module.exports = function(grunt){
             ],
             options : {
                 specs    : [
-                    //'tests/all/channel-spec.js'
                     'tests/all/*-spec.js',
                     'tests/web/*-spec.js'
                 ],
@@ -207,11 +206,6 @@ module.exports = function(grunt){
     grunt.registerTask('min', ['concat', 'uglify']);
     grunt.registerTask('docs', ['clean', 'concat', 'jsdoc:docstrap']);
     grunt.registerTask('test', ['clean', 'concat', 'jasmine']);
-    grunt.registerTask('full', ['clean', 'concat', 'uglify', 'jsdoc:docstrap']);
-    //grunt.registerTask('full', ['clean', 'concat', 'uglify', 'jsdoc:docstrap', 'jasmine_node']);
-    //grunt.registerTask('nodetests', ['clean', 'concat', 'jasmine_node']);
-    //grunt.registerTask('webtests', ['concat', 'jasmine']);
-    //grunt.registerTask('tests', ['concat', 'jasmine', 'jasmine_node']);
-    //grunt.registerTask('deploy', ['maven', 'clean']);
+    grunt.registerTask('full', ['clean', 'concat', 'uglify', 'jasmine', 'jsdoc:docstrap']);
 
 };

@@ -5,7 +5,7 @@
  * various channel specific methods, like publishing and subscribing users.
  * @param {object} channelObj An object containing channel information.
  * @property {string} name The name of the channel.
- * @property {boolean} isPublic Set to true to make the channel public. Defaults to true.
+ * @property {boolean} isPublic True if the channel public.
  * @property {string} [summary] An optional summary of the channel.
  * @property {string} [publishPermission] Permissions level required to be able to post, must be in
  * ['anyone', 'owner', 'subscribers']. The channel owner can always publish.

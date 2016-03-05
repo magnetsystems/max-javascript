@@ -1484,12 +1484,18 @@ describe('Transport createAcceptHeader', function(){
 });
 
 describe('init', function(){
+
     it('should initialize SDK', function(done){
         var clientId = 'test-client-id';
         var clientSecret = 'test-client-secret';
         var baseUrl = 'http://localhost:7777';
-        Max.App.initialized = true;
-		Max.Device.checkInWithDevice = sinon.stub(Max.Device, 'checkInWithDevice');
+        Max.App.initialized = false;
+		var checkInWithDeviceStub  = sinon.stub(Max.Device, 'checkInWithDevice', function(cb) {
+            cb();
+        });
+		var loginWithAccessTokenStub = sinon.stub(Max.User, 'loginWithAccessToken', function(cb) {
+            cb();
+        });
         Max.init({
             clientId: clientId,
             clientSecret: clientSecret,
@@ -1499,9 +1505,43 @@ describe('init', function(){
         expect(Max.App.clientSecret).toEqual(clientSecret);
         expect(Max.Config.baseUrl).toEqual(baseUrl);
         expect(Max.Device.checkInWithDevice.called).toEqual(true);
+        expect(Max.User.loginWithAccessToken.called).toEqual(true);
+        expect(Max.App.initialized).toEqual(true);
 		Max.Device.checkInWithDevice.restore();
+		Max.User.loginWithAccessToken.restore();
         done();
     });
+
+    it('should intitialize SDK and clear session information if error', function(done){
+        var clientId = 'test-client-id';
+        var clientSecret = 'test-client-secret';
+        var baseUrl = 'http://localhost:7777';
+        Max.App.initialized = false;
+		var checkInWithDeviceStub  = sinon.stub(Max.Device, 'checkInWithDevice', function(cb) {
+            cb();
+        });
+		var loginWithAccessTokenStub = sinon.stub(Max.User, 'loginWithAccessToken');
+        loginWithAccessTokenStub.callsArgWith(0, 'auth token missing');
+        Max.setUser({
+            userId: 'test-user-id'
+        });
+        Max.init({
+            clientId: clientId,
+            clientSecret: clientSecret,
+            baseUrl: baseUrl
+        });
+        expect(Max.App.clientId).toEqual(clientId);
+        expect(Max.App.clientSecret).toEqual(clientSecret);
+        expect(Max.Config.baseUrl).toEqual(baseUrl);
+        expect(Max.Device.checkInWithDevice.called).toEqual(true);
+        expect(Max.User.loginWithAccessToken.called).toEqual(true);
+        expect(Max.getCurrentUser()).toEqual(null);
+        expect(Max.App.initialized).toEqual(true);
+		Max.Device.checkInWithDevice.restore();
+		Max.User.loginWithAccessToken.restore();
+        done();
+    });
+
 });
 
 describe('onReady', function(){

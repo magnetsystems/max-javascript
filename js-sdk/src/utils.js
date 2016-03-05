@@ -1619,10 +1619,20 @@ MagnetJS.Events.create(MagnetJS);
  * @desc Initialize the SDK with client information.
  */
 MagnetJS.init = function(cfg) {
+    if (MagnetJS.App.initialized) return;
+
     MagnetJS.App.clientId = cfg.clientId;
     MagnetJS.App.clientSecret = cfg.clientSecret;
     MagnetJS.Config.baseUrl = cfg.baseUrl;
-    MagnetJS.Device.checkInWithDevice();
+
+    MagnetJS.Device.checkInWithDevice(function(deviceErr) {
+        MagnetJS.User.loginWithAccessToken(function(tokenErr) {
+            if (deviceErr || tokenErr)  MagnetJS.User.clearSession();
+
+            MagnetJS.App.initialized = true;
+            MagnetJS.Log.info('sdk initialized');
+        });
+    });
 };
 
 /**

@@ -41,12 +41,14 @@ MagnetJS.registerListener = function(listener) {
 /**
  * @method
  * @desc Unregister a listener identified by the given id to stop handling incoming messages.
- * @param {MagnetJS.MessageListener} listenerId A message listener.
+ * @param {string|MagnetJS.MessageListener} listenerOrListenerId A message listener or the listener Id specified
+ * during creation.
  */
-MagnetJS.unregisterListener = function(listenerId) {
-    if (!xmppStore || !listenerId || !mXMPPConnection) return;
-    mXMPPConnection.deleteHandler(xmppStore[listenerId]);
-    delete xmppStore[listenerId];
+MagnetJS.unregisterListener = function(listenerOrListenerId) {
+    if (!xmppStore || !listenerOrListenerId || !mXMPPConnection) return;
+    if (typeof listenerOrListenerId === 'object') listenerOrListenerId = listenerOrListenerId.id;
+    mXMPPConnection.deleteHandler(xmppStore[listenerOrListenerId]);
+    delete xmppStore[listenerOrListenerId];
 };
 
 /**
@@ -139,12 +141,11 @@ MagnetJS.MMXClient = {
     },
     /**
      * A wrapper function to register device and connect to MMX server via BOSH http-bind.
-     * @param {string} userId The currently logged in user's userId (id).
      * @param {string} accessToken The currently logged in user's access token.
      * @returns {MagnetJS.Promise} A promise object returning current user and device or reason of failure.
      */
-    registerDeviceAndConnect: function(userId, accessToken) {
-        userId = userId || mCurrentUser.userId;
+    registerDeviceAndConnect: function(accessToken) {
+        userId = mCurrentUser.userId;
         var def = new MagnetJS.Deferred();
         MagnetJS.Device.register().success(function() {
             MagnetJS.MMXClient.connect(userId, accessToken).success(function() {

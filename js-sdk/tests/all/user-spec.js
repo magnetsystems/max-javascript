@@ -486,7 +486,7 @@ describe('User logout', function() {
         xhr.restore();
         Max.setUser({
             userName: userName,
-            userId: userId
+            userIdentifier: userId
         });
     });
 
@@ -536,7 +536,7 @@ describe('User clearSession', function() {
         Max.App.initialized = true;
         Max.setUser({
             userName: userName,
-            userId: userId
+            userIdentifier: userId
         });
     });
 
@@ -547,7 +547,7 @@ describe('User clearSession', function() {
         Max.App.initialized = true;
         Max.setUser({
             userName: userName,
-            userId: userId
+            userIdentifier: userId
         });
     });
 

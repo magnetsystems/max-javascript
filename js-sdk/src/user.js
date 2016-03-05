@@ -105,7 +105,7 @@ MagnetJS.User.login = function(userObj) {
         if (data.refresh_token)
             Cookie.create('magnet-max-refresh-token', data.access_token, 365);
 
-        MagnetJS.MMXClient.registerDeviceAndConnect(null, data.access_token)
+        MagnetJS.MMXClient.registerDeviceAndConnect(data.access_token)
             .success(function() {
                 def.resolve.apply(def, arguments);
             })
@@ -147,7 +147,7 @@ MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
         mCurrentUser = new MagnetJS.User(data.user);
         Cookie.create('magnet-max-auth-token', data.access_token, 1);
 
-        MagnetJS.MMXClient.registerDeviceAndConnect(null, data.access_token)
+        MagnetJS.MMXClient.registerDeviceAndConnect(data.access_token)
             .success(function() {
                 if (request) return MagnetJS.Request(request, callback, failback);
                 def.resolve.apply(def, arguments);
@@ -163,6 +163,36 @@ MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
 
     return def.promise;
 };
+
+/**
+ * Attempts to login with an access token.
+ * @param {function} callback fires upon completion.
+ * @ignore
+ */
+MagnetJS.User.loginWithAccessToken = function(callback) {
+    var token = Cookie.get('magnet-max-auth-token');
+    if (!token) return callback('auth token missing');
+
+    MagnetJS.App.hatCredentials = {
+        access_token: token
+    };
+
+    Max.User.getUserInfo().success(function(user) {
+        mCurrentUser = user;
+
+        MagnetJS.MMXClient.registerDeviceAndConnect(token)
+            .success(function() {
+                callback();
+            })
+            .error(function(e) {
+                callback(e);
+            });
+
+    }).error(function(e) {
+        callback(e);
+    });
+};
+
 
 /**
  * Given a list of usernames, return a list of users.
@@ -223,7 +253,7 @@ MagnetJS.User.search = function(queryObj) {
 
     if (queryObj.query.userId)
         queryObj.query.userIdentifier = queryObj.query.userId;
-    if (queryObj.orderby.userId)
+    if (queryObj.orderby && queryObj.orderby.userId)
         queryObj.orderby.userIdentifier = queryObj.orderby.userId;
 
     for(var key in queryObj) {
@@ -264,6 +294,24 @@ MagnetJS.User.getToken = function() {
         url: '/com.magnet.server/tokens/token'
     }, function() {
         def.resolve.apply(def, arguments);
+    }, function() {
+        def.reject.apply(def, arguments);
+    });
+    return def.promise;
+};
+
+/**
+ * Gets the current {MagnetJS.User} object.
+ * @returns {MagnetJS.Promise} A promise object returning the current user as a {MagnetJS.User} or reason of failure.
+ * @ignore
+ */
+MagnetJS.User.getUserInfo = function() {
+    var def = MagnetJS.Request({
+        method: 'GET',
+        url: '/com.magnet.server/userinfo',
+        bypassReady: true
+    }, function(data, details) {
+        def.resolve.apply(def, [new MagnetJS.User(data), details]);
     }, function() {
         def.reject.apply(def, arguments);
     });
