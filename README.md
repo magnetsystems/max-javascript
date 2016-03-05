@@ -16,7 +16,7 @@ The SDK is available as a javascript file. The latest version can be downloaded 
 <html>
 <head>
     <title>My Web App</title>
-    <script type="text/javascript" src="//cdn.magnet.com/downloads/magnet-sdk.min.js"></script>
+    <script type="text/javascript" src="//cdn.magnet.com/downloads/magnet-max-sdk.min.js"></script>
 </head>
 <body></body>
 </html>
