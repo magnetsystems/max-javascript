@@ -50,11 +50,12 @@ MagnetJS.Channel = function(channelObj) {
 
 /**
  * Find public channels based on search criteria.
- * @param {string} [channelName] The name of the channel.
+ * @param {string} [channelName] A channel prefix to find all channels starting with the given string,
+ * or null to return all.
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
- * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} or reason of failure.
  */
 MagnetJS.Channel.findPublicChannels = function(channelName, tags, limit, offset) {
     return MagnetJS.Channel.findChannels(channelName, tags, limit, offset, 'public');
@@ -63,19 +64,22 @@ MagnetJS.Channel.findPublicChannels = function(channelName, tags, limit, offset)
 /**
  * Find private channels based on search criteria. Only private channels created by the current
  * user will be returned.
- * @param {string} [channelName] The name of the channel.
+ * @param {string} [channelName] A channel prefix to find all channels starting with the given string,
+ * or null to return all.
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
- * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} or reason of failure.
  */
 MagnetJS.Channel.findPrivateChannels = function(channelName, tags, limit, offset) {
     return MagnetJS.Channel.findChannels(channelName, tags, limit, offset, 'private');
 };
 
 /**
- * Find public or  channels that start with the specified text.
- * @param {string} [channelName] The name of the channel.
+ * Find public or private channels that start with the specified text. Only private channels created by the current
+ * user will be returned.
+ * @param {string} [channelName] A channel prefix to find all channels starting with the given string,
+ * or null to return all.
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
@@ -105,7 +109,7 @@ MagnetJS.Channel.findChannels = function(channelName, tags, limit, offset, type)
             };
             if (channelName)
                 mmxMeta.topicName = {
-                    match: 'EXACT',
+                    match: 'PREFIX',
                     value: channelName
                 };
             if (tags && tags.length)
