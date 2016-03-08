@@ -473,6 +473,76 @@ describe('User getUsersByUserNames', function() {
 
 });
 
+describe('User getUsersByUserIds', function() {
+    var xhr, requests;
+
+    beforeEach(function () {
+        xhr = sinon.useFakeXMLHttpRequest();
+        requests = [];
+        xhr.onCreate = function (xhr) {
+            requests.push(xhr);
+        };
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+    });
+
+    afterEach(function () {
+        xhr.restore();
+    });
+
+    it('should return a list of users', function(done) {
+        Max.User.getUsersByUserIds(['40288192510694f6015106960150000a', '4028819251069sf6015106960150000a'])
+        .success(function (users) {
+            expect(users.length).toEqual(2);
+            var user1 = users[0];
+            expect(user1.userName).toEqual('jack.doe');
+            var user2 = users[1];
+            expect(user2.userName).toEqual('jane.doe');
+            done();
+        }).error(function (e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+        setTimeout(function () {
+            expect(requests.length).toEqual(1);
+            requests[0].respond(200, {
+                'Content-Type': 'application/json'
+            }, JSON.stringify([{
+                    "userIdentifier": "40288192510694f6015106960150000a",
+                    "clientId": "a7a9e901-abc5-4485-af1c-0b088b34f44d",
+                    "firstName": "Jack",
+                    "lastName": "Doe",
+                    "email": "jack.doe@magnet.com",
+                    "userName": "jack.doe",
+                    "password": "n/a",
+                    "userRealm": "DB",
+                    "roles": [
+                        "USER"
+                    ],
+                    "otpCode": "n/a",
+                    "userAccountData": {}
+                }, {
+                    "userIdentifier": "4028819251069sf6015106960150000a",
+                    "clientId": "a7a9e901-abc5-4485-af1c-0b088b34f44d",
+                    "firstName": "Jane",
+                    "lastName": "Doe",
+                    "email": "jane.doe@magnet.com",
+                    "userName": "jane.doe",
+                    "password": "n/a",
+                    "userRealm": "DB",
+                    "roles": [
+                        "USER"
+                    ],
+                    "otpCode": "n/a",
+                    "userAccountData": {}
+                }]));
+        }, 5);
+    });
+
+});
+
 describe('User search', function() {
     var xhr, requests;
 

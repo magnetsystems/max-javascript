@@ -1612,6 +1612,7 @@ var mCurrentUser = null;
 var mXMPPConnection = null;
 var MMS_DEVICE_ID = '1111-2222-3333-4444';
 var xmppStore;
+var mChannelStore = {};
 
 MagnetJS.Events.create(MagnetJS);
 

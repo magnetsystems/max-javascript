@@ -33,6 +33,10 @@ MagnetJS.Channel = function(channelObj) {
         channelObj.publishPermissions = channelObj.publisherType;
         delete channelObj.publisherType;
     }
+    if (channelObj.publishPermissions) {
+        channelObj.publishPermission = channelObj.publishPermissions;
+        delete channelObj.publishPermissions;
+    }
     if (channelObj.privateChannel !== false && channelObj.privateChannel !== true)
         channelObj.privateChannel = channelObj.userId ? true : false;
     if (channelObj.privateChannel === true)
@@ -137,8 +141,10 @@ MagnetJS.Channel.findChannels = function(channelName, tags, limit, offset, type)
                     payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
                     if (payload && payload.results && payload.results) {
                         payload.results = MagnetJS.Utils.objToObjAry(payload.results);
-                        for (var i=0;i<payload.results.length;++i)
+                        for (var i=0;i<payload.results.length;++i) {
                             channels.push(new MagnetJS.Channel(payload.results[i]));
+                            ChannelStore.add(channels[i]);
+                        }
                     }
                 }
                 def.resolve(channels);
@@ -226,13 +232,20 @@ MagnetJS.Channel.getAllSubscriptions = function() {
                 var json = x2js.xml2json(msg);
                 var channels = [];
 
-                if (json.pubsub && json.pubsub.subscriptions && json.pubsub.subscriptions.subscription) {
-                    var subs = MagnetJS.Utils.objToObjAry(json.pubsub.subscriptions.subscription);
-                    for (var i=0;i<subs.length;++i)
-                        channels.push(nodePathToChannel(subs[i]._node));
-                }
+                if (!json.pubsub || !json.pubsub.subscriptions || !json.pubsub.subscriptions.subscription)
+                    return def.resolve(channels);
 
-                def.resolve(channels);
+                var subs = MagnetJS.Utils.objToObjAry(json.pubsub.subscriptions.subscription);
+
+                for (var i=0;i<subs.length;++i)
+                    channels.push(nodePathToChannel(subs[i]._node));
+
+                Max.Channel.getChannels(channels).success(function() {
+                    def.resolve.apply(def, arguments);
+                }).error(function() {
+                    def.reject.apply(def, arguments);
+                });
+
             }, null, null, null, msgId,  null);
 
             mXMPPConnection.send(payload.tree());
@@ -328,10 +341,7 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
                             };
                         data[i].owner = new MagnetJS.User(data[i].owner);
                     }
-                    data[i].channel = new MagnetJS.Channel({
-                        name: data[i].channelName,
-                        userId: (data[i].owner && data[i].owner.userId) ? data[i].owner.userId : null
-                    });
+                    data[i].channel = matchChannel(channelOrChannels, data[i].channelName, data[i].userId);
                     data[i].messages = parseMessageList(data[i].messages, data[i].channel);
                     data[i].subscribers = MagnetJS.Utils.objToObjAry(data[i].subscribers);
                     for (j = 0; j < data[i].subscribers.length; ++j)
@@ -367,6 +377,19 @@ function parseMessageList(ary, channel) {
         ary[j] = mmxMsg;
     }
     return ary;
+}
+
+// get matching channel
+function matchChannel(channels, matchName, matchOwner) {
+    var channel;
+    for (var i=0;i<channels.length;++i) {
+        if (!channels[i].userId) delete channels[i].userId;
+        if (channels[i].name.toLowerCase() === matchName.toLowerCase() && channels[i].userId == matchOwner) {
+            channel = channels[i];
+            break;
+        }
+    }
+    return channel;
 }
 
 /**
@@ -421,9 +444,67 @@ MagnetJS.Channel.getChannel = function(channelName, userId) {
                 if (json.mmx) {
                     payload = JSON.parse(json.mmx);
                     channel = new MagnetJS.Channel(payload);
+                    ChannelStore.add(channel);
                 }
 
                 def.resolve(channel);
+            }, null, null, null, msgId,  null);
+
+            mXMPPConnection.send(payload.tree());
+
+        } catch (e) {
+            def.reject(e);
+        }
+    }, 0);
+
+    return def.promise;
+};
+
+/**
+ * Get the full channel information using basic channel object (name and userId).
+ * @param {object|object[]} channelOrChannels One or more channel objects containing channel name
+ * (and userId, if private channel). Should be in the format {name: 'channelName', userId: 'your-user-id'}.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} or reason of failure.
+ * @ignore
+ */
+MagnetJS.Channel.getChannels = function(channelOrChannels) {
+    var def = new MagnetJS.Deferred();
+    var msgId = MagnetJS.Utils.getCleanGUID();
+
+    if (!MagnetJS.Utils.isArray(channelOrChannels))
+        channelOrChannels = [channelOrChannels];
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session timeout');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+
+        try {
+            var mmxMeta = [];
+            for (var i=0;i<channelOrChannels.length;++i)
+                mmxMeta.push({
+                    topicName: channelOrChannels[i].name,
+                    userId: channelOrChannels[i].userId
+                });
+
+            mmxMeta = JSON.stringify(mmxMeta);
+
+            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
+                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getTopics', ctype: 'application/json'}, mmxMeta);
+
+            mXMPPConnection.addHandler(function(msg) {
+                var json = x2js.xml2json(msg);
+                var payload, channels = [];
+
+                if (json.mmx) {
+                    payload = JSON.parse(json.mmx);
+                    payload = MagnetJS.Utils.objToObjAry(payload);
+                    for (var i=0;i<payload.length;++i) {
+                        channels.push(new MagnetJS.Channel(payload[i]));
+                        ChannelStore.add(channels[i]);
+                    }
+                }
+
+                def.resolve(channels);
             }, null, null, null, msgId,  null);
 
             mXMPPConnection.send(payload.tree());
@@ -446,7 +527,7 @@ MagnetJS.Channel.prototype.getAllSubscribers = function(limit, offset) {
     var self = this;
     var def = new MagnetJS.Deferred();
     var iqId = MagnetJS.Utils.getCleanGUID();
-    var users = [];
+    var userIds = [];
     limit = limit || 10;
     offset = offset || 0;
 
@@ -469,16 +550,20 @@ MagnetJS.Channel.prototype.getAllSubscribers = function(limit, offset) {
 
             mXMPPConnection.addHandler(function(msg) {
                 var payload, json = x2js.xml2json(msg);
-
                 payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
-                if (payload && payload.subscribers) {
-                    payload.subscribers = MagnetJS.Utils.objToObjAry(payload.subscribers);
-                    for (var i=0;i<payload.subscribers.length;++i) {
-                        users.push(new MagnetJS.User(payload.subscribers[i]));
-                    }
-                }
 
-                def.resolve(users);
+                if (!payload || !payload.subscribers) return def.resolve([]);
+
+                payload.subscribers = MagnetJS.Utils.objToObjAry(payload.subscribers);
+                for (var i=0;i<payload.subscribers.length;++i)
+                    userIds.push(payload.subscribers[i].userId);
+
+                Max.User.getUsersByUserIds(userIds).success(function() {
+                    def.resolve.apply(def, arguments);
+                }).error(function(e) {
+                    def.reject(e);
+                });
+
             }, null, null, null, iqId,  null);
 
             mXMPPConnection.send(payload.tree());

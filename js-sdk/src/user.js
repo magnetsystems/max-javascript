@@ -193,7 +193,6 @@ MagnetJS.User.loginWithAccessToken = function(callback) {
     });
 };
 
-
 /**
  * Given a list of usernames, return a list of users.
  * @param {string[]} usernames A list of usernames.
@@ -212,6 +211,35 @@ MagnetJS.User.getUsersByUserNames = function(usernames) {
     var def = MagnetJS.Request({
         method: 'GET',
         url: '/com.magnet.server/user/users' + qs
+    }, function(data, details) {
+        for (var i=0;i<data.length;++i)
+            userlist.push(new MagnetJS.User(data[i]));
+
+        def.resolve(userlist, details);
+    }, function() {
+        def.reject.apply(def, arguments);
+    });
+
+    return def.promise;
+};
+
+/**
+ * Given a list of userIds, return a list of users.
+ * @param {string[]} userIds A list of userIds.
+ * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
+ */
+MagnetJS.User.getUsersByUserIds = function(userIds) {
+    var qs = '', userlist = [];
+
+    if (userIds && userIds.length) {
+        for (var i=0;i<userIds.length;++i)
+            qs += '&userIds=' + userIds[i];
+        qs = qs.replace('&', '?');
+    }
+
+    var def = MagnetJS.Request({
+        method: 'GET',
+        url: '/com.magnet.server/user/users/ids' + qs
     }, function(data, details) {
         for (var i=0;i<data.length;++i)
             userlist.push(new MagnetJS.User(data[i]));
@@ -348,4 +376,5 @@ MagnetJS.User.clearSession = function() {
     mCurrentUser = null;
     MagnetJS.App.hatCredentials = null;
     Cookie.remove('magnet-max-auth-token');
+    ChannelStore.clear();
 };

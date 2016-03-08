@@ -277,13 +277,50 @@ MagnetJS.Message.prototype.formatMessage = function(msg, channel, callback) {
 
         if (channel) {
             self.channel = channel;
+            callback();
         } else if (msg.event && msg.event.items && msg.event.items._node) {
-            self.channel = nodePathToChannel(msg.event.items._node);
+            var channelObj = nodePathToChannel(msg.event.items._node);
+            if (ChannelStore.get(channelObj)) {
+                console.log('got from cache');
+                self.channel = ChannelStore.get(channelObj);
+                return callback();
+            }
+
+            MagnetJS.Channel.getChannel(channelObj.name, channelObj.userId).success(function(channel) {
+                console.log('got new');
+                self.channel = channel;
+                callback();
+            }).error(function() {
+                callback();
+            });
+
+        } else {
+            callback();
         }
-        callback();
 
     } catch(e) {
         MagnetJS.Log.fine('MMXMessage.formatMessage', e);
+    }
+};
+
+// non-persistent cache of channel information to improve message receive performance
+var ChannelStore = {
+    store: {},
+    add: function(channel) {
+        this.store[this.getChannelId(channel)] = channel;
+    },
+    get: function(channel) {
+        return this.store[this.getChannelId(channel)];
+    },
+    remove: function(channel) {
+        if (this.store[this.getChannelId(channel)])
+            delete this.store[this.getChannelId(channel)];
+    },
+    getChannelId: function(channel) {
+        return (channel.userId || '*') + '/' + (channel.name.toLowerCase());
+    },
+    clear: function() {
+        this.store = {};
     }
 };
 

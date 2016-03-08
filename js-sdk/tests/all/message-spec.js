@@ -324,6 +324,26 @@ describe('Message formatMessage', function() {
             "_to": "402881295313de0d015315c820bc0004%gmbil1ewswo@mmx",
             "_id": "/gmbil1ewswo/402881295313de0d015315c820bc0004/1456521126999__402881295313de0d015315c820bc0004%gmbil1ewswo@mmx__53yFQ"
         };
+        var getChannelStub = sinon.stub(Max.Channel, 'getChannel', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve(new Max.Channel({
+                    "isCollection": false,
+                    "description": "",
+                    "isPersistent": true,
+                    "maxItems": -1,
+                    "maxPayloadSize": 2097152,
+                    "creationDate": "2016-02-26T21:27:23.014Z",
+                    "modificationDate": "2016-02-26T21:27:23.015Z",
+                    "publisherType": "subscribers",
+                    "creator": channelOwnerUid,
+                    "subscriptionEnabled": true,
+                    "topicName": channelName,
+                    "privateChannel": true
+                }));
+            }, 0);
+            return d.promise;
+        });
         var msg = new Max.Message();
         msg.formatMessage(msgText, null, function() {
             expect(msg.receivedMessage).toEqual(true);
@@ -333,6 +353,7 @@ describe('Message formatMessage', function() {
             expect(msg.channel.name).toEqual(channelName);
             expect(msg.channel.userId).toEqual(channelOwnerUid);
             expect(msg.channel.isPublic).toEqual(false);
+            Max.Channel.getChannel.restore();
             done();
         });
     });

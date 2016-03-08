@@ -228,7 +228,9 @@ describe('Channel create', function() {
 
 describe('Channel getAllSubscriptions', function() {
     var sendSpy;
-    var testUserId = 'test-user-id-1';
+    var testUserId = '4028812953356a8901533b0617650002';
+    var channelName = '1456984203652';
+    var channelName2 = '1456984181155';
 
     beforeEach(function() {
         Max.setUser({
@@ -245,6 +247,42 @@ describe('Channel getAllSubscriptions', function() {
     });
 
     it('should get all subscribed channels', function(done) {
+        var getChannelsStub = sinon.stub(Max.Channel, 'getChannels', function() {
+            var d = new Max.Deferred();
+            setTimeout(function(){
+                d.resolve([
+                    new Max.Channel({
+                        "isCollection": false,
+                        "description": "",
+                        "isPersistent": true,
+                        "maxItems": -1,
+                        "maxPayloadSize": 2097152,
+                        "creationDate": "2016-02-26T21:27:23.014Z",
+                        "modificationDate": "2016-02-26T21:27:23.015Z",
+                        "publisherType": "subscribers",
+                        "creator": testUserId,
+                        "subscriptionEnabled": true,
+                        "topicName": channelName,
+                        "privateChannel": true
+                    }),
+                    new Max.Channel({
+                        "isCollection": false,
+                        "description": "",
+                        "isPersistent": true,
+                        "maxItems": -1,
+                        "maxPayloadSize": 2097152,
+                        "creationDate": "2016-02-26T21:27:23.014Z",
+                        "modificationDate": "2016-02-26T21:27:23.015Z",
+                        "publisherType": "subscribers",
+                        "creator": testUserId,
+                        "subscriptionEnabled": true,
+                        "topicName": channelName2,
+                        "privateChannel": true
+                    })
+                ]);
+            }, 0);
+            return d.promise;
+        });
         var connStub = {
             addHandler: function(cb) {
                 var xmlStr = "<pubsub xmlns='http://jabber.org/protocol/pubsub'><subscriptions><s" +
@@ -262,15 +300,17 @@ describe('Channel getAllSubscriptions', function() {
         Max.setConnection(connStub);
         Max.Channel.getAllSubscriptions().success(function(channels) {
             expect(channels.length).toEqual(2);
-            expect(channels[0].name).toEqual('1456984203652');
+            expect(channels[0].name).toEqual(channelName);
             expect(channels[0].isPublic).toEqual(false);
-            expect(channels[0].userId).toEqual('4028812953356a8901533b0617650002');
-            expect(channels[1].name).toEqual('1456984181155');
+            expect(channels[0].userId).toEqual(testUserId);
+            expect(channels[1].name).toEqual(channelName2);
             expect(channels[1].isPublic).toEqual(false);
             expect(sendSpy.calledOnce).toEqual(true);
+            Max.Channel.getChannels.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
+            Max.Channel.getChannels.restore();
             done();
         });
     });
@@ -352,7 +392,7 @@ describe('Channel getChannelSummary', function() {
             "creator": testUserId,
             "subscriptionEnabled": true,
             "topicName": testChannelId,
-            "privateChannel": false
+            "privateChannel": true
         });
         var reqDef = new Max.Deferred();
         var reqStub = sinon.stub(Max, 'Request', function(meta, success) {
@@ -402,12 +442,12 @@ describe('Channel getChannelSummary', function() {
             }
         ]);
         });
-        Max.Channel.getChannelSummary(testUserId, 3, 1).success(function(channels) {
-            expect(channels.length).toEqual(1);
-            expect(channels[0].channel.name).toEqual(testChannelId);
-            expect(channels[0].owner.userId).toEqual(testUserId);
-            expect(channels[0].subscribers.length).toEqual(3);
-            expect(channels[0].messages.length).toEqual(1);
+        Max.Channel.getChannelSummary(channel, 3, 1).success(function(channelSummary) {
+            expect(channelSummary.length).toEqual(1);
+            expect(channelSummary[0].channel.name).toEqual(testChannelId);
+            expect(channelSummary[0].owner.userId).toEqual(testUserId);
+            expect(channelSummary[0].subscribers.length).toEqual(3);
+            expect(channelSummary[0].messages.length).toEqual(1);
             Max.Request.restore();
             done();
         }).error(function(e) {
@@ -563,6 +603,44 @@ describe('Channel getAllSubscribers', function() {
             send: sendSpy,
             connected: true
         };
+        var getUsersByUserIdsStub = sinon.stub(Max.User, 'getUsersByUserIds', function() {
+            var d = new Max.Deferred();
+            setTimeout(function(){
+                d.resolve([
+                    new Max.User({
+                        "userIdentifier": testUserId,
+                        "clientId": "76b4e8f6-1066-49e0-a537-160d436ce78c",
+                        "firstName": "Jack1457212214016",
+                        "lastName": "Doe1457212214016",
+                        "userName": "1457212214016",
+                        "password": "n/a",
+                        "userRealm": "DB",
+                        "userStatus": "ACTIVE",
+                        "roles": [
+                            "USER"
+                        ],
+                        "otpCode": "n/a",
+                        "userAccountData": {}
+                    }),
+                    new Max.User({
+                        "userIdentifier": testUserId2,
+                        "clientId": "76b4e8f6-1066-49e0-a537-160d436ce78c",
+                        "firstName": "Jack1457212403217",
+                        "lastName": "Doe1457212403217",
+                        "userName": "1457212403217",
+                        "password": "n/a",
+                        "userRealm": "DB",
+                        "userStatus": "ACTIVE",
+                        "roles": [
+                            "USER"
+                        ],
+                        "otpCode": "n/a",
+                        "userAccountData": {}
+                    })
+                ]);
+            }, 0);
+            return d.promise;
+        });
         var channel = new Max.Channel({
             "isCollection": false,
             "description": "",
@@ -580,12 +658,15 @@ describe('Channel getAllSubscribers', function() {
         Max.setConnection(connStub);
         channel.getAllSubscribers().success(function(users) {
             expect(users.length).toEqual(2);
-            expect(users[0].userId).toEqual(testUserId2);
-            expect(users[1].userId).toEqual(testUserId);
+            expect(users[0].userId).toEqual(testUserId);
+            expect(users[1].userId).toEqual(testUserId2);
             expect(sendSpy.calledOnce).toEqual(true);
+            Max.User.getUsersByUserIds.restore();
             done();
         }).error(function(e) {
-            expect(e).toEqual('failed-test');
+            console.log('got', e);
+            expect(e).toEqual('failed-test2');
+            Max.User.getUsersByUserIds.restore();
             done();
         });
     });
