@@ -261,18 +261,17 @@ Max.User.getUsersByUserIds = function(userIds) {
 
 /**
  * Search for users with an advanced search query.
- * @param {object} [queryObj] A search query object.
- * @param {object} [queryObj.query] An object containing the user property and the search value as a key-value pair.
+ * @param {object} [query] An object containing the user property and the search value as a key-value pair.
  * For example, to search for a user by username, the object can be {userName:'jon.doe'}. See {Max.User} properties
  * for acceptable search properties.
- * @param {number} [queryObj.limit] The number of results to return per page.
- * @param {number} [queryObj.offset] The starting index of results.
- * @param {object} [queryObj.orderby] An object containing the user property and the sort direction
+ * @param {number} [limit] The number of results to return per page. Default is 10.
+ * @param {number} [offset] The starting index of results.
+ * @param {object} [orderby] An object containing the user property and the sort direction
  * ['asc', 'desc'] as a key-value pair. For example, to order by username descending, the object can be
  * {userName:'desc'}. See {Max.User} properties for acceptable search properties.
  * @returns {Max.Promise} A promise object returning a list of {Max.User} or reason of failure.
  */
-Max.User.search = function(queryObj) {
+Max.User.search = function(query, limit, offset, orderby) {
     var qs = '', userlist = [];
     var keyMap = {
         query: 'q',
@@ -281,14 +280,15 @@ Max.User.search = function(queryObj) {
         orderby: 'sort'
     };
 
-    queryObj = queryObj || {};
-    queryObj.offset = queryObj.offset || 0;
-    queryObj.limit = queryObj.limit || 1;
-    queryObj.query = queryObj.query || {userName : '*'};
+    var queryObj = {};
+    queryObj.offset = offset || 0;
+    queryObj.limit = limit || 10;
+    queryObj.query = query || {userName : '*'};
+    queryObj.orderby = orderby || null;
 
     if (queryObj.query.userId)
         queryObj.query.userIdentifier = queryObj.query.userId;
-    if (queryObj.orderby && queryObj.orderby.userId)
+    if (orderby && orderby.userId)
         queryObj.orderby.userIdentifier = queryObj.orderby.userId;
 
     for(var key in queryObj) {

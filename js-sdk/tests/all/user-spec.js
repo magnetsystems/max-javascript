@@ -560,21 +560,16 @@ describe('User search', function() {
 
     it('should return a list of users', function (done) {
         Max.User.search({
-            limit: 7,
-            offset: 1,
-            orderby: {
-                userId: 'desc'
-            },
-            query: {
                 userName: '*'
-            }
-        }).success(function (users) {
+            }, 7, 1, {
+                userId: 'desc'
+            }).success(function (users) {
             expect(users.length).toEqual(1);
             var user1 = users[0];
             expect(user1.userName).toEqual('jack.doe');
             expect(requests[0].url)
-                .toEqual('http://localhost:7777/api/com.magnet.server/user/query' +
-                '?take=7&skip=1&sort=userIdentifier:desc&q=userName:*');
+                .toEqual('http://localhost:7777/api/com.magnet.server/user/query?skip=1&take=' +
+                '7&q=userName:*&sort=userIdentifier:desc');
             done();
         }).error(function (e) {
             expect(e).toEqual('failed-test');
