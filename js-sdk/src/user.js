@@ -72,50 +72,57 @@ Max.User.register = function(userObj) {
 
 /**
  * Login as the given user.
- * @param {object} userObj An object containing user information.
- * @param {string} userObj.userName User's username.
- * @param {string} userObj.password User's preferred password.
+ * @param {string} userName User's username.
+ * @param {string} password User's preferred password.
+ * @param {boolean} [rememberMe] Set to true to stay logged in until an explicit logout using {Max.User.logout}.
  * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
-Max.User.login = function(userObj) {
-    userObj = userObj || {};
+Max.User.login = function(userName, password, rememberMe) {
+    var def = new Max.Deferred();
+    var userObj = {};
     userObj.grant_type = 'password';
     userObj.client_id = Max.App.clientId;
-    userObj.remember_me = userObj.remember_me || false;
-    userObj.username = userObj.userName || userObj.username;
+    userObj.username = userName;
+    userObj.password = password;
+    userObj.remember_me = (rememberMe === true || rememberMe === false) ? rememberMe : false;
 
-    Max.MMXClient.disconnect();
+    setTimeout(function() {
+        if (!userObj.username) return def.reject('invalid username');
+        if (!userObj.password) return def.reject('invalid password');
 
-    var def = Max.Request({
-        method: 'POST',
-        url: '/com.magnet.server/user/session',
-        data: userObj,
-        contentType: 'application/x-www-form-urlencoded',
-        headers: {
-           'Authorization': 'Basic ' + Max.Utils.stringToBase64(userObj.userName+':'+userObj.password),
-           'MMS-DEVICE-ID': MMS_DEVICE_ID
-        },
-        isLogin: true
-    }, function(data) {
+        Max.MMXClient.disconnect();
 
-        Max.App.hatCredentials = data;
-        mCurrentUser = new Max.User(data.user);
-        Cookie.create('magnet-max-auth-token', data.access_token, 2);
+        Max.Request({
+            method: 'POST',
+            url: '/com.magnet.server/user/session',
+            data: userObj,
+            contentType: 'application/x-www-form-urlencoded',
+            headers: {
+               'Authorization': 'Basic ' + Max.Utils.stringToBase64(userObj.userName+':'+userObj.password),
+               'MMS-DEVICE-ID': MMS_DEVICE_ID
+            },
+            isLogin: true
+        }, function(data) {
 
-        if (data.refresh_token)
-            Cookie.create('magnet-max-refresh-token', data.access_token, 365);
+            Max.App.hatCredentials = data;
+            mCurrentUser = new Max.User(data.user);
+            Cookie.create('magnet-max-auth-token', data.access_token, 2);
 
-        Max.MMXClient.registerDeviceAndConnect(data.access_token)
-            .success(function() {
-                def.resolve.apply(def, arguments);
-            })
-            .error(function() {
-                def.reject.apply(def, arguments);
-            });
+            if (data.refresh_token)
+                Cookie.create('magnet-max-refresh-token', data.access_token, 365);
 
-    }, function(e, details) {
-        def.reject(details.status == 401 ? 'incorrect credentials' : e, details);
-    });
+            Max.MMXClient.registerDeviceAndConnect(data.access_token)
+                .success(function() {
+                    def.resolve.apply(def, arguments);
+                })
+                .error(function() {
+                    def.reject.apply(def, arguments);
+                });
+
+        }, function(e, details) {
+            def.reject(details.status == 401 ? 'incorrect credentials' : e, details);
+        });
+    }, 0);
 
     return def.promise;
 };

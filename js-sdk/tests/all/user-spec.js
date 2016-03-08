@@ -143,57 +143,52 @@ describe('User login', function() {
 	});
 
     it('should login a new user', function(done) {
-        var userObj = {
-            userName: 'jack.doe',
-            password: 'magnet'
-        };
-        var regClient = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect');
-        var def = new Max.Deferred();
-        regClient.returns(def.promise);
-        Max.User.login(userObj).success(function(res) {
+        var username = 'jack.doe';
+        var password = 'magnet';
+        var requestStub = sinon.stub(Max, 'Request');
+        requestStub.callsArgWith(1, {
+            user: {
+                userName: username,
+                firstName: 'Jack',
+                lastName: 'Doe',
+                password: password,
+                email: 'jack.doe@magnet.com'
+            }
+        });
+        var regClient = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve('ok');
+            }, 0);
+            return d.promise;
+        });
+        Max.User.login(username, password).success(function(res) {
             expect(res).toEqual('ok');
             Max.MMXClient.registerDeviceAndConnect.restore();
+            Max.Request.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
             Max.MMXClient.registerDeviceAndConnect.restore();
+            Max.Request.restore();
             done();
         });
-        setTimeout(function() {
-            expect(requests.length).toEqual(1);
-            requests[0].respond(200, {
-                'Content-Type': 'application/json'
-            }, JSON.stringify({
-                user: {
-                    userName: 'jack.doe',
-                    firstName: 'Jack',
-                    lastName: 'Doe',
-                    password: 'magnet',
-                    email: 'jack.doe@magnet.com'
-                }
-            }));
-            def.resolve('ok');
-        }, 5);
     });
 
     it('should fail login given incorrect credentials', function(done) {
-        var userObj = {
-            userName: 'jack.doe',
-            password: 'magnet2'
-        };
-        Max.User.login(userObj).success(function(res) {
+        var username = 'jack.doe';
+        var password = 'magnet2';
+        var requestStub = sinon.stub(Max, 'Request');
+        requestStub.callsArgWith(2, 'incorrect credentials', {});
+        Max.User.login(username, password).success(function(res) {
             expect(res).toEqual('failed-test');
+            Max.Request.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('incorrect credentials');
+            Max.Request.restore();
             done();
         });
-        setTimeout(function() {
-            expect(requests.length).toEqual(1);
-            requests[0].respond(401, {
-                'Content-Type': 'text/plain'
-            }, 'incorrect credentials');
-        }, 5);
     });
 
 });

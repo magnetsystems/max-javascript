@@ -11,12 +11,12 @@ Max.Config = {
     /**
      * @property {boolean} logging Enable the payload logging feature.
      */
-    payloadLogging         : true,
+    payloadLogging         : false,
     /**
      * @property {string} logLevel Set the lowest level to log. Lower log levels will be ignore. The order is SEVERE, WARNING,
      * INFO, CONFIG, and FINE.
      */
-    logLevel               : 'FINE',
+    logLevel               : 'WARNING',
     /**
      * @property {string} logHandler Define the log handler used to handle logs if logging is enabled. Specifying 'DB' stores
      * to the database configured in {Max.Storage}, 'Console' outputs log via console.log, and 'Console&DB' stores to
@@ -68,7 +68,7 @@ Max.Config = {
     /**
      * @property {string} baseUrl baseUrl.
      */
-    baseUrl            : 'http://localhost:7777/api',
+    baseUrl            : 'https://sandbox.magnet.com/mobile/api',
     /**
      * @property {string} tlsEnabled Determines whether TLS security enabled.
      */
