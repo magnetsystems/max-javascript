@@ -1,61 +1,61 @@
 /**
  * A class containing transport functions for facilitating requests and responses between a client and a Mobile App Server.
- * @memberof MagnetJS
+ * @memberof Max
  * @namespace Request
  * @ignore
  */
-MagnetJS.Request = function(request, callback, failback) {
+Max.Request = function(request, callback, failback) {
     request._path = request.url;
     if (!request.isBinary) request.contentType = request.contentType || 'application/json';
     request.headers = request.headers || [];
 
-    var deferred = new MagnetJS.Deferred();
-    deferred.promise = new MagnetJS.Call();
+    var deferred = new Max.Deferred();
+    deferred.promise = new Max.Call();
 
     var options = {
         call : deferred.promise
     };
 
-    if (MagnetJS.App.hatCredentials && MagnetJS.App.hatCredentials.access_token && !request.headers.Authorization)
-        request.headers['Authorization'] = 'Bearer ' + MagnetJS.App.hatCredentials.access_token;
+    if (Max.App.hatCredentials && Max.App.hatCredentials.access_token && !request.headers.Authorization)
+        request.headers['Authorization'] = 'Bearer ' + Max.App.hatCredentials.access_token;
 
     setTimeout(function() {
-        if (!MagnetJS.App.initialized && !request.bypassReady)
+        if (!Max.App.initialized && !request.bypassReady)
             return (failback || function() {})('sdk not ready');
 
-        MagnetJS.Transport.request(request.data, request, options, function(result, details) {
-            MagnetJS.Log.fine(details.status+' '+details.info.url+' ', {
+        Max.Transport.request(request.data, request, options, function(result, details) {
+            Max.Log.fine(details.status+' '+details.info.url+' ', {
                 contentType : details.contentType,
                 response    : result
             });
 
-            options.call.state = MagnetJS.CallState.SUCCESS;
+            options.call.state = Max.CallState.SUCCESS;
             (callback || function() {})(result, details);
 
         }, function(e, details) {
-            MagnetJS.Log.fine(details.status+' '+details.info.url+' ', {
+            Max.Log.fine(details.status+' '+details.info.url+' ', {
                 contentType : details.contentType,
                 response    : e
             });
 
             // TODO: need to rework the .status === 0 once CORS is full implemented by server
             if ((details.status === 401 || details.status === 0) && !request.isLogin) {
-                MagnetJS.MMXClient.disconnect();
-                MagnetJS.User.clearSession();
+                Max.MMXClient.disconnect();
+                Max.User.clearSession();
 
                 if (Cookie.get('magnet-max-refresh-token'))
-                    return MagnetJS.User.loginWithRefreshToken(request, callback, failback);
+                    return Max.User.loginWithRefreshToken(request, callback, failback);
 
-                MagnetJS.invoke('not-authenticated', e, details);
+                Max.invoke('not-authenticated', e, details);
             }
 
             if (details.status === 403 && !request.isLogin)
-                MagnetJS.invoke('not-authorized', e, details);
+                Max.invoke('not-authorized', e, details);
 
             if (details.status === 413)
                 e = 'maximum filesize exceeded';
 
-            options.call.state = MagnetJS.CallState.FAILED;
+            options.call.state = Max.CallState.FAILED;
             (failback || function() {})(e, details);
 
         });
@@ -66,11 +66,11 @@ MagnetJS.Request = function(request, callback, failback) {
 
 /**
  * A class containing transport functions for facilitating requests and responses between a client and a Mobile App Server.
- * @memberof MagnetJS
+ * @memberof Max
  * @namespace Transport
  * @ignore
  */
-MagnetJS.Transport = {
+Max.Transport = {
     /**
      * Base request function. Determines the best available transport and calls the request.
      * @param {object} [body] The body of the request.
@@ -82,7 +82,7 @@ MagnetJS.Transport = {
     request : function(body, metadata, options, callback, failback) {
         options = options || {};
         metadata._path = metadata._path || metadata.path;
-        metadata._path = (metadata.local === true || /^(ftp|http|https):/.test(metadata._path) === true) ? metadata._path : MagnetJS.Config.baseUrl+metadata._path;
+        metadata._path = (metadata.local === true || /^(ftp|http|https):/.test(metadata._path) === true) ? metadata._path : Max.Config.baseUrl+metadata._path;
         if (typeof jQuery !== 'undefined' && metadata.returnType != 'binary' && !metadata.isBinary) {
             this.requestJQuery(body, metadata, options, callback, failback);
         } else if (XMLHttpRequest !== 'undefined') {
@@ -127,7 +127,7 @@ MagnetJS.Transport = {
             },
             success : function(data, status, xhr) {
                 if (typeof callback === typeof Function) {
-                    details.info.xhr = MagnetJS.Utils.convertHeaderStrToObj(xhr);
+                    details.info.xhr = Max.Utils.convertHeaderStrToObj(xhr);
                     details.contentType = xhr.getResponseHeader('Content-Type');
                     details.status = xhr.status;
                     data = data.result || data;
@@ -135,7 +135,7 @@ MagnetJS.Transport = {
                 }
             },
             error : function(xhr, metadata, error) {
-                details.info.xhr = MagnetJS.Utils.convertHeaderStrToObj(xhr);
+                details.info.xhr = Max.Utils.convertHeaderStrToObj(xhr);
                 details.contentType = xhr.getResponseHeader('Content-Type');
                 details.status = xhr.status;
                 if (metadata == 'parsererror')
@@ -170,7 +170,7 @@ MagnetJS.Transport = {
             if (xhr.readyState == 4) {
                 details.status = xhr.status;
                 details.contentType = xhr.getResponseHeader('Content-Type');
-                details.info.xhr = MagnetJS.Utils.convertHeaderStrToObj(xhr);
+                details.info.xhr = Max.Utils.convertHeaderStrToObj(xhr);
                 resBody = xhr.responseText;
                 if (typeof xhr.responseXML !== 'undefined' && xhr.responseXML != null) {
                     resBody = xhr.responseXML;
@@ -195,7 +195,7 @@ MagnetJS.Transport = {
         xhr.ontimeout = function() {
             details.status = 0;
             details.contentType = xhr.getResponseHeader('Content-Type');
-            details.info.xhr = MagnetJS.Utils.convertHeaderStrToObj(xhr);
+            details.info.xhr = Max.Utils.convertHeaderStrToObj(xhr);
             if (typeof failback === typeof Function) failback('request-timeout', details);
         };
         xhr.open(metadata.method, metadata._path, true);
@@ -221,7 +221,7 @@ MagnetJS.Transport = {
      * @param {string} input The original request body.
      */
     parseBody : function(type, input) {
-        var QS = MagnetJS.Utils.isNode ? require('querystring') : MagnetJS.Utils.objectToFormdata;
+        var QS = Max.Utils.isNode ? require('querystring') : Max.Utils.objectToFormdata;
         switch(type) {
             case 'application/x-www-form-urlencoded' : input = QS.stringify(input); break;
             case 'application/json' : input = JSON.stringify(input); break;
@@ -247,15 +247,15 @@ MagnetJS.Transport = {
         return str;
     }
 };
-MagnetJS.Transport.Headers = {};
+Max.Transport.Headers = {};
 
 /**
- * A set of constants used by a MagnetJS.Call object to determine the current state of the call.
- * @memberof MagnetJS
+ * A set of constants used by a Max.Call object to determine the current state of the call.
+ * @memberof Max
  * @namespace CallState
  * @ignore
  */
-MagnetJS.CallState = {
+Max.CallState = {
     /**
      * The call has been initialized but the request has not yet started.
      * @type {string}
@@ -291,12 +291,12 @@ MagnetJS.CallState = {
 /**
  * This interface represents an asynchronous invocation to a controller. An instance of the Call is typically returned by a method call from any Controller
  * implementation. If the options are not specified in the Controller subclass method call, a fail-fast asynchronous call will be assumed.
- * @augments MagnetJS.Promise
+ * @augments Max.Promise
  * @constructor
- * @memberof MagnetJS
+ * @memberof Max
  * @ignore
  */
-MagnetJS.Call = function() {
+Max.Call = function() {
     /**
      * A system generated unique ID for this call.
      * @type {string}
@@ -332,8 +332,8 @@ MagnetJS.Call = function() {
      * @type {object}
      */
     this.details;
-    this.state = MagnetJS.CallState.INIT;
-    MagnetJS.Promise.apply(this, arguments);
+    this.state = Max.CallState.INIT;
+    Max.Promise.apply(this, arguments);
 };
-MagnetJS.Call.prototype = new MagnetJS.Promise();
-MagnetJS.Call.prototype.constructor = MagnetJS.Call;
+Max.Call.prototype = new Max.Promise();
+Max.Call.prototype.constructor = Max.Call;

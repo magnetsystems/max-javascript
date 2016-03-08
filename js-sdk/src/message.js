@@ -4,8 +4,8 @@ var x2js = new X2JS();
  * @method
  * @desc Start receiving messages.
  */
-MagnetJS.start = function() {
-    MagnetJS.App.receiving = true;
+Max.start = function() {
+    Max.App.receiving = true;
     if (mXMPPConnection) mXMPPConnection.priority = 0;
 };
 
@@ -13,22 +13,22 @@ MagnetJS.start = function() {
  * @method
  * @desc Stop receiving messages.
  */
-MagnetJS.stop = function() {
-    MagnetJS.App.receiving = false;
+Max.stop = function() {
+    Max.App.receiving = false;
     if (mXMPPConnection) mXMPPConnection.priority = -255;
 };
 
 /**
  * @method
  * @desc Register a listener to handle incoming messages.
- * @param {MagnetJS.MessageListener} listener A message listener.
+ * @param {Max.MessageListener} listener A message listener.
  */
-MagnetJS.registerListener = function(listener) {
+Max.registerListener = function(listener) {
     xmppStore = xmppStore || {};
     xmppStore[listener.id] = mXMPPConnection.addHandler(function(msg) {
 
         var jsonObj = x2js.xml2json(msg);
-        var mmxMsg = new MagnetJS.Message();
+        var mmxMsg = new Max.Message();
 
         mmxMsg.formatMessage(jsonObj, null, function() {
             listener.handler(mmxMsg);
@@ -41,10 +41,10 @@ MagnetJS.registerListener = function(listener) {
 /**
  * @method
  * @desc Unregister a listener identified by the given id to stop handling incoming messages.
- * @param {string|MagnetJS.MessageListener} listenerOrListenerId A message listener or the listener Id specified
+ * @param {string|Max.MessageListener} listenerOrListenerId A message listener or the listener Id specified
  * during creation.
  */
-MagnetJS.unregisterListener = function(listenerOrListenerId) {
+Max.unregisterListener = function(listenerOrListenerId) {
     if (!xmppStore || !listenerOrListenerId || !mXMPPConnection) return;
     if (typeof listenerOrListenerId === 'object') listenerOrListenerId = listenerOrListenerId.id;
     mXMPPConnection.deleteHandler(xmppStore[listenerOrListenerId]);
@@ -53,82 +53,82 @@ MagnetJS.unregisterListener = function(listenerOrListenerId) {
 
 /**
  * @constructor
- * @memberof MagnetJS
+ * @memberof Max
  * @class MessageListener The MessageListener is used to listen for incoming messages and subsequently call the given handler function.
  * @param {string|function} [idOrHandler] A string ID for the handler, or a function to be fired
  * when a message is received. The string ID should be specified if you plan to unregister the handler as some point.
  * @param {function} [handler] Function to be fired when a message is received.
  */
-MagnetJS.MessageListener = function(idOrHandler, handler) {
+Max.MessageListener = function(idOrHandler, handler) {
     if (typeof handler == typeof Function)
         this.handler = handler;
     else
         this.handler = idOrHandler;
-    this.id = typeof idOrHandler == 'string' ? idOrHandler : MagnetJS.Utils.getGUID();
+    this.id = typeof idOrHandler == 'string' ? idOrHandler : Max.Utils.getGUID();
 };
 
 /**
  * @constructor
- * @memberof MagnetJS
+ * @memberof Max
  * @class MMXClient The MMXClient handles communication with the MMX server via XMPP.
  * @ignore
  */
-MagnetJS.MMXClient = {
+Max.MMXClient = {
     /**
      * Connect to MMX server via BOSH http-bind.
      * @param {string} userId The currently logged in user's userId (id).
      * @param {string} accessToken The currently logged in user's access token.
-     * @returns {MagnetJS.Promise} A promise object returning "ok" or reason of failure.
+     * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
      */
     connect: function(userId, accessToken) {
         var self = this;
-        var def = new MagnetJS.Deferred();
-        var secure = MagnetJS.Config.baseUrl.indexOf('https://') != -1;
+        var def = new Max.Deferred();
+        var secure = Max.Config.baseUrl.indexOf('https://') != -1;
         var protocol = (secure ? 'https' : 'http') + '://';
-        var baseHostName = MagnetJS.Config.baseUrl.replace('https://', '').replace('http://', '').split('/')[0];
-        var xmppHost = secure ? baseHostName : (MagnetJS.Config.mmxHost + ':' + MagnetJS.Config.httpBindPort);
+        var baseHostName = Max.Config.baseUrl.replace('https://', '').replace('http://', '').split('/')[0];
+        var xmppHost = secure ? baseHostName : (Max.Config.mmxHost + ':' + Max.Config.httpBindPort);
 
         mXMPPConnection = new Strophe.Connection(protocol + xmppHost + '/http-bind/', {
             withCredentials: secure
         });
 
         mXMPPConnection.rawInput = function(data) {
-            if (MagnetJS.Config.payloadLogging)
-                MagnetJS.Log.fine('RECV: ' + data);
+            if (Max.Config.payloadLogging)
+                Max.Log.fine('RECV: ' + data);
         };
         mXMPPConnection.rawOutput = function(data) {
-            if (MagnetJS.Config.payloadLogging)
-                MagnetJS.Log.fine('SENT: ' + data);
+            if (Max.Config.payloadLogging)
+                Max.Log.fine('SENT: ' + data);
         };
 
         mCurrentUser.jid = self.getBaredJid(userId) + '/' + mCurrentDevice.deviceId;
 
         mXMPPConnection.connect(mCurrentUser.jid, accessToken, function(status) {
             if (status == Strophe.Status.CONNECTING) {
-                MagnetJS.Log.fine('MMX is connecting.');
+                Max.Log.fine('MMX is connecting.');
             } else if (status == Strophe.Status.CONNFAIL) {
-                MagnetJS.Log.fine('MMX failed to connect.');
+                Max.Log.fine('MMX failed to connect.');
                 def.reject('not authorized');
             } else if (status == Strophe.Status.AUTHFAIL) {
-                MagnetJS.Log.fine('MMX failed authentication.');
+                Max.Log.fine('MMX failed authentication.');
                 def.reject('not authorized');
             } else if (status == Strophe.Status.DISCONNECTING) {
-                MagnetJS.Log.fine('MMX is disconnecting.');
+                Max.Log.fine('MMX is disconnecting.');
             } else if (status == Strophe.Status.DISCONNECTED) {
-                MagnetJS.Log.info('MMX is disconnected.');
+                Max.Log.info('MMX is disconnected.');
                 mXMPPConnection = null;
 
-                MagnetJS.User.logout();
+                Max.User.logout();
                 //if (mCurrentUser) {
                 //    mCurrentUser.connected = false;
-                //    if (MagnetJS.App.hatCredentials && MagnetJS.App.hatCredentials.access_token)
-                //        self.registerDeviceAndConnect(mCurrentUser.userId, MagnetJS.App.hatCredentials);
+                //    if (Max.App.hatCredentials && Max.App.hatCredentials.access_token)
+                //        self.registerDeviceAndConnect(mCurrentUser.userId, Max.App.hatCredentials);
                 //}
             } else if (status == Strophe.Status.CONNECTED) {
-                MagnetJS.Log.info('MMX is connected.');
+                Max.Log.info('MMX is connected.');
 
                 mXMPPConnection.send($pres());
-                MagnetJS.invoke('authenticated', 'ok');
+                Max.invoke('authenticated', 'ok');
 
                 if (!mCurrentUser.connected) {
                     mCurrentUser.connected = true;
@@ -142,13 +142,13 @@ MagnetJS.MMXClient = {
     /**
      * A wrapper function to register device and connect to MMX server via BOSH http-bind.
      * @param {string} accessToken The currently logged in user's access token.
-     * @returns {MagnetJS.Promise} A promise object returning current user and device or reason of failure.
+     * @returns {Max.Promise} A promise object returning current user and device or reason of failure.
      */
     registerDeviceAndConnect: function(accessToken) {
         userId = mCurrentUser.userId;
-        var def = new MagnetJS.Deferred();
-        MagnetJS.Device.register().success(function() {
-            MagnetJS.MMXClient.connect(userId, accessToken).success(function() {
+        var def = new Max.Deferred();
+        Max.Device.register().success(function() {
+            Max.MMXClient.connect(userId, accessToken).success(function() {
                 def.resolve(mCurrentUser, mCurrentDevice);
             }).error(function() {
                 def.reject.apply(def, arguments);
@@ -170,8 +170,8 @@ MagnetJS.MMXClient = {
      * @returns {string} a user's Bared Jid.
      */
     getBaredJid: function(userId) {
-        return userId + "%" + MagnetJS.App.appId +
-            '@' + MagnetJS.Config.mmxDomain;
+        return userId + "%" + Max.App.appId +
+            '@' + Max.Config.mmxDomain;
     }
 };
 
@@ -181,21 +181,21 @@ MagnetJS.MMXClient = {
  * The Message class is the local representation of a message. This class provides
  * various message specific methods, like send or reply.
  * @param {object} contents an object containing your custom message body.
- * @param {MagnetJS.User|MagnetJS.User[]|string|string[]} recipientOrRecipients One or more {MagnetJS.User}
- * @property {object|MagnetJS.User} sender The message sender.
+ * @param {Max.User|Max.User[]|string|string[]} recipientOrRecipients One or more {Max.User}
+ * @property {object|Max.User} sender The message sender.
  * @property {object} messageContent The custom message body object sent by the sender.
  * @property {string} messageID An identifier for the message. It can be used to determine whether a message
  * has already been displayed on a chat screen.
- * @property {MagnetJS.Attachment[]} [attachments] An array of message attachments.
- * @property {MagnetJS.Channel} [channel] If the message was sent to a channel, the channel object will be
- * populated with basic channel information. Use the {MagnetJS.Channel.getChannel} method to obtain full channel
+ * @property {Max.Attachment[]} [attachments] An array of message attachments.
+ * @property {Max.Channel} [channel] If the message was sent to a channel, the channel object will be
+ * populated with basic channel information. Use the {Max.Channel.getChannel} method to obtain full channel
  * information.
  * @property {Date} timestamp ISO-8601 formatted timestamp.
- * @property {object[]|MagnetJS.User[]} [recipients] An array of recipients, if the message was sent to
+ * @property {object[]|Max.User[]} [recipients] An array of recipients, if the message was sent to
  * individual users instead of through a channel.
  * objects or userIds to be recipients for your message.
  */
-MagnetJS.Message = function(contents, recipientOrRecipients) {
+Max.Message = function(contents, recipientOrRecipients) {
     this.meta = {};
     this.recipients = [];
 
@@ -203,7 +203,7 @@ MagnetJS.Message = function(contents, recipientOrRecipients) {
         this.messageContent = contents;
 
     if (recipientOrRecipients) {
-        if (MagnetJS.Utils.isArray(recipientOrRecipients)) {
+        if (Max.Utils.isArray(recipientOrRecipients)) {
             for (var i=0;i<recipientOrRecipients.length;++i)
                 this.recipients.push(formatUser(recipientOrRecipients[i]));
         } else {
@@ -218,7 +218,7 @@ MagnetJS.Message = function(contents, recipientOrRecipients) {
 };
 
 /**
- * Given {MagnetJS.User} object or userId, return a formatted object containing userId.
+ * Given {Max.User} object or userId, return a formatted object containing userId.
  */
 function formatUser(userOrUserId) {
     return {
@@ -227,13 +227,13 @@ function formatUser(userOrUserId) {
 }
 
 /**
- * Given an XMPP payload converted to JSON, set the properties of the {MagnetJS.Message} object.
+ * Given an XMPP payload converted to JSON, set the properties of the {Max.Message} object.
  * @param {object} msg A JSON representation of an xmpp payload.
- * @param {MagnetJS.Channel} [channel] The channel this message belongs to.
+ * @param {Max.Channel} [channel] The channel this message belongs to.
  * @param {function} callback This function fires after the format is complete.
  * @ignore
  */
-MagnetJS.Message.prototype.formatMessage = function(msg, channel, callback) {
+Max.Message.prototype.formatMessage = function(msg, channel, callback) {
     var self = this;
 
     try {
@@ -268,11 +268,11 @@ MagnetJS.Message.prototype.formatMessage = function(msg, channel, callback) {
         if (msg.mmx && msg.mmx.mmxmeta) {
             var mmxMeta = JSON.parse(msg.mmx.mmxmeta);
             this.recipients = mmxMeta.To;
-            if (mmxMeta.From) this.sender = new MagnetJS.User(mmxMeta.From);
+            if (mmxMeta.From) this.sender = new Max.User(mmxMeta.From);
         }
 
         if (msg.mmx && msg.mmx.payload) {
-            this.timestamp = MagnetJS.Utils.ISO8601ToDate(msg.mmx.payload._stamp);
+            this.timestamp = Max.Utils.ISO8601ToDate(msg.mmx.payload._stamp);
         }
 
         if (channel) {
@@ -286,7 +286,7 @@ MagnetJS.Message.prototype.formatMessage = function(msg, channel, callback) {
                 return callback();
             }
 
-            MagnetJS.Channel.getChannel(channelObj.name, channelObj.userId).success(function(channel) {
+            Max.Channel.getChannel(channelObj.name, channelObj.userId).success(function(channel) {
                 console.log('got new');
                 self.channel = channel;
                 callback();
@@ -299,7 +299,7 @@ MagnetJS.Message.prototype.formatMessage = function(msg, channel, callback) {
         }
 
     } catch(e) {
-        MagnetJS.Log.fine('MMXMessage.formatMessage', e);
+        Max.Log.fine('MMXMessage.formatMessage', e);
     }
 };
 
@@ -325,7 +325,7 @@ var ChannelStore = {
 };
 
 /**
- * Given a {MagnetJS.Message} object, instantiate the {MagnetJS.Attachment} objects.
+ * Given a {Max.Message} object, instantiate the {Max.Attachment} objects.
  */
 function attachmentRefsToAttachment(mmxMessage, msgMeta) {
     mmxMessage.attachments = mmxMessage.attachments || [];
@@ -335,7 +335,7 @@ function attachmentRefsToAttachment(mmxMessage, msgMeta) {
         msgMeta._attachments = JSON.parse(msgMeta._attachments);
 
     for (var i=0;i<msgMeta._attachments.length;++i)
-        mmxMessage.attachments.push(new MagnetJS.Attachment(msgMeta._attachments[i]));
+        mmxMessage.attachments.push(new Max.Attachment(msgMeta._attachments[i]));
 
     delete msgMeta._attachments;
 }
@@ -349,13 +349,13 @@ function attachmentRefsToAttachment(mmxMessage, msgMeta) {
 //    var userId = nodeStr[nodeStr.length-2];
 //    userId = userId == '*' ? null : userId;
 //
-//    MagnetJS.Channel.getChannel(name, userId).success(cb).error(function() {
+//    Max.Channel.getChannel(name, userId).success(cb).error(function() {
 //        cb();
 //    });
 //}
 
 /**
- * Convert a XMPP pubsub node string into a {MagnetJS.Channel} object.
+ * Convert a XMPP pubsub node string into a {Max.Channel} object.
  */
 function nodePathToChannel(nodeStr) {
     nodeStr = nodeStr.split('/');
@@ -365,7 +365,7 @@ function nodePathToChannel(nodeStr) {
     var userId = nodeStr[nodeStr.length-2];
     userId = userId == '*' ? null : userId;
 
-    return new MagnetJS.Channel({
+    return new Max.Channel({
         name: name,
         userId: userId
     });
@@ -373,13 +373,13 @@ function nodePathToChannel(nodeStr) {
 
 /**
  * Send the message to a user.
- * @returns {MagnetJS.Promise} A promise object returning "ok" or reason of failure.
+ * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
  */
-MagnetJS.Message.prototype.send = function() {
+Max.Message.prototype.send = function() {
     var self = this;
-    var deferred = new MagnetJS.Deferred();
-    var dt = MagnetJS.Utils.dateToISO8601(new Date());
-    self.msgId = MagnetJS.Utils.getCleanGUID();
+    var deferred = new Max.Deferred();
+    var dt = Max.Utils.dateToISO8601(new Date());
+    self.msgId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
         if (!self.recipients.length)
@@ -442,7 +442,7 @@ MagnetJS.Message.prototype.send = function() {
  * @param {object} content A message content object.
  * @ignore
  */
-//MagnetJS.Message.prototype.reply = function(content, cb) {
+//Max.Message.prototype.reply = function(content, cb) {
 //    if (!this.receivedMessage) return cb('unable to reply: not a received message.');
 //    $msg({to: this.meta.from, from: this.meta.to, type: 'chat'})
 //        .cnode(Strophe.copyElement(content));

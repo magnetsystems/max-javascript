@@ -11,7 +11,7 @@
  * ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
  * @property {string} [ownerUserID] The userID for the owner/creator of the channel.
  */
-MagnetJS.Channel = function(channelObj) {
+Max.Channel = function(channelObj) {
     if (channelObj.topicName) {
         channelObj.name = channelObj.topicName;
         delete channelObj.topicName;
@@ -47,7 +47,7 @@ MagnetJS.Channel = function(channelObj) {
     channelObj.isPublic = !channelObj.privateChannel;
     delete channelObj.privateChannel;
 
-    MagnetJS.Utils.mergeObj(this, channelObj);
+    Max.Utils.mergeObj(this, channelObj);
 
     return this;
 };
@@ -59,10 +59,10 @@ MagnetJS.Channel = function(channelObj) {
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
  */
-MagnetJS.Channel.findPublicChannels = function(channelName, tags, limit, offset) {
-    return MagnetJS.Channel.findChannels(channelName, tags, limit, offset, 'public');
+Max.Channel.findPublicChannels = function(channelName, tags, limit, offset) {
+    return Max.Channel.findChannels(channelName, tags, limit, offset, 'public');
 };
 
 /**
@@ -73,10 +73,10 @@ MagnetJS.Channel.findPublicChannels = function(channelName, tags, limit, offset)
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
  */
-MagnetJS.Channel.findPrivateChannels = function(channelName, tags, limit, offset) {
-    return MagnetJS.Channel.findChannels(channelName, tags, limit, offset, 'private');
+Max.Channel.findPrivateChannels = function(channelName, tags, limit, offset) {
+    return Max.Channel.findChannels(channelName, tags, limit, offset, 'private');
 };
 
 /**
@@ -88,11 +88,11 @@ MagnetJS.Channel.findPrivateChannels = function(channelName, tags, limit, offset
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
  * @param {string} [type] The type of search. Must be in ['private', 'public', 'both']. Defaults to both.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
  */
-MagnetJS.Channel.findChannels = function(channelName, tags, limit, offset, type) {
-    var def = new MagnetJS.Deferred();
-    var iqId = MagnetJS.Utils.getCleanGUID();
+Max.Channel.findChannels = function(channelName, tags, limit, offset, type) {
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
     var channels = [];
     limit = limit || 10;
     offset = offset || 0;
@@ -140,9 +140,9 @@ MagnetJS.Channel.findChannels = function(channelName, tags, limit, offset, type)
                 if (json.mmx) {
                     payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
                     if (payload && payload.results && payload.results) {
-                        payload.results = MagnetJS.Utils.objToObjAry(payload.results);
+                        payload.results = Max.Utils.objToObjAry(payload.results);
                         for (var i=0;i<payload.results.length;++i) {
-                            channels.push(new MagnetJS.Channel(payload.results[i]));
+                            channels.push(new Max.Channel(payload.results[i]));
                             ChannelStore.add(channels[i]);
                         }
                     }
@@ -168,11 +168,11 @@ MagnetJS.Channel.findChannels = function(channelName, tags, limit, offset, type)
  * @param {boolean} [channelObj.isPublic] Set to true to make the channel public. Defaults to true.
  * @param {string} [channelObj.publishPermission] Permissions level required to be able to post, must be in
  * ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
- * @returns {MagnetJS.Promise} A promise object returning the new {MagnetJS.Channel} or reason of failure.
+ * @returns {Max.Promise} A promise object returning the new {Max.Channel} or reason of failure.
  */
-MagnetJS.Channel.create = function(channelObj) {
-    var def = new MagnetJS.Deferred();
-    var dt = MagnetJS.Utils.dateToISO8601(new Date());
+Max.Channel.create = function(channelObj) {
+    var def = new Max.Deferred();
+    var dt = Max.Utils.dateToISO8601(new Date());
 
     setTimeout(function() {
         if (!channelObj.name)
@@ -190,7 +190,7 @@ MagnetJS.Channel.create = function(channelObj) {
         if (channelObj.summary) channelObj.description = channelObj.summary;
         if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userId;
 
-        MagnetJS.Request({
+        Max.Request({
             method: 'POST',
             url: '/com.magnet.server/channel/create',
             data: channelObj
@@ -199,7 +199,7 @@ MagnetJS.Channel.create = function(channelObj) {
             delete channelObj.channelName;
             channelObj.creator = mCurrentUser.userId;
 
-            def.resolve(new MagnetJS.Channel(channelObj), details);
+            def.resolve(new Max.Channel(channelObj), details);
         }, function () {
             def.reject.apply(def, arguments);
         });
@@ -209,15 +209,15 @@ MagnetJS.Channel.create = function(channelObj) {
 };
 
 /**
- * Get all the channels the current user is the subscribed to. The returned {MagnetJS.Channel} object
- * only contains basic channel information. Use the {MagnetJS.Channel.getPublicChannel} and
- * {MagnetJS.Channel.getPrivateChannel} methods to obtain the full information.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} (containing basic information
+ * Get all the channels the current user is the subscribed to. The returned {Max.Channel} object
+ * only contains basic channel information. Use the {Max.Channel.getPublicChannel} and
+ * {Max.Channel.getPrivateChannel} methods to obtain the full information.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} (containing basic information
  * only) or reason of failure.
  */
-MagnetJS.Channel.getAllSubscriptions = function() {
-    var def = new MagnetJS.Deferred();
-    var msgId = MagnetJS.Utils.getCleanGUID();
+Max.Channel.getAllSubscriptions = function() {
+    var def = new Max.Deferred();
+    var msgId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session timeout');
@@ -235,7 +235,7 @@ MagnetJS.Channel.getAllSubscriptions = function() {
                 if (!json.pubsub || !json.pubsub.subscriptions || !json.pubsub.subscriptions.subscription)
                     return def.resolve(channels);
 
-                var subs = MagnetJS.Utils.objToObjAry(json.pubsub.subscriptions.subscription);
+                var subs = Max.Utils.objToObjAry(json.pubsub.subscriptions.subscription);
 
                 for (var i=0;i<subs.length;++i)
                     channels.push(nodePathToChannel(subs[i]._node));
@@ -260,23 +260,23 @@ MagnetJS.Channel.getAllSubscriptions = function() {
 
 /**
  * Get channels the given subscribers are subscribed to.
- * @param {string[]|MagnetJS.User[]} subscribers A list of userId or {MagnetJS.User} objects.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} (containing basic information
+ * @param {string[]|Max.User[]} subscribers A list of userId or {Max.User} objects.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} (containing basic information
  * only) or reason of failure.
  */
-MagnetJS.Channel.findChannelsBySubscribers = function(subscribers) {
-    var def = new MagnetJS.Deferred();
+Max.Channel.findChannelsBySubscribers = function(subscribers) {
+    var def = new Max.Deferred();
     var subscriberlist = [];
     var channels = [];
 
-    if (!MagnetJS.Utils.isArray(subscribers))
+    if (!Max.Utils.isArray(subscribers))
         subscribers = [subscribers];
 
     for (var i in subscribers)
-        subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
+        subscriberlist.push(Max.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
 
     setTimeout(function() {
-        MagnetJS.Request({
+        Max.Request({
             method: 'POST',
             url: '/com.magnet.server/channel/query',
             data: {
@@ -286,7 +286,7 @@ MagnetJS.Channel.findChannelsBySubscribers = function(subscribers) {
         }, function(data, details) {
             if (data.channels && data.channels.length) {
                 for (var i=0;i<data.channels.length;++i)
-                    channels.push(new MagnetJS.Channel(data.channels[i]));
+                    channels.push(new Max.Channel(data.channels[i]));
             }
 
             def.resolve(channels, details);
@@ -300,17 +300,17 @@ MagnetJS.Channel.findChannelsBySubscribers = function(subscribers) {
 
 /**
  * Get the extended channel information, including a summary of subscribers and chat history.
- * @param {MagnetJS.Channel|MagnetJS.Channel[]} channelOrChannels One or more channels.
+ * @param {Max.Channel|Max.Channel[]} channelOrChannels One or more channels.
  * @param {number} subscriberCount The number of subscribers to return.
  * @param {number} messageCount The number of messages to return.
- * @returns {MagnetJS.Promise} A promise object returning a list of channel summaries or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of channel summaries or reason of failure.
  */
-MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, messageCount) {
-    var def = new MagnetJS.Deferred();
+Max.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, messageCount) {
+    var def = new Max.Deferred();
     var channelIds = [];
     var channelSummaries = [];
 
-    if (!MagnetJS.Utils.isArray(channelOrChannels))
+    if (!Max.Utils.isArray(channelOrChannels))
         channelOrChannels = [channelOrChannels];
 
     for (var i=0;i<channelOrChannels.length;++i)
@@ -321,7 +321,7 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
         });
 
     setTimeout(function() {
-        MagnetJS.Request({
+        Max.Request({
             method: 'POST',
             url: '/com.magnet.server/channel/summary',
             data: {
@@ -339,13 +339,13 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
                             data[i].owner = {
                                 userId: data[i].userId
                             };
-                        data[i].owner = new MagnetJS.User(data[i].owner);
+                        data[i].owner = new Max.User(data[i].owner);
                     }
                     data[i].channel = matchChannel(channelOrChannels, data[i].channelName, data[i].userId);
                     data[i].messages = parseMessageList(data[i].messages, data[i].channel);
-                    data[i].subscribers = MagnetJS.Utils.objToObjAry(data[i].subscribers);
+                    data[i].subscribers = Max.Utils.objToObjAry(data[i].subscribers);
                     for (j = 0; j < data[i].subscribers.length; ++j)
-                        data[i].subscribers[j] = new MagnetJS.User(data[i].subscribers[j]);
+                        data[i].subscribers[j] = new Max.User(data[i].subscribers[j]);
 
                     channelSummaries.push(data[i]);
                 }
@@ -363,11 +363,11 @@ MagnetJS.Channel.getChannelSummary = function(channelOrChannels, subscriberCount
 // converts an ary of message data into Message object
 function parseMessageList(ary, channel) {
     if (!ary) return [];
-    if (!MagnetJS.Utils.isArray(ary)) ary = [ary];
+    if (!Max.Utils.isArray(ary)) ary = [ary];
     for (j = 0; j < ary.length; ++j) {
-        var mmxMsg = new MagnetJS.Message();
-        mmxMsg.sender = new MagnetJS.User(ary[j].publisher);
-        mmxMsg.timestamp = MagnetJS.Utils.ISO8601ToDate(ary[j].metaData.creationDate);
+        var mmxMsg = new Max.Message();
+        mmxMsg.sender = new Max.User(ary[j].publisher);
+        mmxMsg.timestamp = Max.Utils.ISO8601ToDate(ary[j].metaData.creationDate);
         mmxMsg.channel = channel;
         mmxMsg.messageID = ary[j].itemId;
         if (ary[j].content) {
@@ -396,31 +396,31 @@ function matchChannel(channels, matchName, matchOwner) {
  * Get the basic information about a private channel. Only private channels created by the current
  * user will be returned.
  * @param {string} channelName The channel name.
- * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a {Max.Channel} or reason of failure.
  */
-MagnetJS.Channel.getPrivateChannel = function(channelName) {
-    return MagnetJS.Channel.getChannel(channelName, mCurrentUser.userId);
+Max.Channel.getPrivateChannel = function(channelName) {
+    return Max.Channel.getChannel(channelName, mCurrentUser.userId);
 };
 
 /**
  * Get the basic information about a public channel.
  * @param {string} channelName The channel name.
- * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a {Max.Channel} or reason of failure.
  */
-MagnetJS.Channel.getPublicChannel = function(channelName) {
-    return MagnetJS.Channel.getChannel(channelName);
+Max.Channel.getPublicChannel = function(channelName) {
+    return Max.Channel.getChannel(channelName);
 };
 
 /**
  * Get the basic channel information.
  * @param {string} channelName The channel name.
  * @param {string} [userId] The userId of the channel owner if the channel is private.
- * @returns {MagnetJS.Promise} A promise object returning a {MagnetJS.Channel} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a {Max.Channel} or reason of failure.
  * @ignore
  */
-MagnetJS.Channel.getChannel = function(channelName, userId) {
-    var def = new MagnetJS.Deferred();
-    var msgId = MagnetJS.Utils.getCleanGUID();
+Max.Channel.getChannel = function(channelName, userId) {
+    var def = new Max.Deferred();
+    var msgId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session timeout');
@@ -443,7 +443,7 @@ MagnetJS.Channel.getChannel = function(channelName, userId) {
 
                 if (json.mmx) {
                     payload = JSON.parse(json.mmx);
-                    channel = new MagnetJS.Channel(payload);
+                    channel = new Max.Channel(payload);
                     ChannelStore.add(channel);
                 }
 
@@ -464,14 +464,14 @@ MagnetJS.Channel.getChannel = function(channelName, userId) {
  * Get the full channel information using basic channel object (name and userId).
  * @param {object|object[]} channelOrChannels One or more channel objects containing channel name
  * (and userId, if private channel). Should be in the format {name: 'channelName', userId: 'your-user-id'}.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Channel} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
  * @ignore
  */
-MagnetJS.Channel.getChannels = function(channelOrChannels) {
-    var def = new MagnetJS.Deferred();
-    var msgId = MagnetJS.Utils.getCleanGUID();
+Max.Channel.getChannels = function(channelOrChannels) {
+    var def = new Max.Deferred();
+    var msgId = Max.Utils.getCleanGUID();
 
-    if (!MagnetJS.Utils.isArray(channelOrChannels))
+    if (!Max.Utils.isArray(channelOrChannels))
         channelOrChannels = [channelOrChannels];
 
     setTimeout(function() {
@@ -497,9 +497,9 @@ MagnetJS.Channel.getChannels = function(channelOrChannels) {
 
                 if (json.mmx) {
                     payload = JSON.parse(json.mmx);
-                    payload = MagnetJS.Utils.objToObjAry(payload);
+                    payload = Max.Utils.objToObjAry(payload);
                     for (var i=0;i<payload.length;++i) {
-                        channels.push(new MagnetJS.Channel(payload[i]));
+                        channels.push(new Max.Channel(payload[i]));
                         ChannelStore.add(channels[i]);
                     }
                 }
@@ -521,12 +521,12 @@ MagnetJS.Channel.getChannels = function(channelOrChannels) {
  * Get a list of the users subscribed to the channel.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.User} or reason of failure.
  */
-MagnetJS.Channel.prototype.getAllSubscribers = function(limit, offset) {
+Max.Channel.prototype.getAllSubscribers = function(limit, offset) {
     var self = this;
-    var def = new MagnetJS.Deferred();
-    var iqId = MagnetJS.Utils.getCleanGUID();
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
     var userIds = [];
     limit = limit || 10;
     offset = offset || 0;
@@ -554,7 +554,7 @@ MagnetJS.Channel.prototype.getAllSubscribers = function(limit, offset) {
 
                 if (!payload || !payload.subscribers) return def.resolve([]);
 
-                payload.subscribers = MagnetJS.Utils.objToObjAry(payload.subscribers);
+                payload.subscribers = Max.Utils.objToObjAry(payload.subscribers);
                 for (var i=0;i<payload.subscribers.length;++i)
                     userIds.push(payload.subscribers[i].userId);
 
@@ -578,22 +578,22 @@ MagnetJS.Channel.prototype.getAllSubscribers = function(limit, offset) {
 
 /**
  * Add the given subscribers to the channel.
- * @param {string[]|MagnetJS.User[]} subscribers A list of userId or {MagnetJS.User} objects.
- * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
+ * @param {string[]|Max.User[]} subscribers A list of userId or {Max.User} objects.
+ * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
-MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
+Max.Channel.prototype.addSubscribers = function(subscribers) {
     var self = this;
     var subscriberlist = [];
-    var def = new MagnetJS.Deferred();
+    var def = new Max.Deferred();
 
     setTimeout(function() {
         if (!self.name) return def.reject('invalid channel');
         if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
 
         for (var i in subscribers)
-            subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
+            subscriberlist.push(Max.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
 
-        MagnetJS.Request({
+        Max.Request({
             method: 'POST',
             url: '/com.magnet.server/channel/'+self.name+'/subscribers/add',
             data: {
@@ -612,22 +612,22 @@ MagnetJS.Channel.prototype.addSubscribers = function(subscribers) {
 
 /**
  * Unsubscribe the given subscribers from the channel.
- * @param {string[]|MagnetJS.User[]} subscribers A list of subscribers to unsubscribe from the channel.
- * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
+ * @param {string[]|Max.User[]} subscribers A list of subscribers to unsubscribe from the channel.
+ * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
-MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
+Max.Channel.prototype.removeSubscribers = function(subscribers) {
     var self = this;
     var subscriberlist = [];
-    var def = new MagnetJS.Deferred();
+    var def = new Max.Deferred();
 
     setTimeout(function() {
         if (!self.name) return def.reject('invalid channel');
         if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
 
         for (var i in subscribers)
-            subscriberlist.push(MagnetJS.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
+            subscriberlist.push(Max.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
 
-        MagnetJS.Request({
+        Max.Request({
             method: 'POST',
             url: '/com.magnet.server/channel/'+self.name+'/subscribers/remove',
             data: {
@@ -646,12 +646,12 @@ MagnetJS.Channel.prototype.removeSubscribers = function(subscribers) {
 
 /**
  * Subscribe the current userto the channel.
- * @returns {MagnetJS.Promise} A promise object returning subscription Id or reason of failure.
+ * @returns {Max.Promise} A promise object returning subscription Id or reason of failure.
  */
-MagnetJS.Channel.prototype.subscribe = function() {
+Max.Channel.prototype.subscribe = function() {
     var self = this;
-    var def = new MagnetJS.Deferred();
-    var iqId = MagnetJS.Utils.getCleanGUID();
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
@@ -691,12 +691,12 @@ MagnetJS.Channel.prototype.subscribe = function() {
 
 /**
  * Unsubscribe the current user from the channel.
- * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
+ * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
-MagnetJS.Channel.prototype.unsubscribe = function() {
+Max.Channel.prototype.unsubscribe = function() {
     var self = this;
-    var def = new MagnetJS.Deferred();
-    var iqId = MagnetJS.Utils.getCleanGUID();
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
@@ -735,16 +735,16 @@ MagnetJS.Channel.prototype.unsubscribe = function() {
 
 /**
  * Publish a message and/or attachments to the channel.
- * @param {MagnetJS.Message} mmxMessage A {MagnetJS.Message} instance containing message payload.
+ * @param {Max.Message} mmxMessage A {Max.Message} instance containing message payload.
  * @param {FileUpload|FileUpload[]} [attachments] A FileUpload object created by an input[type="file"] HTML element.
- * @returns {MagnetJS.Promise} A promise object returning "ok" or reason of failure.
+ * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
  */
-MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
+Max.Channel.prototype.publish = function(mmxMessage, attachments) {
     var self = this;
-    var def = new MagnetJS.Deferred();
-    var iqId = MagnetJS.Utils.getCleanGUID();
-    self.msgId = MagnetJS.Utils.getCleanGUID()+'c';
-    var dt = MagnetJS.Utils.dateToISO8601(new Date());
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
+    self.msgId = Max.Utils.getCleanGUID()+'c';
+    var dt = Max.Utils.dateToISO8601(new Date());
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
@@ -789,11 +789,11 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
 
         if (!attachments) return sendMessage(mmxMessage.messageContent);
 
-        new MagnetJS.Uploader(attachments, function(e, multipart) {
+        new Max.Uploader(attachments, function(e, multipart) {
             if (e || !multipart) return def.reject(e);
 
             multipart.upload(self, iqId).success(function(attachments) {
-                sendMessage(MagnetJS.Utils.mergeObj(mmxMessage.messageContent || {}, {
+                sendMessage(Max.Utils.mergeObj(mmxMessage.messageContent || {}, {
                     _attachments: JSON.stringify(attachments)
                 }));
             }).error(function(e) {
@@ -812,15 +812,15 @@ MagnetJS.Channel.prototype.publish = function(mmxMessage, attachments) {
  * @param {number} [limit] The number of messages to return in the request.
  * @param {number} [offset]	The starting index of messages to return.
  * @param {boolean} [ascending] Set to false to sort by descending order. Defaults to true.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.Message} and total number of messages
+ * @returns {Max.Promise} A promise object returning a list of {Max.Message} and total number of messages
  * payloador reason of failure.
  */
-MagnetJS.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, ascending) {
+Max.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, ascending) {
     var self = this;
-    var def = new MagnetJS.Deferred();
-    var iqId = MagnetJS.Utils.getCleanGUID();
-    startDate = MagnetJS.Utils.dateToISO8601(startDate);
-    endDate = MagnetJS.Utils.dateToISO8601(endDate);
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
+    startDate = Max.Utils.dateToISO8601(startDate);
+    endDate = Max.Utils.dateToISO8601(endDate);
     limit = limit || 10;
     offset = offset || 0;
     ascending = typeof ascending !== 'boolean' ? true : ascending;
@@ -854,7 +854,7 @@ MagnetJS.Channel.prototype.getMessages = function(startDate, endDate, limit, off
                 if (json.mmx) {
                     payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
                     if (payload) {
-                        payload.items = MagnetJS.Utils.objToObjAry(payload.items);
+                        payload.items = Max.Utils.objToObjAry(payload.items);
                         formatMessage([], self, payload.items, 0, function(messages) {
                             def.resolve(messages, payload.totalCount);
                         });
@@ -876,7 +876,7 @@ MagnetJS.Channel.prototype.getMessages = function(startDate, endDate, limit, off
 function formatMessage(messages, channel, msgAry, index, cb) {
     if (!msgAry[index] || !msgAry[index].payloadXML) return cb(messages);
     var jsonObj = x2js.xml_str2json(msgAry[index].payloadXML);
-    var mmxMsg = new MagnetJS.Message();
+    var mmxMsg = new Max.Message();
 
     mmxMsg.formatMessage(jsonObj, channel, function() {
         mmxMsg.messageID = msgAry[index].itemId;
@@ -887,12 +887,12 @@ function formatMessage(messages, channel, msgAry, index, cb) {
 
 /**
  * Delete this channel
- * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
+ * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
-MagnetJS.Channel.prototype.delete = function() {
+Max.Channel.prototype.delete = function() {
     var self = this;
-    var def = new MagnetJS.Deferred();
-    var iqId = MagnetJS.Utils.getCleanGUID();
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
@@ -932,7 +932,7 @@ MagnetJS.Channel.prototype.delete = function() {
  * Determines if the currently logged in user is the owner of the channel.
  * @returns {boolean} True if the currently logged in user is the owner of the channel.
  */
-MagnetJS.Channel.prototype.isOwner = function() {
+Max.Channel.prototype.isOwner = function() {
     return this.userId == mCurrentUser.userId || (this.ownerUserID && this.ownerUserID == mCurrentUser.userId);
 };
 
@@ -941,7 +941,7 @@ MagnetJS.Channel.prototype.isOwner = function() {
  * @returns {string} The formal channel name.
  * @ignore
  */
-MagnetJS.Channel.prototype.getChannelName = function() {
+Max.Channel.prototype.getChannelName = function() {
     return this.isPublic === true ? this.name : (this.userId + '#' + this.name);
 };
 
@@ -950,6 +950,6 @@ MagnetJS.Channel.prototype.getChannelName = function() {
  * @returns {string} A pubsub node path.
  * @ignore
  */
-MagnetJS.Channel.prototype.getNodePath = function() {
-    return '/' + MagnetJS.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
+Max.Channel.prototype.getNodePath = function() {
+    return '/' + Max.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
 };

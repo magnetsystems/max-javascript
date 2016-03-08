@@ -4,21 +4,21 @@
  * The Device class is a local representation of a device in the MagnetMax platform. This class provides
  * various device specific methods, like collecting device information.
  */
-MagnetJS.Device = {
+Max.Device = {
     /**
      * @desc Get device information of the currently registered device.
-     * @returns {MagnetJS.Device} currently logged in user.
+     * @returns {Max.Device} currently logged in user.
      */
     getCurrentDevice: function() {
         return mCurrentDevice || null;
     },
     /**
      * Associates a device with the current user against the server.
-     * @returns {MagnetJS.Promise} A promise object returning device information or request error.
+     * @returns {Max.Promise} A promise object returning device information or request error.
      * @ignore
      */
     register: function() {
-        var def = MagnetJS.Request({
+        var def = Max.Request({
             method: 'POST',
             url: '/com.magnet.server/devices',
             data: mCurrentDevice,
@@ -38,12 +38,12 @@ MagnetJS.Device = {
      */
     collectDeviceInfo: function(callback) {
         var e = null;
-        var browser = MagnetJS.Utils.getBrowser();
-        var os = MagnetJS.Utils.getOS();
+        var browser = Max.Utils.getBrowser();
+        var os = Max.Utils.getOS();
         var deviceId = Cookie.get('magnet-max-device-id');
 
         if (!deviceId) {
-            deviceId = 'js-'+MagnetJS.Utils.getGUID();
+            deviceId = 'js-'+Max.Utils.getGUID();
             Cookie.create('magnet-max-device-id', deviceId, 365);
         }
 
@@ -63,29 +63,29 @@ MagnetJS.Device = {
      * @ignore
      */
     checkInWithDevice: function(callback) {
-        MagnetJS.Device.collectDeviceInfo(function(e, deviceInfo) {
+        Max.Device.collectDeviceInfo(function(e, deviceInfo) {
             if (e) throw (e);
 
-            MagnetJS.Request({
+            Max.Request({
                 method: 'POST',
                 url: '/com.magnet.server/applications/session-device',
                 data: deviceInfo,
                 headers: {
                     Authorization: 'Basic ' +
-                    MagnetJS.Utils.stringToBase64(MagnetJS.App.clientId+':'+MagnetJS.App.clientSecret)
+                    Max.Utils.stringToBase64(Max.App.clientId+':'+Max.App.clientSecret)
                 },
                 bypassReady: true
             }, function(data) {
 
                 mCurrentDevice = deviceInfo;
-                MagnetJS.App.catCredentials = data.applicationToken;
-                MagnetJS.App.appId = data.applicationToken.mmx_app_id;
-                MagnetJS.Config.baseUrl = data.config['mms-application-endpoint'];
-                MagnetJS.Config.mmxHost = data.config['mmx-host'];
-                MagnetJS.Config.securityPolicy = data.config['security-policy'];
-                MagnetJS.Config.tlsEnabled = data.config['tls-enabled'] === 'true';
-                MagnetJS.Config.mmxDomain = data.config['mmx-domain'];
-                MagnetJS.Config.mmxPort = parseInt(data.config['mmx-port']);
+                Max.App.catCredentials = data.applicationToken;
+                Max.App.appId = data.applicationToken.mmx_app_id;
+                Max.Config.baseUrl = data.config['mms-application-endpoint'];
+                Max.Config.mmxHost = data.config['mmx-host'];
+                Max.Config.securityPolicy = data.config['security-policy'];
+                Max.Config.tlsEnabled = data.config['tls-enabled'] === 'true';
+                Max.Config.mmxDomain = data.config['mmx-domain'];
+                Max.Config.mmxPort = parseInt(data.config['mmx-port']);
 
                 callback();
             }, function(e) {

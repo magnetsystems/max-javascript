@@ -15,7 +15,7 @@
  * @property {string} [lastName] User's last name.
  * @property {string} [email] User's email.
  */
-MagnetJS.User = function(userObj) {
+Max.User = function(userObj) {
     if (userObj.displayName == 'null null') delete userObj.displayName;
 
     if (userObj.displayName) {
@@ -31,7 +31,7 @@ MagnetJS.User = function(userObj) {
     delete userObj.userIdentifier;
     userObj.userName = userObj.userName || userObj.username || userObj.displayName;
 
-    MagnetJS.Utils.mergeObj(this, userObj);
+    Max.Utils.mergeObj(this, userObj);
     return this;
 };
 
@@ -43,27 +43,27 @@ MagnetJS.User = function(userObj) {
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
  * @param {string} [userObj.email] User's email.
- * @returns {MagnetJS.Promise} A promise object returning the new {MagnetJS.User} or reason of failure.
+ * @returns {Max.Promise} A promise object returning the new {Max.User} or reason of failure.
  */
-MagnetJS.User.register = function(userObj) {
+Max.User.register = function(userObj) {
     userObj.userName = userObj.userName || userObj.username;
     var auth;
 
-    MagnetJS.MMXClient.disconnect();
+    Max.MMXClient.disconnect();
 
-    if (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials)
+    if (Max.App.catCredentials || Max.App.hatCredentials)
         auth = {
             'Authorization': 'Bearer '
-            + (MagnetJS.App.catCredentials || MagnetJS.App.hatCredentials || {}).access_token
+            + (Max.App.catCredentials || Max.App.hatCredentials || {}).access_token
         };
 
-    var def = MagnetJS.Request({
+    var def = Max.Request({
         method: 'POST',
         url: '/com.magnet.server/user/enrollment',
         data: userObj,
         headers: auth
     }, function(newUserObj, details) {
-        def.resolve.apply(def, [new MagnetJS.User(newUserObj), details]);
+        def.resolve.apply(def, [new Max.User(newUserObj), details]);
     }, function() {
         def.reject.apply(def, arguments);
     });
@@ -75,37 +75,37 @@ MagnetJS.User.register = function(userObj) {
  * @param {object} userObj An object containing user information.
  * @param {string} userObj.userName User's username.
  * @param {string} userObj.password User's preferred password.
- * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
+ * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
-MagnetJS.User.login = function(userObj) {
+Max.User.login = function(userObj) {
     userObj = userObj || {};
     userObj.grant_type = 'password';
-    userObj.client_id = MagnetJS.App.clientId;
+    userObj.client_id = Max.App.clientId;
     userObj.remember_me = userObj.remember_me || false;
     userObj.username = userObj.userName || userObj.username;
 
-    MagnetJS.MMXClient.disconnect();
+    Max.MMXClient.disconnect();
 
-    var def = MagnetJS.Request({
+    var def = Max.Request({
         method: 'POST',
         url: '/com.magnet.server/user/session',
         data: userObj,
         contentType: 'application/x-www-form-urlencoded',
         headers: {
-           'Authorization': 'Basic ' + MagnetJS.Utils.stringToBase64(userObj.userName+':'+userObj.password),
+           'Authorization': 'Basic ' + Max.Utils.stringToBase64(userObj.userName+':'+userObj.password),
            'MMS-DEVICE-ID': MMS_DEVICE_ID
         },
         isLogin: true
     }, function(data) {
 
-        MagnetJS.App.hatCredentials = data;
-        mCurrentUser = new MagnetJS.User(data.user);
+        Max.App.hatCredentials = data;
+        mCurrentUser = new Max.User(data.user);
         Cookie.create('magnet-max-auth-token', data.access_token, 2);
 
         if (data.refresh_token)
             Cookie.create('magnet-max-refresh-token', data.access_token, 365);
 
-        MagnetJS.MMXClient.registerDeviceAndConnect(data.access_token)
+        Max.MMXClient.registerDeviceAndConnect(data.access_token)
             .success(function() {
                 def.resolve.apply(def, arguments);
             })
@@ -122,19 +122,19 @@ MagnetJS.User.login = function(userObj) {
 
 /**
  * Login automatically if the Remember Me setting was enabled during login.
- * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
+ * @returns {Max.Promise} A promise object returning success report or reason of failure.
  * @ignore
  */
-MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
+Max.User.loginWithRefreshToken = function(request, callback, failback) {
     var token = Cookie.get('magnet-max-refresh-token');
 
-    MagnetJS.MMXClient.disconnect();
+    Max.MMXClient.disconnect();
 
-    var def = MagnetJS.Request({
+    var def = Max.Request({
         method: 'POST',
         url: '/com.magnet.server/user/newtoken',
         data: {
-            client_id: MagnetJS.App.clientId,
+            client_id: Max.App.clientId,
             refresh_token: token,
             grant_type: 'refresh_token',
             device_id: MMS_DEVICE_ID,
@@ -143,13 +143,13 @@ MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
         isLogin: true
     }, function(data) {
 
-        MagnetJS.App.hatCredentials = data;
-        mCurrentUser = new MagnetJS.User(data.user);
+        Max.App.hatCredentials = data;
+        mCurrentUser = new Max.User(data.user);
         Cookie.create('magnet-max-auth-token', data.access_token, 1);
 
-        MagnetJS.MMXClient.registerDeviceAndConnect(data.access_token)
+        Max.MMXClient.registerDeviceAndConnect(data.access_token)
             .success(function() {
-                if (request) return MagnetJS.Request(request, callback, failback);
+                if (request) return Max.Request(request, callback, failback);
                 def.resolve.apply(def, arguments);
             })
             .error(function() {
@@ -169,18 +169,18 @@ MagnetJS.User.loginWithRefreshToken = function(request, callback, failback) {
  * @param {function} callback fires upon completion.
  * @ignore
  */
-MagnetJS.User.loginWithAccessToken = function(callback) {
+Max.User.loginWithAccessToken = function(callback) {
     var token = Cookie.get('magnet-max-auth-token');
     if (!token) return callback('auth token missing');
 
-    MagnetJS.App.hatCredentials = {
+    Max.App.hatCredentials = {
         access_token: token
     };
 
     Max.User.getUserInfo().success(function(user) {
         mCurrentUser = user;
 
-        MagnetJS.MMXClient.registerDeviceAndConnect(token)
+        Max.MMXClient.registerDeviceAndConnect(token)
             .success(function() {
                 callback();
             })
@@ -196,9 +196,9 @@ MagnetJS.User.loginWithAccessToken = function(callback) {
 /**
  * Given a list of usernames, return a list of users.
  * @param {string[]} usernames A list of usernames.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.User} or reason of failure.
  */
-MagnetJS.User.getUsersByUserNames = function(usernames) {
+Max.User.getUsersByUserNames = function(usernames) {
     var qs = '', userlist = [];
 
     if (usernames && usernames.length) {
@@ -208,12 +208,12 @@ MagnetJS.User.getUsersByUserNames = function(usernames) {
         qs = qs.replace('&', '?');
     }
 
-    var def = MagnetJS.Request({
+    var def = Max.Request({
         method: 'GET',
         url: '/com.magnet.server/user/users' + qs
     }, function(data, details) {
         for (var i=0;i<data.length;++i)
-            userlist.push(new MagnetJS.User(data[i]));
+            userlist.push(new Max.User(data[i]));
 
         def.resolve(userlist, details);
     }, function() {
@@ -226,9 +226,9 @@ MagnetJS.User.getUsersByUserNames = function(usernames) {
 /**
  * Given a list of userIds, return a list of users.
  * @param {string[]} userIds A list of userIds.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.User} or reason of failure.
  */
-MagnetJS.User.getUsersByUserIds = function(userIds) {
+Max.User.getUsersByUserIds = function(userIds) {
     var qs = '', userlist = [];
 
     if (userIds && userIds.length) {
@@ -237,12 +237,12 @@ MagnetJS.User.getUsersByUserIds = function(userIds) {
         qs = qs.replace('&', '?');
     }
 
-    var def = MagnetJS.Request({
+    var def = Max.Request({
         method: 'GET',
         url: '/com.magnet.server/user/users/ids' + qs
     }, function(data, details) {
         for (var i=0;i<data.length;++i)
-            userlist.push(new MagnetJS.User(data[i]));
+            userlist.push(new Max.User(data[i]));
 
         def.resolve(userlist, details);
     }, function() {
@@ -256,16 +256,16 @@ MagnetJS.User.getUsersByUserIds = function(userIds) {
  * Search for users with an advanced search query.
  * @param {object} [queryObj] A search query object.
  * @param {object} [queryObj.query] An object containing the user property and the search value as a key-value pair.
- * For example, to search for a user by username, the object can be {userName:'jon.doe'}. See {MagnetJS.User} properties
+ * For example, to search for a user by username, the object can be {userName:'jon.doe'}. See {Max.User} properties
  * for acceptable search properties.
  * @param {number} [queryObj.limit] The number of results to return per page.
  * @param {number} [queryObj.offset] The starting index of results.
  * @param {object} [queryObj.orderby] An object containing the user property and the sort direction
  * ['asc', 'desc'] as a key-value pair. For example, to order by username descending, the object can be
- * {userName:'desc'}. See {MagnetJS.User} properties for acceptable search properties.
- * @returns {MagnetJS.Promise} A promise object returning a list of {MagnetJS.User} or reason of failure.
+ * {userName:'desc'}. See {Max.User} properties for acceptable search properties.
+ * @returns {Max.Promise} A promise object returning a list of {Max.User} or reason of failure.
  */
-MagnetJS.User.search = function(queryObj) {
+Max.User.search = function(queryObj) {
     var qs = '', userlist = [];
     var keyMap = {
         query: 'q',
@@ -299,13 +299,13 @@ MagnetJS.User.search = function(queryObj) {
     }
     qs = qs != '' ? qs.replace('&', '?') : qs;
 
-    var def = MagnetJS.Request({
+    var def = Max.Request({
         method: 'GET',
         url: '/com.magnet.server/user/query'+qs,
         bypassReady: queryObj.bypassReady
     }, function(data, details) {
         for (var i=0;i<data.length;++i)
-            userlist.push(new MagnetJS.User(data[i]));
+            userlist.push(new Max.User(data[i]));
 
         def.resolve(userlist, details);
     }, function() {
@@ -316,8 +316,8 @@ MagnetJS.User.search = function(queryObj) {
 };
 
 // TODO: not used
-MagnetJS.User.getToken = function() {
-    var def = MagnetJS.Request({
+Max.User.getToken = function() {
+    var def = Max.Request({
         method: 'GET',
         url: '/com.magnet.server/tokens/token'
     }, function() {
@@ -329,17 +329,17 @@ MagnetJS.User.getToken = function() {
 };
 
 /**
- * Gets the current {MagnetJS.User} object.
- * @returns {MagnetJS.Promise} A promise object returning the current user as a {MagnetJS.User} or reason of failure.
+ * Gets the current {Max.User} object.
+ * @returns {Max.Promise} A promise object returning the current user as a {Max.User} or reason of failure.
  * @ignore
  */
-MagnetJS.User.getUserInfo = function() {
-    var def = MagnetJS.Request({
+Max.User.getUserInfo = function() {
+    var def = Max.Request({
         method: 'GET',
         url: '/com.magnet.server/userinfo',
         bypassReady: true
     }, function(data, details) {
-        def.resolve.apply(def, [new MagnetJS.User(data), details]);
+        def.resolve.apply(def, [new Max.User(data), details]);
     }, function() {
         def.reject.apply(def, arguments);
     });
@@ -348,14 +348,14 @@ MagnetJS.User.getUserInfo = function() {
 
 /**
  * Logout the current logged in user.
- * @returns {MagnetJS.Promise} A promise object returning success report or reason of failure.
+ * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
-MagnetJS.User.logout = function() {
+Max.User.logout = function() {
     var self = this;
     Cookie.remove('magnet-max-refresh-token');
-    MagnetJS.MMXClient.disconnect();
+    Max.MMXClient.disconnect();
 
-    var def = MagnetJS.Request({
+    var def = Max.Request({
         method: 'DELETE',
         url: '/com.magnet.server/user/session'
     }, function() {
@@ -372,9 +372,9 @@ MagnetJS.User.logout = function() {
  * Removes user session information.
  * @ign
  */
-MagnetJS.User.clearSession = function() {
+Max.User.clearSession = function() {
     mCurrentUser = null;
-    MagnetJS.App.hatCredentials = null;
+    Max.App.hatCredentials = null;
     Cookie.remove('magnet-max-auth-token');
     ChannelStore.clear();
 };

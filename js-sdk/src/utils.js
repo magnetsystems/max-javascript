@@ -1,9 +1,9 @@
 /**
  * @global
- * @desc An object containing attributes used across the MagnetJS SDK.
+ * @desc An object containing attributes used across the Max SDK.
  * @ignore
  */
-MagnetJS.Config = {
+Max.Config = {
     /**
      * @property {boolean} logging Enable the logging feature.
      */
@@ -19,7 +19,7 @@ MagnetJS.Config = {
     logLevel               : 'FINE',
     /**
      * @property {string} logHandler Define the log handler used to handle logs if logging is enabled. Specifying 'DB' stores
-     * to the database configured in {MagnetJS.Storage}, 'Console' outputs log via console.log, and 'Console&DB' stores to
+     * to the database configured in {Max.Storage}, 'Console' outputs log via console.log, and 'Console&DB' stores to
      * database and outputs simultaneously.
      */
     logHandler             : 'Console',
@@ -77,10 +77,10 @@ MagnetJS.Config = {
 
 /**
  * @global
- * @desc An object containing application-specific information used across the MagnetJS SDK.
+ * @desc An object containing application-specific information used across the Max SDK.
  * @ignore
  */
-MagnetJS.App = {
+Max.App = {
     /**
      * @property {boolean} True indicates that the SDK is ready for use.
      */
@@ -117,8 +117,8 @@ MagnetJS.App = {
 };
 
 /**
- * A class containing general utility functions used across the MagnetJS SDK.
- * @memberof MagnetJS
+ * A class containing general utility functions used across the Max SDK.
+ * @memberof Max
  * @namespace Utils
  * @ignore
  */
@@ -127,7 +127,7 @@ if (!String.prototype.trim) {
         return this.replace(/^\s+|\s+$/g, '');
     };
 }
-MagnetJS.Utils = {
+Max.Utils = {
     /**
      * Indicates whether the current browser is an Android device.
      */
@@ -232,7 +232,7 @@ MagnetJS.Utils = {
      */
     objectToFormdata : {
         stringify : function(input) {
-            if (MagnetJS.Utils.isObject(input)) {
+            if (Max.Utils.isObject(input)) {
                 var ary = [];
                 for(var key in input) {
                     if (input.hasOwnProperty(key) && input[key] != null)
@@ -405,7 +405,7 @@ MagnetJS.Utils = {
         var d = [];
         d = str.match(re);
         if (!d) {
-            MagnetJS.Log.fine("Couldn't parse ISO 8601 date string '" + str + "'");
+            Max.Log.fine("Couldn't parse ISO 8601 date string '" + str + "'");
             return false;
         }
         var a = [1,2,3,4,5,6,10,11];
@@ -647,13 +647,13 @@ MagnetJS.Utils = {
  * the 'then' function.
  * @constructor
  */
-MagnetJS.Promise = function() {
+Max.Promise = function() {
     this.successes = [];
     this.failures = [];
     this.completions = [];
 };
 
-MagnetJS.Promise.prototype = {
+Max.Promise.prototype = {
     successes   : null,
     failures    : null,
     completions : null,
@@ -664,10 +664,10 @@ MagnetJS.Promise.prototype = {
      * Stores success and error callbacks, and calls them if the Promise status is 'resolved' or 'rejected'.
      * @param success A callback that is fired upon a 'resolved' status.
      * @param error A callback that is fired upon a 'rejected' status.
-     * @returns {MagnetJS.Promise} A promise object.
+     * @returns {Max.Promise} A promise object.
      */
     then : function(success, error) {
-        var defer = new MagnetJS.Deferred();
+        var defer = new Max.Deferred();
         if (success)
             this.successes.push({
                 fn    : success,
@@ -693,10 +693,10 @@ MagnetJS.Promise.prototype = {
     /**
      * Stores a single callback and calls it regardless of whether Promise status is 'resolved' or 'rejected'.
      * @param callback A callback that is fired upon completion.
-     * @returns {MagnetJS.Promise} A promise object.
+     * @returns {Max.Promise} A promise object.
      */
     always : function(callback) {
-        var defer = new MagnetJS.Deferred();
+        var defer = new Max.Deferred();
         if (callback)
             this.completions.push({
                 fn    : callback,
@@ -712,10 +712,10 @@ MagnetJS.Promise.prototype = {
     /**
      * Stores a callback which is fired if the Promise is resolved.
      * @param {function} success A success callback.
-     * @returns {MagnetJS.Promise}
+     * @returns {Max.Promise}
      */
     success : function(success) {
-        var defer = new MagnetJS.Deferred();
+        var defer = new Max.Deferred();
         if (success)
             this.successes.push({
                 fn    : success,
@@ -731,10 +731,10 @@ MagnetJS.Promise.prototype = {
     /**
      * Stores a callback that is fired if the Promise is rejected.
      * @param {function} error The error callback to be stored.
-     * @returns {MagnetJS.Promise} A promise object.
+     * @returns {Max.Promise} A promise object.
      */
     error : function(error) {
-        var defer = new MagnetJS.Deferred();
+        var defer = new Max.Deferred();
         if (error)
             this.failures.push({
                 fn    : error,
@@ -756,7 +756,7 @@ MagnetJS.Promise.prototype = {
     exec : function(obj, args) {
         setTimeout(function() {
             var res = obj.fn.apply(null, args);
-            if (MagnetJS.Utils.isObject(res) && res._isPromise)
+            if (Max.Utils.isObject(res) && res._isPromise)
                 obj.defer.bind(res);
         }, 0);
     }
@@ -764,12 +764,11 @@ MagnetJS.Promise.prototype = {
 /**
  * @class A Deferred object handles execution of resolve and reject methods, which trigger the success or error callbacks.
  * @constructor
- * @ignore
  */
-MagnetJS.Deferred = function() {
-    this.promise = new MagnetJS.Promise();
+Max.Deferred = function() {
+    this.promise = new Max.Promise();
 };
-MagnetJS.Deferred.prototype = {
+Max.Deferred.prototype = {
     promise : null,
     /**
      * Resolve the Deferred object.
@@ -809,10 +808,10 @@ MagnetJS.Deferred.prototype = {
 };
 /**
  * Asynchronously execute the specified promises. On completion, return an array of success and error arguments in a 'then' function.
- * @param {MagnetJS.Promise} promises An object containing the specified promises.
+ * @param {Max.Promise} promises An object containing the specified promises.
  */
-MagnetJS.Deferred.all = function() {
-    var deferred = new MagnetJS.Deferred();
+Max.Deferred.all = function() {
+    var deferred = new Max.Deferred();
     var successes = [], failures = [], ctr = 0, total = arguments.length;
     for(var i=0;i<total;++i) {
         arguments[i].call(null).then(function() {
@@ -828,14 +827,14 @@ MagnetJS.Deferred.all = function() {
 
 /**
  * A class for extending an object with an event.
- * @memberof MagnetJS
+ * @memberof Max
  * @namespace Events
  * @ignore
  */
-MagnetJS.Events = {
+Max.Events = {
     /**
      * Extends an existing object to handle events.
-     * @param {object} me An instance of a MagnetJS Controller.
+     * @param {object} me An instance of a Max Controller.
      * @returns {boolean} Indicates whether the event handlers were created.
      */
     create : function(me) {
@@ -874,11 +873,11 @@ MagnetJS.Events = {
 
 /**
  * A connector to manage data in a Web SQL database.
- * @memberof MagnetJS
+ * @memberof Max
  * @namespace SQLConnector
  * @ignore
  */
-MagnetJS.SQLConnector = {
+Max.SQLConnector = {
     /**
      * @attribute {Database} [db] An SQL Lite database object.
      */
@@ -896,30 +895,30 @@ MagnetJS.SQLConnector = {
     create : function(table, kvp, callback, failback) {
         var me = this;
         me.db.transaction(function(tx) {
-            var props = MagnetJS.Utils.getAttributes(kvp).join(', ');
-            var vals = MagnetJS.Utils.getValues(kvp);
-            MagnetJS.Log('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
+            var props = Max.Utils.getAttributes(kvp).join(', ');
+            var vals = Max.Utils.getValues(kvp);
+            Max.Log('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
             tx.executeSql('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals, function(insertTX, res) {
                 kvp.id = res.insertId;
                 callback(kvp);
             });
         }, function(e) {
-            MagnetJS.Log('error inserting a record: ', e);
+            Max.Log('error inserting a record: ', e);
             failback(e);
         });
     },
     update : function(table, id, kvp, callback, failback) {
         this.db.transaction(function(tx) {
             delete kvp.id;
-            var props = MagnetJS.Utils.getAttributes(kvp).join('=?, ')+'=?';
-            var vals = MagnetJS.Utils.getValues(kvp);
+            var props = Max.Utils.getAttributes(kvp).join('=?, ')+'=?';
+            var vals = Max.Utils.getValues(kvp);
             vals.push(id);
-            MagnetJS.Log('UPDATE '+table+' SET '+props+' WHERE id=?', vals);
+            Max.Log('UPDATE '+table+' SET '+props+' WHERE id=?', vals);
             tx.executeSql('UPDATE '+table+' SET '+props+' WHERE id=?', vals, function() {
                 callback(kvp);
             });
         }, function(e) {
-            MagnetJS.Log('error updating a record: ', e);
+            Max.Log('error updating a record: ', e);
             failback(e);
         });
     },
@@ -929,21 +928,21 @@ MagnetJS.SQLConnector = {
             if (typeof input === 'undefined' || input === null || input === '') input = {1:1};
             var props, vals, isQuery = typeof input === 'object';
             if (isQuery) {
-                props = MagnetJS.Utils.getAttributes(input).join('=? AND ')+'=?';
-                vals = MagnetJS.Utils.getValues(input);
+                props = Max.Utils.getAttributes(input).join('=? AND ')+'=?';
+                vals = Max.Utils.getValues(input);
             } else {
                 props = 'id=?';
                 vals = [input];
             }
-            MagnetJS.Log('SELECT * FROM '+table+' WHERE '+props, vals);
+            Max.Log('SELECT * FROM '+table+' WHERE '+props, vals);
             tx.executeSql('SELECT * FROM '+table+' WHERE '+props, vals, function(tx, results) {
                 callback(me.formatResponse(results.rows, isQuery));
             }, function(e) {
-                MagnetJS.Log('error retrieving records: ', e);
+                Max.Log('error retrieving records: ', e);
                 failback(e);
             });
         }, function(e) {
-            MagnetJS.Log('error setting up web sql transaction: ', e);
+            Max.Log('error setting up web sql transaction: ', e);
             failback(e);
         });
     },
@@ -959,9 +958,9 @@ MagnetJS.SQLConnector = {
             var props = [], vals = [], aryProps = [], aryVals = [];
             if (typeof input === 'object') {
                 for(var prop in input) {
-                    if (MagnetJS.Utils.isArray(input[prop])) {
+                    if (Max.Utils.isArray(input[prop])) {
                         aryProps.push(prop+' IN ('+me.getPlaceholders(input[prop])+')');
-                        aryVals = aryVals.concat(MagnetJS.Utils.getValues(input[prop]));
+                        aryVals = aryVals.concat(Max.Utils.getValues(input[prop]));
                     } else {
                         props.push(prop+'=?');
                         vals.push(input[prop]);
@@ -973,19 +972,19 @@ MagnetJS.SQLConnector = {
                 props = 'id=?';
                 vals = [input];
             }
-            MagnetJS.Log('DELETE FROM '+table+' WHERE '+props, vals);
+            Max.Log('DELETE FROM '+table+' WHERE '+props, vals);
             tx.executeSql('DELETE FROM '+table+' WHERE '+props, vals);
         }, function(e) {
-            MagnetJS.Log('error deleting a record: ', e);
+            Max.Log('error deleting a record: ', e);
             failback(e);
         }, callback);
     },
     clearTable : function(table, callback, failback) {
         this.db.transaction(function(tx) {
-            MagnetJS.Log('DELETE FROM '+table);
+            Max.Log('DELETE FROM '+table);
             tx.executeSql('DELETE FROM '+table);
         }, function(e) {
-            MagnetJS.Log('error clearing table: ', e);
+            Max.Log('error clearing table: ', e);
             failback(e);
         }, callback);
     },
@@ -998,27 +997,27 @@ MagnetJS.SQLConnector = {
             me.schemas[table] = schema;
         }
         me.db.transaction(function(tx) {
-            MagnetJS.Log('CREATE TABLE IF NOT EXISTS '+table+' ('+columns+')');
+            Max.Log('CREATE TABLE IF NOT EXISTS '+table+' ('+columns+')');
             tx.executeSql('CREATE TABLE IF NOT EXISTS '+table+' ('+columns+')');
             if (clearRecords === true) {
-                MagnetJS.Log('DELETE FROM '+table);
+                Max.Log('DELETE FROM '+table);
                 tx.executeSql('DELETE FROM '+table);
             }
-            if (MagnetJS.Utils.isArray(kvps)) {
+            if (Max.Utils.isArray(kvps)) {
                 for(var i=0;i<kvps.length;++i) {
-                    props = MagnetJS.Utils.getAttributes(kvps[i]).join(', ');
-                    vals = MagnetJS.Utils.getValues(kvps[i]);
-                    MagnetJS.Log('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
+                    props = Max.Utils.getAttributes(kvps[i]).join(', ');
+                    vals = Max.Utils.getValues(kvps[i]);
+                    Max.Log('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
                     tx.executeSql('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
                 }
             } else if (kvps) {
-                props = MagnetJS.Utils.getAttributes(kvps).join(', ');
-                vals = MagnetJS.Utils.getValues(kvps);
-                MagnetJS.Log('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
+                props = Max.Utils.getAttributes(kvps).join(', ');
+                vals = Max.Utils.getValues(kvps);
+                Max.Log('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
                 tx.executeSql('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
             }
         }, function(e) {
-            MagnetJS.Log('error executing web sql transaction: ', e);
+            Max.Log('error executing web sql transaction: ', e);
             failback(e);
         }, callback);
     },
@@ -1030,15 +1029,15 @@ MagnetJS.SQLConnector = {
 };
 /**
  * A connector to manage data in a local storage database.
- * @memberof MagnetJS
+ * @memberof Max
  * @namespace LocalStorage
  * @ignore
  */
-MagnetJS.LocalStorageConnector = {
+Max.LocalStorageConnector = {
     create : function(table, kvp, callback) {
         setTimeout(function() {
-            var tableData = MagnetJS.Utils.getValidJSON(window.localStorage.getItem(table)) || [];
-            kvp.id = MagnetJS.Utils.getGUID();
+            var tableData = Max.Utils.getValidJSON(window.localStorage.getItem(table)) || [];
+            kvp.id = Max.Utils.getGUID();
             tableData.push(kvp);
             window.localStorage.setItem(table, JSON.stringify(tableData));
             callback(kvp);
@@ -1047,7 +1046,7 @@ MagnetJS.LocalStorageConnector = {
     update : function(table, id, kvp, callback, failback) {
         var record;
         setTimeout(function() {
-            var tableData = MagnetJS.Utils.getValidJSON(window.localStorage.getItem(table));
+            var tableData = Max.Utils.getValidJSON(window.localStorage.getItem(table));
             if (tableData) {
                 for(var i=0;i<tableData.length;++i) {
                     if (tableData[i].id == id) {
@@ -1070,7 +1069,7 @@ MagnetJS.LocalStorageConnector = {
     get : function(table, input, callback, failback) {
         var records = [], valid = true;
         setTimeout(function() {
-            var tableData = MagnetJS.Utils.getValidJSON(window.localStorage.getItem(table));
+            var tableData = Max.Utils.getValidJSON(window.localStorage.getItem(table));
             if (tableData) {
                 if (typeof input === 'object') {
                     for(var i=0;i<tableData.length;++i) {
@@ -1100,13 +1099,13 @@ MagnetJS.LocalStorageConnector = {
     remove : function(table, input, callback, failback) {
         var matched = true;
         setTimeout(function() {
-            var tableData = MagnetJS.Utils.getValidJSON(window.localStorage.getItem(table));
+            var tableData = Max.Utils.getValidJSON(window.localStorage.getItem(table));
             if (tableData) {
                 for(var i=tableData.length;i--;) {
                     if (typeof input === 'object') {
                         matched = true;
                         for(var prop in input) {
-                            if (MagnetJS.Utils.isArray(input[prop])) {
+                            if (Max.Utils.isArray(input[prop])) {
                                 if (input[prop].indexOf(tableData[i][prop]) == -1) matched = false;
                             } else {
                                 if (tableData[i][prop] !== input[prop]) matched = false;
@@ -1132,14 +1131,14 @@ MagnetJS.LocalStorageConnector = {
     },
     createTableIfNotExist : function(table, schema, kvps, clearRecords, callback) {
         setTimeout(function() {
-            var tableData = (clearRecords === true ? [] : MagnetJS.Utils.getValidJSON(window.localStorage.getItem(table))) || [];
-            if (MagnetJS.Utils.isArray(kvps)) {
+            var tableData = (clearRecords === true ? [] : Max.Utils.getValidJSON(window.localStorage.getItem(table))) || [];
+            if (Max.Utils.isArray(kvps)) {
                 for(var i=0;i<kvps.length;++i) {
-                    kvps[i].id = MagnetJS.Utils.getGUID();
+                    kvps[i].id = Max.Utils.getGUID();
                     tableData.push(kvps[i]);
                 }
             } else if (kvps) {
-                kvps.id = MagnetJS.Utils.getGUID();
+                kvps.id = Max.Utils.getGUID();
                 tableData.push(kvps);
             }
             window.localStorage.setItem(table, JSON.stringify(tableData));
@@ -1149,18 +1148,18 @@ MagnetJS.LocalStorageConnector = {
 };
 /**
  * A connector to manage data in non-persistent memory store.
- * @memberof MagnetJS
+ * @memberof Max
  * @namespace SQLConnector
  * @ignore
  */
-MagnetJS.MemoryStoreConnector = {
+Max.MemoryStoreConnector = {
     /**
      * @attribute {object} memory Memory store for Node.js and other platforms which do not support localStorage.
      */
     memory : {},
     create : function(table, kvp, callback) {
         this.memory[table] = this.memory[table] || [];
-        kvp.id = MagnetJS.Utils.getGUID();
+        kvp.id = Max.Utils.getGUID();
         this.memory[table].push(kvp);
         callback(kvp);
     },
@@ -1216,7 +1215,7 @@ MagnetJS.MemoryStoreConnector = {
                 if (typeof input === 'object') {
                     matched = true;
                     for(var prop in input) {
-                        if (MagnetJS.Utils.isArray(input[prop])) {
+                        if (Max.Utils.isArray(input[prop])) {
                             if (input[prop].indexOf(this.memory[table][i][prop]) == -1)
                                 matched = false;
                         } else {
@@ -1242,13 +1241,13 @@ MagnetJS.MemoryStoreConnector = {
     },
     createTableIfNotExist : function(table, schema, kvps, clearRecords, callback) {
         this.memory[table] = (clearRecords === true ? [] : this.memory[table]) || [];
-        if (MagnetJS.Utils.isArray(kvps)) {
+        if (Max.Utils.isArray(kvps)) {
             for(var i=0;i<kvps.length;++i) {
-                kvps[i].id = MagnetJS.Utils.getGUID();
+                kvps[i].id = Max.Utils.getGUID();
                 this.memory[table].push(kvps[i]);
             }
         } else if (kvps) {
-            kvps.id = MagnetJS.Utils.getGUID();
+            kvps.id = Max.Utils.getGUID();
             this.memory[table].push(kvps);
         }
         callback();
@@ -1259,15 +1258,15 @@ MagnetJS.MemoryStoreConnector = {
  * A class for storing a value into persistent storage. Currently relies on HTML5 localStorage.
  * Clients that do not support localStorage will fall back to a memory store that will not persist past a
  * restart of the app.
- * @memberof MagnetJS
+ * @memberof Max
  * @namespace Storage
  * @ignore
  */
-MagnetJS.Storage = {
+Max.Storage = {
     /**
      * @attribute {object} connector The data connector to be used.
      */
-    connector : MagnetJS.MemoryStoreConnector,
+    connector : Max.MemoryStoreConnector,
     /**
      * Create an object.
      * @param {string} table The table in the database.
@@ -1358,46 +1357,46 @@ MagnetJS.Storage = {
      * Selects the best storage persister available to be used by the platform.
      */
     setupConnector : function() {
-        MagnetJS.Storage.connector = MagnetJS.MemoryStoreConnector;
+        Max.Storage.connector = Max.MemoryStoreConnector;
         return;
 
-        if (MagnetJS.Utils.hasFeature('openDatabase')) {
-            MagnetJS.SQLConnector.db = window.openDatabase(
-                MagnetJS.SQLConnector.dbOptions.name,
-                MagnetJS.SQLConnector.dbOptions.version,
-                MagnetJS.SQLConnector.dbOptions.display,
-                MagnetJS.SQLConnector.dbOptions.size
+        if (Max.Utils.hasFeature('openDatabase')) {
+            Max.SQLConnector.db = window.openDatabase(
+                Max.SQLConnector.dbOptions.name,
+                Max.SQLConnector.dbOptions.version,
+                Max.SQLConnector.dbOptions.display,
+                Max.SQLConnector.dbOptions.size
             );
-            MagnetJS.Storage.connector = MagnetJS.SQLConnector;
-        } else if (MagnetJS.Utils.hasFeature('localStorage') === true) {
-            MagnetJS.Storage.connector = MagnetJS.LocalStorageConnector;
+            Max.Storage.connector = Max.SQLConnector;
+        } else if (Max.Utils.hasFeature('localStorage') === true) {
+            Max.Storage.connector = Max.LocalStorageConnector;
         } else {
-            MagnetJS.Storage.connector = MagnetJS.MemoryStoreConnector;
+            Max.Storage.connector = Max.MemoryStoreConnector;
         }
 
     }
 };
-MagnetJS.Storage.setupConnector();
+Max.Storage.setupConnector();
 
 
 /**
- * The {MagnetJS.Log} makes it easier to troubleshoot client side problems in mobile applications installed
+ * The {Max.Log} makes it easier to troubleshoot client side problems in mobile applications installed
  * on mobile devices, where examining logs of individual devices is not possible. Since the logs can be sent
  * by the SDK without user intervention, problems can be identified and fixed without user involvement.
- * @memberof MagnetJS
+ * @memberof Max
  * @namespace Log
  * @ignore
  */
-MagnetJS.Log = {};
-MagnetJS.Log.store = 'MMSDKLogstore';
+Max.Log = {};
+Max.Log.store = 'MMSDKLogstore';
 /**
  * @attribute {boolean} storeReady Determines whether the log store is ready for use.
  */
-MagnetJS.Log.storeReady = false;
+Max.Log.storeReady = false;
 /**
  * @attribute {object} Level A key-value pair of all log levels.
  */
-MagnetJS.Log.Level = {
+Max.Log.Level = {
     SEVERE  : 500,
     WARNING : 400,
     INFO    : 300,
@@ -1405,7 +1404,7 @@ MagnetJS.Log.Level = {
     FINE    : 100
 };
 
-MagnetJS.Storage.createTableIfNotExist(MagnetJS.Log.store, {
+Max.Storage.createTableIfNotExist(Max.Log.store, {
     date      : 'TEXT',
     level     : 'TEXT',
     msg       : 'TEXT',
@@ -1413,7 +1412,7 @@ MagnetJS.Storage.createTableIfNotExist(MagnetJS.Log.store, {
     logSource : 'TEXT',
     file      : 'TEXT'
 }, null, false, function() {
-    MagnetJS.Log.storeReady = true;
+    Max.Log.storeReady = true;
 });
 
 /**
@@ -1424,7 +1423,7 @@ MagnetJS.Storage.createTableIfNotExist(MagnetJS.Log.store, {
  * @param {string} [logSource] The source for the log (anything other than "server" is permitted).
  * @param {*} [file] Any extra data the mobile client desires to associate with the log record.
  */
-MagnetJS.Log.severe = function(msg, metadata, logSource, file) {
+Max.Log.severe = function(msg, metadata, logSource, file) {
     this.log(this.Level.SEVERE, [].slice.apply(arguments));
 };
 /**
@@ -1435,7 +1434,7 @@ MagnetJS.Log.severe = function(msg, metadata, logSource, file) {
  * @param {string} [logSource] The source for the log (anything other than "server" is permitted).
  * @param {*} [file] Any extra data the mobile client desires to associate with the log record.
  */
-MagnetJS.Log.warning = function(msg, metadata, logSource, file) {
+Max.Log.warning = function(msg, metadata, logSource, file) {
     this.log(this.Level.WARNING, [].slice.apply(arguments));
 };
 /**
@@ -1446,7 +1445,7 @@ MagnetJS.Log.warning = function(msg, metadata, logSource, file) {
  * @param {string} [logSource] The source for the log (anything other than "server" is permitted).
  * @param {*} [file] Any extra data the mobile client desires to associate with the log record.
  */
-MagnetJS.Log.info = function(msg, metadata, logSource, file) {
+Max.Log.info = function(msg, metadata, logSource, file) {
     this.log(this.Level.INFO, [].slice.apply(arguments));
 };
 /**
@@ -1457,7 +1456,7 @@ MagnetJS.Log.info = function(msg, metadata, logSource, file) {
  * @param {string} [logSource] The source for the log (anything other than "server" is permitted).
  * @param {*} [file] Any extra data the mobile client desires to associate with the log record.
  */
-MagnetJS.Log.config = function(msg, metadata, logSource, file) {
+Max.Log.config = function(msg, metadata, logSource, file) {
     this.log(this.Level.CONFIG, [].slice.apply(arguments));
 };
 /**
@@ -1468,29 +1467,29 @@ MagnetJS.Log.config = function(msg, metadata, logSource, file) {
  * @param {string} [logSource] The source for the log (anything other than "server" is permitted).
  * @param {*} [file] Any extra data the mobile client desires to associate with the log record.
  */
-MagnetJS.Log.fine = function(msg, metadata, logSource, file) {
+Max.Log.fine = function(msg, metadata, logSource, file) {
     this.log(this.Level.FINE, [].slice.apply(arguments));
 };
 /**
  * @method
- * @desc Store log record to the configured {MagnetJS.Storage} log store.
- * @param {*} levelOrWeight The log level as a string or log level weight as an integer defined in {MagnetJS.Log.Level}.
+ * @desc Store log record to the configured {Max.Storage} log store.
+ * @param {*} levelOrWeight The log level as a string or log level weight as an integer defined in {Max.Log.Level}.
  * @param {array} params An array of log record parameters
  */
-MagnetJS.Log.log = function(levelOrWeight, params) {
+Max.Log.log = function(levelOrWeight, params) {
     var weight = typeof levelOrWeight == 'number' ? levelOrWeight : getLevelOrWeight(levelOrWeight);
     var level = typeof levelOrWeight == 'string' ? levelOrWeight : getLevelOrWeight(weight);
-    if (!MagnetJS.Config.logging || weight < MagnetJS.Log.Level[MagnetJS.Config.logLevel]) return;
-    var date = MagnetJS.Utils.dateToISO8601(new Date());
+    if (!Max.Config.logging || weight < Max.Log.Level[Max.Config.logLevel]) return;
+    var date = Max.Utils.dateToISO8601(new Date());
     var msg = params[0] || null;
-    var metadata = params[1] ? ((MagnetJS.Utils.isAndroid || MagnetJS.Utils.isIOS) ? JSON.stringify(params[2]) : params[1]) : null;
+    var metadata = params[1] ? ((Max.Utils.isAndroid || Max.Utils.isIOS) ? JSON.stringify(params[2]) : params[1]) : null;
     var logSource = params[2] || null;
-    var file = params[3] ? MagnetJS.Utils.stringToBase64(params[3]) : null;
-    if (MagnetJS.Config.logHandler.indexOf('Console') != -1)
+    var file = params[3] ? Max.Utils.stringToBase64(params[3]) : null;
+    if (Max.Config.logHandler.indexOf('Console') != -1)
         console.log('[MAGNET DEBUG] ', date, level || '', msg || '', metadata || '', logSource || '', file || '');
-    if (MagnetJS.Config.logHandler.indexOf('DB') != -1) {
+    if (Max.Config.logHandler.indexOf('DB') != -1) {
         if (this.storeReady) {
-            MagnetJS.Storage.create(this.store, {
+            Max.Storage.create(this.store, {
                 date      : date,
                 level     : level,
                 msg       : msg,
@@ -1508,11 +1507,11 @@ MagnetJS.Log.log = function(levelOrWeight, params) {
 // given a log level or weight, return opposite
 function getLevelOrWeight(levelOrWeight) {
     var level;
-    for(var key in MagnetJS.Log.Level) {
-        if (MagnetJS.Log.Level[key] === levelOrWeight)
+    for(var key in Max.Log.Level) {
+        if (Max.Log.Level[key] === levelOrWeight)
             level = key;
         if (key === levelOrWeight)
-            level = MagnetJS.Log.Level[key];
+            level = Max.Log.Level[key];
     }
     return level;
 }
@@ -1522,8 +1521,8 @@ function getLevelOrWeight(levelOrWeight) {
  * @param {function} [callback] Callback to fire after a successful dump.
  * @param {function} [failback] Callback to fire after a failed attempt.
  */
-MagnetJS.Log.clear = function(callback, failback) {
-    MagnetJS.Storage.clearTable(MagnetJS.Log.store, callback, failback);
+Max.Log.clear = function(callback, failback) {
+    Max.Storage.clearTable(Max.Log.store, callback, failback);
 };
 
 // log uncaught exceptions
@@ -1534,7 +1533,7 @@ if (typeof window !== 'undefined' && typeof window.onError !== 'undefined') {
         }catch(e) {
             err = err + '\n' + (e.stack ? e.stack : e.sourceURL) + ":" + e.line;
         }
-        MagnetJS.Log.severe(err, {
+        Max.Log.severe(err, {
             url  : url,
             line : line
         });
@@ -1544,7 +1543,7 @@ if (typeof window !== 'undefined' && typeof window.onError !== 'undefined') {
 
 /**
  * A class for managing cookies.
- * @memberof MagnetJS
+ * @memberof Max
  * @namespace Cookie
  * @ignore
  */
@@ -1581,26 +1580,26 @@ Max.Cookie = Cookie;
 
 /**
  * @method
- * @desc Set MagnetJS SDK configuration attributes.
- * @param {object} obj An object containing key-value pairs to be set in the MagnetJS attributes.
+ * @desc Set Max SDK configuration attributes.
+ * @param {object} obj An object containing key-value pairs to be set in the Max attributes.
  */
-MagnetJS.set = function(obj) {
+Max.set = function(obj) {
     for(var prop in obj) {
         if (obj.hasOwnProperty(prop)) {
             if (prop == 'baseUrl' && /^(ftp|http|https):/.test(obj[prop] === false))
                 throw('invalid baseUrl - no protocol');
-            MagnetJS.Config[prop] = obj[prop];
+            Max.Config[prop] = obj[prop];
         }
     }
     return this;
 };
 /**
  * @method
- * @desc Reset MagnetJS SDK configuration attributes to their default values.
+ * @desc Reset Max SDK configuration attributes to their default values.
  * @ignore
  */
-MagnetJS.reset = function() {
-    MagnetJS.set({
+Max.reset = function() {
+    Max.set({
         baseUrl : '',
         logging : true
     });
@@ -1614,25 +1613,25 @@ var MMS_DEVICE_ID = '1111-2222-3333-4444';
 var xmppStore;
 var mChannelStore = {};
 
-MagnetJS.Events.create(MagnetJS);
+Max.Events.create(Max);
 
 /**
  * @method
  * @desc Initialize the SDK with client information.
  */
-MagnetJS.init = function(cfg) {
-    if (MagnetJS.App.initialized) return;
+Max.init = function(cfg) {
+    if (Max.App.initialized) return;
 
-    MagnetJS.App.clientId = cfg.clientId;
-    MagnetJS.App.clientSecret = cfg.clientSecret;
-    MagnetJS.Config.baseUrl = cfg.baseUrl;
+    Max.App.clientId = cfg.clientId;
+    Max.App.clientSecret = cfg.clientSecret;
+    Max.Config.baseUrl = cfg.baseUrl;
 
-    MagnetJS.Device.checkInWithDevice(function(deviceErr) {
-        MagnetJS.User.loginWithAccessToken(function(tokenErr) {
-            if (deviceErr || tokenErr)  MagnetJS.User.clearSession();
+    Max.Device.checkInWithDevice(function(deviceErr) {
+        Max.User.loginWithAccessToken(function(tokenErr) {
+            if (deviceErr || tokenErr)  Max.User.clearSession();
 
-            MagnetJS.App.initialized = true;
-            MagnetJS.Log.info('sdk initialized');
+            Max.App.initialized = true;
+            Max.Log.info('sdk initialized');
         });
     });
 };
@@ -1642,11 +1641,11 @@ MagnetJS.init = function(cfg) {
  * @desc Fires a callback when the SDK is ready to be used.
  * @param {function} callback The function to be fired.
  */
-MagnetJS.onReady = function(callback) {
-    if (MagnetJS.App.initialized === true) return callback();
+Max.onReady = function(callback) {
+    if (Max.App.initialized === true) return callback();
 
     var readyCheck = setInterval(function() {
-        if (MagnetJS.App.initialized === true) {
+        if (Max.App.initialized === true) {
             clearInterval(readyCheck);
             (callback || function() {})();
         }
@@ -1656,25 +1655,25 @@ MagnetJS.onReady = function(callback) {
 /**
  * @method
  * @desc Get user information of the currently logged in user or null if not logged in.
- * @returns {MagnetJS.User} currently logged in user.
+ * @returns {Max.User} currently logged in user.
  */
-MagnetJS.getCurrentUser = function() {
+Max.getCurrentUser = function() {
     return mCurrentUser || null;
 };
 
 // getters/setters used
-MagnetJS.setUser = function(userObj) {
+Max.setUser = function(userObj) {
     mCurrentUser = userObj;
 };
-MagnetJS.setDevice = function(deviceObj) {
+Max.setDevice = function(deviceObj) {
     mCurrentDevice = deviceObj;
 };
-MagnetJS.getConnection = function() {
+Max.getConnection = function() {
     return mXMPPConnection || null;
 };
-MagnetJS.setConnection = function(conn) {
+Max.setConnection = function(conn) {
     mXMPPConnection = conn;
 };
-MagnetJS.getStore = function() {
+Max.getStore = function() {
     return xmppStore || null;
 };

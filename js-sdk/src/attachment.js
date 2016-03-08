@@ -7,9 +7,9 @@
  * @param {function} callback Fires after the file body is parsed.
  * @ignore
  */
-MagnetJS.Uploader = function(fileOrFiles, callback) {
+Max.Uploader = function(fileOrFiles, callback) {
     var self = this;
-    this.boundary = 'BOUNDARY+'+MagnetJS.Utils.getCleanGUID();
+    this.boundary = 'BOUNDARY+'+Max.Utils.getCleanGUID();
     this.message = '';
     this.prefix = 'DATA_';
     this.index = 0;
@@ -21,7 +21,7 @@ MagnetJS.Uploader = function(fileOrFiles, callback) {
         return callback('upload not supported');
     }
 
-    if (!MagnetJS.Utils.isArray(fileOrFiles))
+    if (!Max.Utils.isArray(fileOrFiles))
         fileOrFiles = [fileOrFiles];
 
     // TOOD: implement iframe upload. http://caniuse.com/#search=formdata
@@ -51,7 +51,7 @@ MagnetJS.Uploader = function(fileOrFiles, callback) {
  * @param {number} index The current file index.
  * @param {function} callback Fires when there are no more files to add.
  */
-MagnetJS.Uploader.prototype.add = function(fileOrFiles, index, callback) {
+Max.Uploader.prototype.add = function(fileOrFiles, index, callback) {
     var self = this;
     var reader = new FileReader();
 
@@ -82,20 +82,20 @@ MagnetJS.Uploader.prototype.add = function(fileOrFiles, index, callback) {
 /**
  * Close the multipart/form-data body.
  */
-MagnetJS.Uploader.prototype.close = function() {
+Max.Uploader.prototype.close = function() {
     this.message += '--'+this.boundary+'--';
     //this.message = '--'+this.boundary+'\r\n'+'Content-Type: application/json\r\n\r\n'+JSON.stringify(body)+'\r\n\r\n'+this.message;
     return this.message;
 };
 /**
  * Upload the files to the server.
- * @param {MagnetJS.Channel} channel The channel the file will be sent to.
- * @param {string} messageId The XMPP message ID, used to associate an uploaded file with a {MagnetJS.Message}.
- * @returns {MagnetJS.Promise} A promise object returning a list of attachment metadata or request error.
+ * @param {Max.Channel} channel The channel the file will be sent to.
+ * @param {string} messageId The XMPP message ID, used to associate an uploaded file with a {Max.Message}.
+ * @returns {Max.Promise} A promise object returning a list of attachment metadata or request error.
  */
-MagnetJS.Uploader.prototype.upload = function(channel, messageId) {
+Max.Uploader.prototype.upload = function(channel, messageId) {
     var self = this;
-    var def = MagnetJS.Request({
+    var def = Max.Request({
         method: 'POST',
         url: '/com.magnet.server/file/save/multiple',
         data: self.message,
@@ -123,15 +123,15 @@ MagnetJS.Uploader.prototype.upload = function(channel, messageId) {
  * @class
  * The Attachment class is the local representation of an attachment.
  */
-MagnetJS.Attachment = function(attachmentRef) {
-    MagnetJS.Utils.mergeObj(this, attachmentRef);
-    this.downloadUrl = MagnetJS.Config.baseUrl+'/com.magnet.server/file/download/'+this.attachmentId
-        +'?access_token='+MagnetJS.App.hatCredentials.access_token+'&user_id='+this.senderId;
+Max.Attachment = function(attachmentRef) {
+    Max.Utils.mergeObj(this, attachmentRef);
+    this.downloadUrl = Max.Config.baseUrl+'/com.magnet.server/file/download/'+this.attachmentId
+        +'?access_token='+Max.App.hatCredentials.access_token+'&user_id='+this.senderId;
 };
 /**
  * Get the full download url of the attachment.
  * @returns {string} The public location of the attachment.
  */
-MagnetJS.Attachment.prototype.getDownloadUrl = function() {
+Max.Attachment.prototype.getDownloadUrl = function() {
     return this.downloadUrl;
 };
