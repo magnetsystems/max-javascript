@@ -189,6 +189,7 @@ Max.Channel.create = function(channelObj) {
         channelObj.lastTimeActive = dt;
         if (channelObj.summary) channelObj.description = channelObj.summary;
         if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userId;
+        if (channelObj.publishPermission) channelObj.publishPermissions = channelObj.publishPermission;
 
         Max.Request({
             method: 'POST',

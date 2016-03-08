@@ -281,13 +281,11 @@ Max.Message.prototype.formatMessage = function(msg, channel, callback) {
         } else if (msg.event && msg.event.items && msg.event.items._node) {
             var channelObj = nodePathToChannel(msg.event.items._node);
             if (ChannelStore.get(channelObj)) {
-                console.log('got from cache');
                 self.channel = ChannelStore.get(channelObj);
                 return callback();
             }
 
             Max.Channel.getChannel(channelObj.name, channelObj.userId).success(function(channel) {
-                console.log('got new');
                 self.channel = channel;
                 callback();
             }).error(function() {
