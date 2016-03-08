@@ -167,7 +167,8 @@ Max.Channel.findChannels = function(channelName, tags, limit, offset, type) {
  * @param {string} [channelObj.summary] An optional summary of the channel.
  * @param {boolean} [channelObj.isPublic] Set to true to make the channel public. Defaults to true.
  * @param {string} [channelObj.publishPermission] Permissions level required to be able to post, must be in
- * ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
+ * ['anyone', 'owner', 'subscribers']. The channel owner can always publish. Defaults to 'subscribers' only
+ * if private channel, and 'anyone' if public channel.
  * @returns {Max.Promise} A promise object returning the new {Max.Channel} or reason of failure.
  */
 Max.Channel.create = function(channelObj) {
@@ -190,6 +191,8 @@ Max.Channel.create = function(channelObj) {
         if (channelObj.summary) channelObj.description = channelObj.summary;
         if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userId;
         if (channelObj.publishPermission) channelObj.publishPermissions = channelObj.publishPermission;
+        if (!channelObj.publishPermissions && channelObj.isPublic) channelObj.publishPermissions = 'anyone';
+        if (!channelObj.publishPermissions && !channelObj.isPublic) channelObj.publishPermissions = 'subscribers';
 
         Max.Request({
             method: 'POST',
