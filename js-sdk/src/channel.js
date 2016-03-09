@@ -176,6 +176,7 @@ Max.Channel.create = function(channelObj) {
     var dt = Max.Utils.dateToISO8601(new Date());
 
     setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
         if (!channelObj.name)
             return def.reject('channel name required');
         if (channelObj.publishPermission
@@ -219,12 +220,12 @@ Max.Channel.create = function(channelObj) {
  * @returns {Max.Promise} A promise object returning a list of {Max.Channel} (containing basic information
  * only) or reason of failure.
  */
-Max.Channel.getAllSubscriptions = function() {
+Max.Channel.getAllSubscriptions = function(subscriptionOnly) {
     var def = new Max.Deferred();
     var msgId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session timeout');
+        if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
         try {
@@ -243,6 +244,8 @@ Max.Channel.getAllSubscriptions = function() {
 
                 for (var i=0;i<subs.length;++i)
                     channels.push(nodePathToChannel(subs[i]._node));
+
+                if (subscriptionOnly) return def.resolve(channels);
 
                 Max.Channel.getChannels(channels).success(function() {
                     def.resolve.apply(def, arguments);
@@ -280,6 +283,7 @@ Max.Channel.findChannelsBySubscribers = function(subscribers) {
         subscriberlist.push(Max.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
 
     setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
         Max.Request({
             method: 'POST',
             url: '/com.magnet.server/channel/query',
@@ -325,6 +329,8 @@ Max.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, mes
         });
 
     setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+
         Max.Request({
             method: 'POST',
             url: '/com.magnet.server/channel/summary',
@@ -427,7 +433,7 @@ Max.Channel.getChannel = function(channelName, userId) {
     var msgId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session timeout');
+        if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
         try {
@@ -479,7 +485,7 @@ Max.Channel.getChannels = function(channelOrChannels) {
         channelOrChannels = [channelOrChannels];
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session timeout');
+        if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
         try {
@@ -582,7 +588,7 @@ Max.Channel.prototype.getAllSubscribers = function(limit, offset) {
 
 /**
  * Add the given subscribers to the channel.
- * @param {string[]|Max.User[]} subscribers A list of userId or {Max.User} objects.
+ * @param {string|Max.User|string[]|Max.User[]} subscribers A list of userId or {Max.User} objects.
  * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
 Max.Channel.prototype.addSubscribers = function(subscribers) {
@@ -590,7 +596,11 @@ Max.Channel.prototype.addSubscribers = function(subscribers) {
     var subscriberlist = [];
     var def = new Max.Deferred();
 
+    if (!Max.Utils.isArray(subscribers))
+        subscribers = [subscribers];
+
     setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
         if (!self.name) return def.reject('invalid channel');
         if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
 
@@ -616,7 +626,7 @@ Max.Channel.prototype.addSubscribers = function(subscribers) {
 
 /**
  * Unsubscribe the given subscribers from the channel.
- * @param {string[]|Max.User[]} subscribers A list of subscribers to unsubscribe from the channel.
+ * @param {string|Max.User|string[]|Max.User[]} subscribers A list of subscribers to unsubscribe from the channel.
  * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
 Max.Channel.prototype.removeSubscribers = function(subscribers) {
@@ -624,7 +634,11 @@ Max.Channel.prototype.removeSubscribers = function(subscribers) {
     var subscriberlist = [];
     var def = new Max.Deferred();
 
+    if (!Max.Utils.isArray(subscribers))
+        subscribers = [subscribers];
+
     setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
         if (!self.name) return def.reject('invalid channel');
         if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
 
@@ -830,7 +844,7 @@ Max.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, 
     ascending = typeof ascending !== 'boolean' ? true : ascending;
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session timeout');
+        if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
         try {

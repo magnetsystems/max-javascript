@@ -1709,8 +1709,8 @@ describe('Request', function(){
         Max.App.hatCredentials = {
             access_token: 'test-token'
         };
-        Max.on('not-authenticated', function(e, details) {
-            expect(details.status).toEqual(401);
+        Max.on('not-authenticated', function(e) {
+            expect(e).toEqual('session expired');
             done();
         });
         Max.Request(request, function (res, details) {

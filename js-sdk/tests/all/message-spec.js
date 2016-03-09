@@ -95,9 +95,11 @@ describe('unregisterListener', function() {
 });
 
 describe('MMXClient connect', function() {
-
+    var testUserId = 'test-user-id';
     beforeEach(function() {
-        Max.setUser({});
+        Max.setUser({
+            userId: testUserId
+        });
         Max.setDevice({});
         Max.setConnection(null);
     });
@@ -105,6 +107,7 @@ describe('MMXClient connect', function() {
         Max.setUser(null);
         Max.setDevice(null);
         Max.setConnection(null);
+        Max.MMXClient.connectionEmitter = null;
     });
 
     it('should connect a client successfully', function(done){
@@ -119,7 +122,8 @@ describe('MMXClient connect', function() {
             expect(status).toEqual('ok');
         });
         Max.MMXClient.connect(userId, accessToken).success(function() {
-            expect(Max.getCurrentUser().connected).toEqual(true);
+            expect(Max.getCurrentUser().jid).toContain(testUserId);
+            expect(Max.getCurrentUser().userId).toEqual(testUserId);
             expect(sendStub.calledOnce).toEqual(true);
             Strophe.Connection.prototype.connect.restore();
             Strophe.Connection.prototype.send.restore();

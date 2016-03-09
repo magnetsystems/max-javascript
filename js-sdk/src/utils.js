@@ -16,18 +16,13 @@ Max.Config = {
      * @property {string} logLevel Set the lowest level to log. Lower log levels will be ignore. The order is SEVERE, WARNING,
      * INFO, CONFIG, and FINE.
      */
-    logLevel               : 'WARNING',
+    logLevel               : 'INFO',
     /**
      * @property {string} logHandler Define the log handler used to handle logs if logging is enabled. Specifying 'DB' stores
      * to the database configured in {Max.Storage}, 'Console' outputs log via console.log, and 'Console&DB' stores to
      * database and outputs simultaneously.
      */
     logHandler             : 'Console',
-    /**
-     * @property {boolean} storeCredentials Enable storage of OAuth access token after a successful login to be used
-     * for subsequent logins. The default is true.
-     */
-    storeCredentials       : true,
     /**
      * @property {boolean} debugMode Ignore self-signed certificates when saving files to the file system. Only applicable
      * to the Phonegap client when using FileTransfer API transport.
@@ -68,7 +63,7 @@ Max.Config = {
     /**
      * @property {string} baseUrl baseUrl.
      */
-    baseUrl            : 'https://sandbox.magnet.com/mobile/api',
+    baseUrl                : 'https://sandbox.magnet.com/mobile/api',
     /**
      * @property {string} tlsEnabled Determines whether TLS security enabled.
      */
@@ -841,12 +836,14 @@ Max.Events = {
         if (!me._events && !me.invoke && !me.on && !me.unbind) {
             me._events = {};
             me.on = function(eventId, callback) {
+                if (typeof eventId == 'number') eventId = eventId.toString();
                 me._events[eventId] = me._events[eventId] || [];
                 me._events[eventId].push(callback);
             };
             me.invoke = function(events) {
                 if (typeof events === typeof []) {
                     for(var i=events.length;i--;) {
+                        if (typeof events[i] == 'number') events[i] = events[i].toString();
                         if (me._events[events[i]]) {
                             for(var j=me._events[events[i]].length;j--;) {
                                 me._events[events[i]][j].apply(this, [].slice.call(arguments, 1));
@@ -854,6 +851,7 @@ Max.Events = {
                         }
                     }
                 } else {
+                    if (typeof events == 'number') events = events.toString();
                     if (me._events[events]) {
                         for(var k=me._events[events].length;k--;) {
                             me._events[events][k].apply(this, [].slice.call(arguments, 1));
@@ -862,7 +860,9 @@ Max.Events = {
                 }
             };
             me.unbind = function(eventId) {
+                if (typeof eventId == 'number') eventId = eventId.toString();
                 if (me._events[eventId]) delete me._events[eventId];
+                if (!eventId) me._events = {};
             };
             return true;
         } else {

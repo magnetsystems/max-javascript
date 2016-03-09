@@ -359,17 +359,15 @@ Max.User.getUserInfo = function() {
  */
 Max.User.logout = function() {
     var self = this;
-    Cookie.remove('magnet-max-refresh-token');
-    Max.MMXClient.disconnect();
-
+    var reason = 'logout';
     var def = Max.Request({
         method: 'DELETE',
         url: '/com.magnet.server/user/session'
     }, function() {
-        self.clearSession();
+        self.clearSession(reason);
         def.resolve.apply(def, arguments);
     }, function() {
-        self.clearSession();
+        self.clearSession(reason);
         def.reject.apply(def, arguments);
     });
     return def.promise;
@@ -377,11 +375,15 @@ Max.User.logout = function() {
 
 /**
  * Removes user session information.
- * @ign
+ * @param {string} [reason] Reason for disconnection.
+ * @ignore
  */
-Max.User.clearSession = function() {
+Max.User.clearSession = function(reason) {
+    Max.MMXClient.disconnect();
     mCurrentUser = null;
     Max.App.hatCredentials = null;
     Cookie.remove('magnet-max-auth-token');
+    Cookie.remove('magnet-max-refresh-token');
     ChannelStore.clear();
+    Max.invoke('not-authenticated', reason);
 };

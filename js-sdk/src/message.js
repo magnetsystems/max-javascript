@@ -74,6 +74,8 @@ Max.MessageListener = function(idOrHandler, handler) {
  * @ignore
  */
 Max.MMXClient = {
+    // event emitter for connection
+    connectionEmitter: null,
     /**
      * Connect to MMX server via BOSH http-bind.
      * @param {string} userId The currently logged in user's userId (id).
@@ -87,57 +89,84 @@ Max.MMXClient = {
         var protocol = (secure ? 'https' : 'http') + '://';
         var baseHostName = Max.Config.baseUrl.replace('https://', '').replace('http://', '').split('/')[0];
         var xmppHost = secure ? baseHostName : (Max.Config.mmxHost + ':' + Max.Config.httpBindPort);
+        var initEnd = false;
 
-        mXMPPConnection = new Strophe.Connection(protocol + xmppHost + '/http-bind/', {
-            withCredentials: secure
-        });
+        setTimeout(function() {
+            if (!mCurrentUser) return def.reject('session expired');
+            if (self.connectionEmitter) return def.reject('already connected');
 
-        mXMPPConnection.rawInput = function(data) {
-            if (Max.Config.payloadLogging)
-                Max.Log.fine('RECV: ' + data);
-        };
-        mXMPPConnection.rawOutput = function(data) {
-            if (Max.Config.payloadLogging)
-                Max.Log.fine('SENT: ' + data);
-        };
+            self.connectionEmitter = {};
+            Max.Events.create(self.connectionEmitter);
+            self.bindDisconnect();
 
-        mCurrentUser.jid = self.getBaredJid(userId) + '/' + mCurrentDevice.deviceId;
+            mCurrentUser.jid = self.getBaredJid(userId) + '/' + mCurrentDevice.deviceId;
+            mXMPPConnection = new Strophe.Connection(protocol + xmppHost + '/http-bind/', {
+                withCredentials: secure
+            });
+            mXMPPConnection.rawInput = function(data) {
+                if (Max.Config.payloadLogging) Max.Log.fine('RECV: ' + data);
+            };
+            mXMPPConnection.rawOutput = function(data) {
+                if (Max.Config.payloadLogging) Max.Log.fine('SENT: ' + data);
+            };
+            mXMPPConnection.connect(mCurrentUser.jid, accessToken, function(status) {
+                if (self.connectionEmitter) self.connectionEmitter.invoke(status);
 
-        mXMPPConnection.connect(mCurrentUser.jid, accessToken, function(status) {
-            if (status == Strophe.Status.CONNECTING) {
-                Max.Log.fine('MMX is connecting.');
-            } else if (status == Strophe.Status.CONNFAIL) {
-                Max.Log.fine('MMX failed to connect.');
-                def.reject('not authorized');
-            } else if (status == Strophe.Status.AUTHFAIL) {
-                Max.Log.fine('MMX failed authentication.');
-                def.reject('not authorized');
-            } else if (status == Strophe.Status.DISCONNECTING) {
-                Max.Log.fine('MMX is disconnecting.');
-            } else if (status == Strophe.Status.DISCONNECTED) {
-                Max.Log.info('MMX is disconnected.');
-                mXMPPConnection = null;
+                self.connectionHandler(status, function(e) {
+                    if (initEnd) return;
+                    initEnd = true;
+                    if (e) return def.reject(e);
 
-                Max.User.logout();
-                //if (mCurrentUser) {
-                //    mCurrentUser.connected = false;
-                //    if (Max.App.hatCredentials && Max.App.hatCredentials.access_token)
-                //        self.registerDeviceAndConnect(mCurrentUser.userId, Max.App.hatCredentials);
-                //}
-            } else if (status == Strophe.Status.CONNECTED) {
-                Max.Log.info('MMX is connected.');
-
-                mXMPPConnection.send($pres());
-                Max.invoke('authenticated', 'ok');
-
-                if (!mCurrentUser.connected) {
-                    mCurrentUser.connected = true;
+                    mXMPPConnection.send($pres());
+                    Max.invoke('authenticated', 'ok');
                     def.resolve('ok');
-                }
-            }
-        });
+                });
+            });
 
+        }, 0);
         return def.promise;
+    },
+    // handle connection events related to initial connectivity
+    connectionHandler: function(status, callback) {
+        switch (status) {
+            case Strophe.Status.ERROR: {
+                Max.Log.fine('Max connection error');
+                callback('connection error');
+                break;
+            }
+            case Strophe.Status.CONNFAIL: {
+                Max.Log.fine('Max connection failure');
+                callback('connection failed');
+                break;
+            }
+            case Strophe.Status.AUTHFAIL: {
+                Max.Log.fine('Max failed authentication');
+                callback('not authorized');
+                break;
+            }
+            case Strophe.Status.CONNECTED: {
+                Max.Log.info('Max connected');
+                callback();
+                break;
+            }
+        }
+    },
+    // handle disconnection gracefully
+    bindDisconnect: function(callback) {
+        var self = this;
+        self.connectionEmitter.on(Strophe.Status.DISCONNECTED, function() {
+            Max.Log.info('Max disconnected');
+            self.connectionEmitter = null;
+            mXMPPConnection = null;
+            if (typeof callback === typeof Function) return callback();
+            Max.User.logout();
+
+            //if (mCurrentUser) {
+            //    mCurrentUser.connected = false;
+            //    if (Max.App.hatCredentials && Max.App.hatCredentials.access_token)
+            //        self.registerDeviceAndConnect(mCurrentUser.userId, Max.App.hatCredentials);
+            //}
+        });
     },
     /**
      * A wrapper function to register device and connect to MMX server via BOSH http-bind.
@@ -145,14 +174,29 @@ Max.MMXClient = {
      * @returns {Max.Promise} A promise object returning current user and device or reason of failure.
      */
     registerDeviceAndConnect: function(accessToken) {
-        userId = mCurrentUser.userId;
+        var self = this;
         var def = new Max.Deferred();
         Max.Device.register().success(function() {
-            Max.MMXClient.connect(userId, accessToken).success(function() {
-                def.resolve(mCurrentUser, mCurrentDevice);
-            }).error(function() {
-                def.reject.apply(def, arguments);
-            });
+            if (!mCurrentUser) return def.reject('session expired');
+
+            function register() {
+                userId = mCurrentUser.userId;
+                Max.MMXClient.connect(userId, accessToken).success(function() {
+                    def.resolve(mCurrentUser, mCurrentDevice);
+                }).error(function() {
+                    def.reject.apply(def, arguments);
+                });
+            }
+
+            if (!mXMPPConnection) {
+                register();
+            } else {
+                self.connectionEmitter.unbind(Strophe.Status.DISCONNECTED);
+                self.bindDisconnect(function() {
+                    register();
+                });
+                Max.MMXClient.disconnect();
+            }
         }).error(function() {
             def.reject.apply(def, arguments);
         });
