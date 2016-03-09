@@ -54,7 +54,7 @@ describe('User register', function() {
         xhr.restore();
 	});
 
-    it('should register a new user', function(done) {
+    xit('should register a new user', function(done) {
         var userObj = {
             userName: 'jack.doe',
             firstName: 'Jack',
@@ -62,13 +62,17 @@ describe('User register', function() {
             password: 'magnet',
             email: 'jack.doe@magnet.com'
         };
+        var disconnectStub = sinon.stub(Max.MMXClient, 'disconnect');
         Max.User.register(userObj).success(function(user) {
             expect(user.userName).toEqual(userObj.userName);
             expect(user.firstName).toEqual(userObj.firstName);
             expect(user.email).toEqual(userObj.email);
+            expect(disconnectStub.calledOnce).toEqual(true);
+            Max.MMXClient.disconnect.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
+            Max.MMXClient.disconnect.restore();
             done();
         });
         setTimeout(function() {
@@ -106,11 +110,15 @@ describe('User register', function() {
             password: 'magnet',
             email: 'jack.doe@magnet.com'
         };
+        var disconnectStub = sinon.stub(Max.MMXClient, 'disconnect');
         Max.User.register(userObj).success(function(res) {
             expect(res).toEqual('failed-test');
+            Max.MMXClient.disconnect.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual(err);
+            expect(disconnectStub.calledOnce).toEqual(true);
+            Max.MMXClient.disconnect.restore();
             done();
         });
         setTimeout(function() {
@@ -179,13 +187,22 @@ describe('User login', function() {
         var username = 'jack.doe';
         var password = 'magnet2';
         var requestStub = sinon.stub(Max, 'Request');
+        var regClient = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve('failed-test');
+            }, 0);
+            return d.promise;
+        });
         requestStub.callsArgWith(2, 'incorrect credentials', {});
         Max.User.login(username, password).success(function(res) {
             expect(res).toEqual('failed-test');
             Max.Request.restore();
+            Max.MMXClient.registerDeviceAndConnect.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('incorrect credentials');
+            Max.MMXClient.registerDeviceAndConnect.restore();
             Max.Request.restore();
             done();
         });

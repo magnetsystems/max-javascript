@@ -80,9 +80,10 @@ Max.MMXClient = {
      * Connect to MMX server via BOSH http-bind.
      * @param {string} userId The currently logged in user's userId (id).
      * @param {string} accessToken The currently logged in user's access token.
+     * @param {object} [connection] Preferred connection.
      * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
      */
-    connect: function(userId, accessToken) {
+    connect: function(userId, accessToken, connection) {
         var self = this;
         var def = new Max.Deferred();
         var secure = Max.Config.baseUrl.indexOf('https://') != -1;
@@ -100,9 +101,10 @@ Max.MMXClient = {
             self.bindDisconnect();
 
             mCurrentUser.jid = self.getBaredJid(userId) + '/' + mCurrentDevice.deviceId;
-            mXMPPConnection = new Strophe.Connection(protocol + xmppHost + '/http-bind/', {
+            mXMPPConnection = connection || new Strophe.Connection(protocol + xmppHost + '/http-bind/', {
                 withCredentials: secure
             });
+
             mXMPPConnection.rawInput = function(data) {
                 if (Max.Config.payloadLogging) Max.Log.fine('RECV: ' + data);
             };
@@ -158,9 +160,8 @@ Max.MMXClient = {
             Max.Log.info('Max disconnected');
             self.connectionEmitter = null;
             mXMPPConnection = null;
-            if (typeof callback === typeof Function) return callback();
             Max.User.logout();
-
+            if (typeof callback === typeof Function) return callback();
             //if (mCurrentUser) {
             //    mCurrentUser.connected = false;
             //    if (Max.App.hatCredentials && Max.App.hatCredentials.access_token)
@@ -176,18 +177,16 @@ Max.MMXClient = {
     registerDeviceAndConnect: function(accessToken) {
         var self = this;
         var def = new Max.Deferred();
+        var userId = mCurrentUser.userId;
         Max.Device.register().success(function() {
             if (!mCurrentUser) return def.reject('session expired');
-
             function register() {
-                userId = mCurrentUser.userId;
                 Max.MMXClient.connect(userId, accessToken).success(function() {
                     def.resolve(mCurrentUser, mCurrentDevice);
                 }).error(function() {
                     def.reject.apply(def, arguments);
                 });
             }
-
             if (!mXMPPConnection) {
                 register();
             } else {

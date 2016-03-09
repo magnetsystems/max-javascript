@@ -198,6 +198,48 @@ describe('MMXClient registerDeviceAndConnect', function() {
         var regDef = new Max.Deferred();
         var registerStub = sinon.stub(Max.Device, 'register', function() {
             setTimeout(function() {
+                Max.setConnection(null);
+                regDef.resolve();
+            }, 5);
+            return regDef.promise;
+        });
+        var connectDef = new Max.Deferred();
+        var connectStub = sinon.stub(Max.MMXClient, 'connect', function() {
+            setTimeout(function() {
+                connectDef.resolve();
+            }, 5);
+            return connectDef.promise;
+        });
+        var connectStropheStub = sinon.stub(Strophe.Connection.prototype, 'connect');
+        connectStropheStub.callsArgWith(2, 5);
+        Max.MMXClient.registerDeviceAndConnect(testUserId, accessToken).success(function(user, device) {
+            expect(user.userId).toEqual(testUserId);
+            expect(device.deviceId).toEqual(testDeviceId);
+            Max.Device.register.restore();
+            Max.MMXClient.connect.restore();
+            Strophe.Connection.prototype.connect.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.Device.register.restore();
+            Max.MMXClient.connect.restore();
+            Strophe.Connection.prototype.connect.restore();
+            done();
+        });
+    });
+
+    it('should disconnect a connected a client then connect successfully', function(done){
+        var regDef = new Max.Deferred();
+        var bindDisconnectStub = sinon.stub(Max.MMXClient, 'bindDisconnect');
+        bindDisconnectStub.callsArg(0);
+        var disconnectSpy = sinon.stub(Max.MMXClient, 'disconnect');
+        var registerStub = sinon.stub(Max.Device, 'register', function() {
+            setTimeout(function() {
+                Max.setConnection({
+                });
+                Max.MMXClient.connectionEmitter = {};
+                Max.Events.create(Max.MMXClient.connectionEmitter);
+
                 regDef.resolve();
             }, 5);
             return regDef.promise;
@@ -212,15 +254,69 @@ describe('MMXClient registerDeviceAndConnect', function() {
         Max.MMXClient.registerDeviceAndConnect(testUserId, accessToken).success(function(user, device) {
             expect(user.userId).toEqual(testUserId);
             expect(device.deviceId).toEqual(testDeviceId);
+            expect(disconnectSpy.calledOnce).toEqual(true);
             Max.Device.register.restore();
             Max.MMXClient.connect.restore();
+            Max.MMXClient.bindDisconnect.restore();
+            Max.MMXClient.disconnect.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
             Max.Device.register.restore();
             Max.MMXClient.connect.restore();
+            Max.MMXClient.bindDisconnect.restore();
+            Max.MMXClient.disconnect.restore();
             done();
         });
+    });
+
+});
+
+describe('MMXClient connectionHandler', function() {
+
+    it('should fire connection error callback', function (done) {
+        Max.MMXClient.connectionHandler(0, function(status) {
+            expect(status).toEqual('connection error');
+            done();
+        });
+    });
+
+    it('should fire connection failed callback', function (done) {
+        Max.MMXClient.connectionHandler(2, function(status) {
+            expect(status).toEqual('connection failed');
+            done();
+        });
+    });
+
+    it('should fire not authorized callback', function (done) {
+        Max.MMXClient.connectionHandler(4, function(status) {
+            expect(status).toEqual('not authorized');
+            done();
+        });
+    });
+
+    it('should fire connection error callback', function (done) {
+        Max.MMXClient.connectionHandler(5, function(status) {
+            expect(status).toBeUndefined();
+            done();
+        });
+    });
+
+});
+
+describe('MMXClient bindDisconnect', function() {
+
+    it('should fire connection error callback', function (done) {
+        var logoutStub = sinon.stub(Max.User, 'logout');
+        Max.MMXClient.connectionEmitter = {};
+        Max.Events.create(Max.MMXClient.connectionEmitter);
+        Max.MMXClient.bindDisconnect(function() {
+            expect(Max.MMXClient.connectionEmitter).toEqual(null);
+            expect(logoutStub.calledOnce).toEqual(true);
+            Max.User.logout.restore();
+            done();
+        });
+        Max.MMXClient.connectionEmitter.invoke(6);
     });
 
 });
