@@ -62,17 +62,13 @@ describe('User register', function() {
             password: 'magnet',
             email: 'jack.doe@magnet.com'
         };
-        var disconnectStub = sinon.stub(Max.MMXClient, 'disconnect');
         Max.User.register(userObj).success(function(user) {
             expect(user.userName).toEqual(userObj.userName);
             expect(user.firstName).toEqual(userObj.firstName);
             expect(user.email).toEqual(userObj.email);
-            expect(disconnectStub.calledOnce).toEqual(true);
-            Max.MMXClient.disconnect.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
-            Max.MMXClient.disconnect.restore();
             done();
         });
         setTimeout(function() {
@@ -110,15 +106,11 @@ describe('User register', function() {
             password: 'magnet',
             email: 'jack.doe@magnet.com'
         };
-        var disconnectStub = sinon.stub(Max.MMXClient, 'disconnect');
         Max.User.register(userObj).success(function(res) {
             expect(res).toEqual('failed-test');
-            Max.MMXClient.disconnect.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual(err);
-            expect(disconnectStub.calledOnce).toEqual(true);
-            Max.MMXClient.disconnect.restore();
             done();
         });
         setTimeout(function() {

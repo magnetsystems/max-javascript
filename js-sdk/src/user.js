@@ -49,8 +49,6 @@ Max.User.register = function(userObj) {
     userObj.userName = userObj.userName || userObj.username;
     var auth;
 
-    Max.MMXClient.disconnect();
-
     if (Max.App.catCredentials || Max.App.hatCredentials)
         auth = {
             'Authorization': 'Bearer '
