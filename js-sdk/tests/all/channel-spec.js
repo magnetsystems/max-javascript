@@ -569,6 +569,56 @@ describe('Channel getChannel', function() {
     });
 });
 
+describe('Channel getChannels', function() {
+    var sendSpy;
+    var testUserId = 'test-user-id-1';
+    var testChannelName = 'test-channel';
+
+    beforeEach(function () {
+        Max.setUser({
+            userId: testUserId
+        });
+        Max.setConnection({
+            connected: true
+        });
+        sendSpy = sinon.spy();
+    });
+    afterEach(function () {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should get channel given channel name', function (done) {
+        var connStub = {
+            addHandler: function (cb) {
+                var xmlStr = "<mmx xmlns='com.magnet:pubsub' command='getTopics' ctype='application/json'>" +
+                    "[{&quot;isCollection&quot;:false,&quot;description&quot;:&quot;my public summary&quo" +
+                    "t;,&quot;isPersistent&quot;:true,&quot;maxItems&quot;:-1,&quot;maxPayloadSize&quot;:20" +
+                    "97152,&quot;creationDate&quot;:&quot;2016-03-09T18:27:40.546Z&quot;,&quot;modificationDa" +
+                    "te&quot;:&quot;2016-03-09T18:27:40.546Z&quot;,&quot;publisherType&quot;:&quot;anyone&quot;" +
+                    ",&quot;creator&quot;:&quot;"+testUserId+"%b9bilkj0c83@mmx&quot;,&quot;" +
+                    "subscriptionEnabled&quot;:true,&quot;topicName&quot;:&quot;"+testChannelName+"&quot;}]</mmx>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        Max.Channel.getChannels(testChannelName).success(function (channels) {
+            expect(channels.length).toEqual(1);
+            expect(channels[0].name).toEqual(testChannelName);
+            expect(channels[0].isPublic).toEqual(true);
+            expect(channels[0].ownerUserID).toEqual(testUserId);
+            expect(sendSpy.calledOnce).toEqual(true);
+            done();
+        }).error(function (e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+});
+
 describe('Channel getAllSubscribers', function() {
     var sendSpy;
     var testUserId = 'test-user-id-1';
