@@ -44,6 +44,13 @@ cd ../../samples/web
 zip -r ../../js-sdk/target/magnet-getstarted-js-$APP_VERSION.zip getstarted
 zip -r ../../js-sdk/target/magnet-kitchensink-js-$APP_VERSION.zip kitchen-sink
 cd messenger/www
+zip -r ../../../../js-sdk/target/magnet-messenger-ionic-js-$APP_VERSION.zip .
+
+# build and zip the messenger desktop app
+cd ../../messenger-desktop
+grunt build
+cd dist
 zip -r ../../../../js-sdk/target/magnet-messenger-js-$APP_VERSION.zip .
+
 
 
