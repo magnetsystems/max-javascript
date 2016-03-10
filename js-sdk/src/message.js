@@ -154,13 +154,13 @@ Max.MMXClient = {
         }
     },
     // handle disconnection gracefully
-    bindDisconnect: function(callback) {
+    bindDisconnect: function(callback, skipLogout) {
         var self = this;
         self.connectionEmitter.on(Strophe.Status.DISCONNECTED, function() {
             Max.Log.info('Max disconnected');
             self.connectionEmitter = null;
             mXMPPConnection = null;
-            Max.User.logout();
+            if (!skipLogout) Max.User.logout();
             if (typeof callback === typeof Function) return callback();
             //if (mCurrentUser) {
             //    mCurrentUser.connected = false;
@@ -193,7 +193,7 @@ Max.MMXClient = {
                 self.connectionEmitter.unbind(Strophe.Status.DISCONNECTED);
                 self.bindDisconnect(function() {
                     register();
-                });
+                }, true);
                 Max.MMXClient.disconnect();
             }
         }).error(function() {

@@ -88,8 +88,6 @@ Max.User.login = function(userName, password, rememberMe) {
         if (!userObj.username) return def.reject('invalid username');
         if (!userObj.password) return def.reject('invalid password');
 
-        Max.MMXClient.disconnect();
-
         Max.Request({
             method: 'POST',
             url: '/com.magnet.server/user/session',
