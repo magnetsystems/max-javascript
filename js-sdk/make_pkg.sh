@@ -49,6 +49,7 @@ zip -r ../../../../js-sdk/target/magnet-messenger-ionic-js-$APP_VERSION.zip .
 # build and zip the messenger desktop app
 cd ../../messenger-desktop
 npm install
+bower install
 grunt build
 cd dist
 zip -r ../../../../js-sdk/target/magnet-messenger-js-$APP_VERSION.zip .
