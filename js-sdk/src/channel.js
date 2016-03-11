@@ -754,7 +754,7 @@ Max.Channel.prototype.unsubscribe = function() {
 /**
  * Publish a message and/or attachments to the channel.
  * @param {Max.Message} mmxMessage A {Max.Message} instance containing message payload.
- * @param {FileUpload} [attachments] A FileUpload object created by an input[type="file"] HTML element.
+ * @param {FileUpload|FileUpload[]|FileList} [attachments] One or more FileUpload objects created by an input[type="file"] HTML element.
  * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
  */
 Max.Channel.prototype.publish = function(mmxMessage, attachments) {

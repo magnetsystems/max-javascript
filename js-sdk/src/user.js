@@ -109,7 +109,7 @@ Max.User.login = function(userName, password, rememberMe) {
             contentType: 'application/x-www-form-urlencoded',
             headers: {
                'Authorization': 'Basic ' + Max.Utils.stringToBase64(userObj.userName+':'+userObj.password),
-               'MMS-DEVICE-ID': mCurrentDevice.deviceId
+               'MMS-DEVICE-ID': mCurrentDevice ? mCurrentDevice.deviceId : MMS_DEVICE_ID
             },
             isLogin: true
         }, function(data) {

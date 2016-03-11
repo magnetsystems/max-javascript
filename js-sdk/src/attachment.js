@@ -3,12 +3,19 @@
  * @class
  * The Uploader class is a local representation of an attachment. This class provides methods to build
  * the file and upload it to the server.
- * @param {FileUpload|FileUpload[]} fileOrFiles One or more FileUpload objects created by an input[type="file"] HTML element.
+ * @param {FileUpload|FileUpload[]|FileList} fileOrFiles One or more FileUpload objects created by an input[type="file"] HTML element.
  * @param {function} callback Fires after the file body is parsed.
  * @ignore
  */
 Max.Uploader = function(fileOrFiles, callback) {
     var self = this;
+
+    if (!(window.FileReader && window.Blob))
+        return callback('upload not supported');
+
+    if (!fileOrFiles.length)
+        fileOrFiles = [fileOrFiles];
+
     this.boundary = 'BOUNDARY+'+Max.Utils.getCleanGUID();
     this.message = '';
     this.prefix = 'DATA_';
@@ -17,23 +24,18 @@ Max.Uploader = function(fileOrFiles, callback) {
     this.attachmentRefs = [];
     this.contentType = 'multipart/form-data; boundary='+this.boundary;
 
-    if (!(window.FileReader && window.Blob)) {
-        return callback('upload not supported');
-    }
-
-    if (!Max.Utils.isArray(fileOrFiles))
-        fileOrFiles = [fileOrFiles];
-
     // TOOD: implement iframe upload. http://caniuse.com/#search=formdata
     if (window.FormData) {
         this.message = new FormData();
         delete this.contentType;
 
         for (var i = 0; i < fileOrFiles.length; ++i) {
-            this.message.append('file', fileOrFiles[i], 'attachment' + i);
+            var ref = 'attachment' + i;
+            this.message.append('file', fileOrFiles[i], ref);
             this.attachmentRefs.push({
                 mimeType: fileOrFiles[i].type,
-                senderId: mCurrentUser.userId
+                senderId: mCurrentUser.userId,
+                ref: ref
             });
         }
 
@@ -48,7 +50,7 @@ Max.Uploader = function(fileOrFiles, callback) {
 
 /**
  * Add a part to the multipart/form-data body.
- * @param {FileUpload|FileUpload[]} fileOrFiles One or more FileUpload objects created by an input[type="file"] HTML element.
+ * @param {FileUpload|FileUpload[]|FileList} fileOrFiles One or more FileUpload objects created by an input[type="file"] HTML element.
  * @param {number} index The current file index.
  * @param {function} callback Fires when there are no more files to add.
  */
@@ -60,16 +62,18 @@ Max.Uploader.prototype.add = function(fileOrFiles, index, callback) {
 
     reader.addEventListener('load', function() {
         var id = self.prefix+String(++self.index);
+        var ref = 'attachment' + index;
         self.message += '--'+self.boundary+'\r\n';
         self.message += 'Content-Type: '+fileOrFiles[index].type+'\r\n';
-        self.message += 'Content-Disposition: form-data; name="file"; filename="attachment'+index+'"\r\n\r\n';
+        self.message += 'Content-Disposition: form-data; name="file"; filename="'+ref+'"\r\n\r\n';
         self.message += 'Content-Transfer-Encoding: base64\r\n';
         //self.message += 'Content-Id: '+id+'\r\n\r\n';
         self.message += reader.result+'\r\n\r\n';
 
         self.attachmentRefs.push({
             mimeType: fileOrFiles[index].type,
-            senderId: mCurrentUser.userId
+            senderId: mCurrentUser.userId,
+            ref: ref
         });
 
         if (++index == self.fileCount) callback();
@@ -106,7 +110,7 @@ Max.Uploader.prototype.channelUpload = function(channel, messageId) {
 
 /**
  * Upload user avatar.
- * @param {string} userId User identifier.
+ * @param {string} userId The identifier of the user who the avatar belongs to.
  * @returns {Max.Promise} A promise object returning a list of attachment metadata or request error.
  */
 Max.Uploader.prototype.avatarUpload = function(userId) {
@@ -130,9 +134,8 @@ Max.Uploader.prototype.upload = function(headers) {
         headers: headers,
         isBinary: true
     }, function(res) {
-        // TODO: this makes it only support one file
         for (var i=0;i<self.attachmentRefs.length;++i)
-            self.attachmentRefs[i].attachmentId = res.attachment0;
+            self.attachmentRefs[i].attachmentId = res[self.attachmentRefs[i].ref];
 
         def.resolve(self.attachmentRefs);
     }, function() {
