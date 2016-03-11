@@ -841,6 +841,109 @@ describe('User getAvatarUrl', function() {
 
 });
 
+describe('User setAvatar', function() {
+    var userName = 'test-user';
+    var userId = 'test-id';
+
+    it('should should set avatar and update user hasAvatar extra', function (done) {
+        var user = new Max.User({
+            userName: userName,
+            userId: userId
+        });
+        Max.setUser(user);
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        var mockFile = {
+            type: 'text/plain'
+        };
+        var multipart = {
+            avatarUpload: function() {}
+        };
+        var avatarUploaderStub = sinon.stub(multipart, 'avatarUpload', function(uid) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var updateProfileStub = sinon.stub(Max.User, 'updateProfile', function(userObj) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                userObj = Max.Utils.mergeObj(user, userObj);
+                Max.setUser(new Max.User(userObj));
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var oUploader = Max.Uploader;
+        Max.Uploader = function(attachments, cb) {
+            this.attachmentRefs = [{"mimeType":"text/plain","senderId":"test-id","attachmentId":"test-attachment-id"}];
+            cb(null, multipart);
+        };
+        Max.getCurrentUser().setAvatar(mockFile).success(function() {
+            expect(avatarUploaderStub.calledOnce).toEqual(true);
+            expect(updateProfileStub.calledOnce).toEqual(true);
+            expect(Max.getCurrentUser().extras).not.toBeUndefined();
+            expect(Max.getCurrentUser().extras.hasAvatar).toEqual(true);
+            Max.User.updateProfile.restore();
+            Max.Uploader = oUploader;
+            done();
+        });
+    });
+
+    it('should should set avatar without updating user', function (done) {
+        var user = new Max.User({
+            userName: userName,
+            userId: userId,
+            extras: {
+                hasAvatar: true
+            }
+        });
+        Max.setUser(user);
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        var mockFile = {
+            type: 'text/plain'
+        };
+        var multipart = {
+            avatarUpload: function() {}
+        };
+        var avatarUploaderStub = sinon.stub(multipart, 'avatarUpload', function(uid) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var updateProfileStub = sinon.stub(Max.User, 'updateProfile', function(userObj) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                userObj = Max.Utils.mergeObj(user, userObj);
+                Max.setUser(new Max.User(userObj));
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var oUploader = Max.Uploader;
+        Max.Uploader = function(attachments, cb) {
+            this.attachmentRefs = [{"mimeType":"text/plain","senderId":"test-id","attachmentId":"test-attachment-id"}];
+            cb(null, multipart);
+        };
+        Max.getCurrentUser().setAvatar(mockFile).success(function() {
+            expect(avatarUploaderStub.calledOnce).toEqual(true);
+            expect(updateProfileStub.calledOnce).toEqual(false);
+            expect(Max.getCurrentUser().extras).not.toBeUndefined();
+            expect(Max.getCurrentUser().extras.hasAvatar).toEqual(true);
+            Max.User.updateProfile.restore();
+            Max.Uploader = oUploader;
+            done();
+        });
+    });
+
+});
+
 describe('User clearSession', function() {
     var userName = 'test-user';
     var userId = 'test-id';

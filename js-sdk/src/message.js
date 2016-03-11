@@ -162,11 +162,6 @@ Max.MMXClient = {
             mXMPPConnection = null;
             if (!skipLogout && mCurrentUser) Max.User.logout();
             if (typeof callback === typeof Function) return callback();
-            //if (mCurrentUser) {
-            //    mCurrentUser.connected = false;
-            //    if (Max.App.hatCredentials && Max.App.hatCredentials.access_token)
-            //        self.registerDeviceAndConnect(mCurrentUser.userId, Max.App.hatCredentials);
-            //}
         });
     },
     /**

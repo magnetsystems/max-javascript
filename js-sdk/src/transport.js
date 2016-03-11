@@ -40,10 +40,10 @@ Max.Request = function(request, callback, failback) {
 
             // TODO: need to rework the .status === 0 once CORS is full implemented by server
             if ((details.status === 401 || details.status === 0) && !request.isLogin) {
-                Max.User.clearSession('session expired');
-
                 if (Cookie.get('magnet-max-refresh-token'))
                     return Max.User.loginWithRefreshToken(request, callback, failback);
+                else
+                    Max.User.clearSession('session expired');
             }
 
             if (details.status === 403 && !request.isLogin)

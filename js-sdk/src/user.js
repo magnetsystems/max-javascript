@@ -109,7 +109,7 @@ Max.User.login = function(userName, password, rememberMe) {
             contentType: 'application/x-www-form-urlencoded',
             headers: {
                'Authorization': 'Basic ' + Max.Utils.stringToBase64(userObj.userName+':'+userObj.password),
-               'MMS-DEVICE-ID': MMS_DEVICE_ID
+               'MMS-DEVICE-ID': mCurrentDevice.deviceId
             },
             isLogin: true
         }, function(data) {
@@ -119,7 +119,7 @@ Max.User.login = function(userName, password, rememberMe) {
             Cookie.create('magnet-max-auth-token', data.access_token, 2);
 
             if (data.refresh_token)
-                Cookie.create('magnet-max-refresh-token', data.access_token, 365);
+                Cookie.create('magnet-max-refresh-token', data.refresh_token, 365);
 
             Max.MMXClient.registerDeviceAndConnect(data.access_token)
                 .success(function() {
@@ -138,14 +138,18 @@ Max.User.login = function(userName, password, rememberMe) {
 };
 
 /**
- * Login automatically if the Remember Me setting was enabled during login.
+ * Login automatically if the rememberMe flag was passed during login.
  * @returns {Max.Promise} A promise object returning success report or reason of failure.
- * @ignore
  */
 Max.User.loginWithRefreshToken = function(request, callback, failback) {
     var token = Cookie.get('magnet-max-refresh-token');
 
-    Max.MMXClient.disconnect();
+    Cookie.remove('magnet-max-auth-token');
+    delete Max.App.hatCredentials;
+    request = Max.Utils.mergeObj(request, { isLogin: true });
+
+    if (request && request.headers && request.headers.Authorization)
+        delete request.headers.Authorization;
 
     var def = Max.Request({
         method: 'POST',
@@ -154,28 +158,36 @@ Max.User.loginWithRefreshToken = function(request, callback, failback) {
             client_id: Max.App.clientId,
             refresh_token: token,
             grant_type: 'refresh_token',
-            device_id: MMS_DEVICE_ID,
+            device_id: mCurrentDevice.deviceId,
             scope: 'user'
         },
         isLogin: true
-    }, function(data) {
+    }, function(data, details) {
 
         Max.App.hatCredentials = data;
         mCurrentUser = new Max.User(data.user);
-        Cookie.create('magnet-max-auth-token', data.access_token, 1);
+        Cookie.create('magnet-max-auth-token', data.access_token, 2);
+
+        if (mXMPPConnection) {
+            if (request.url) return Max.Request(request, callback, failback);
+            return def.resolve.apply(def, [mCurrentUser, details]);
+        }
 
         Max.MMXClient.registerDeviceAndConnect(data.access_token)
             .success(function() {
-                if (request) return Max.Request(request, callback, failback);
+                if (request.url) return Max.Request(request, callback, failback);
                 def.resolve.apply(def, arguments);
             })
             .error(function() {
+                Max.User.clearSession('session expired');
+                if (failback) failback('session expired');
                 def.reject.apply(def, arguments);
             });
 
     }, function(e, details) {
-        Cookie.remove('magnet-max-refresh-token');
-        def.reject(details.status == 401 ? 'incorrect credentials' : e, details);
+        Max.User.clearSession('session expired');
+        if (failback) failback('session expired');
+        def.reject((details && details.status == 401) ? 'incorrect credentials' : e, details);
     });
 
     return def.promise;
@@ -463,7 +475,7 @@ Max.User.prototype.setAvatar = function(picture) {
 
             multipart.avatarUpload(mCurrentUser.userId).success(function() {
                 if (mCurrentUser.extras && mCurrentUser.extras.hasAvatar)
-                    return def.resolve(self.getAvatarUrl);
+                    return def.resolve(self.getAvatarUrl());
 
                 userObj = Max.Utils.mergeObj(mCurrentUser, {
                     password: null,
@@ -471,7 +483,7 @@ Max.User.prototype.setAvatar = function(picture) {
                 });
 
                 Max.User.updateProfile(userObj).success(function() {
-                    def.resolve(self.getAvatarUrl)
+                    def.resolve(self.getAvatarUrl())
                 }).error(function(e) {
                     def.reject(e);
                 })
