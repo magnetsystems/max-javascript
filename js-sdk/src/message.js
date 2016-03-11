@@ -160,7 +160,7 @@ Max.MMXClient = {
             Max.Log.info('Max disconnected');
             self.connectionEmitter = null;
             mXMPPConnection = null;
-            if (!skipLogout) Max.User.logout();
+            if (!skipLogout && mCurrentUser) Max.User.logout();
             if (typeof callback === typeof Function) return callback();
             //if (mCurrentUser) {
             //    mCurrentUser.connected = false;

@@ -274,7 +274,7 @@ describe('MMXClient registerDeviceAndConnect', function() {
 
 describe('MMXClient connectionHandler', function() {
 
-    it('should fire connection error callback', function (done) {
+    it('should fire error callback', function (done) {
         Max.MMXClient.connectionHandler(0, function(status) {
             expect(status).toEqual('connection error');
             done();
@@ -306,13 +306,28 @@ describe('MMXClient connectionHandler', function() {
 
 describe('MMXClient bindDisconnect', function() {
 
-    it('should fire connection error callback', function (done) {
+    it('should handle disconnection gracefully and logout', function (done) {
         var logoutStub = sinon.stub(Max.User, 'logout');
+        Max.setUser({});
         Max.MMXClient.connectionEmitter = {};
         Max.Events.create(Max.MMXClient.connectionEmitter);
         Max.MMXClient.bindDisconnect(function() {
             expect(Max.MMXClient.connectionEmitter).toEqual(null);
             expect(logoutStub.calledOnce).toEqual(true);
+            Max.User.logout.restore();
+            done();
+        });
+        Max.MMXClient.connectionEmitter.invoke(6);
+    });
+
+    it('should handle disconnection gracefully and dont logout if no user', function (done) {
+        var logoutStub = sinon.stub(Max.User, 'logout');
+        Max.setUser(null);
+        Max.MMXClient.connectionEmitter = {};
+        Max.Events.create(Max.MMXClient.connectionEmitter);
+        Max.MMXClient.bindDisconnect(function() {
+            expect(Max.MMXClient.connectionEmitter).toEqual(null);
+            expect(logoutStub.calledOnce).toEqual(false);
             Max.User.logout.restore();
             done();
         });

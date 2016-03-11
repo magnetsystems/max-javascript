@@ -45,6 +45,7 @@ Max.Uploader = function(fileOrFiles, callback) {
         });
     }
 };
+
 /**
  * Add a part to the multipart/form-data body.
  * @param {FileUpload|FileUpload[]} fileOrFiles One or more FileUpload objects created by an input[type="file"] HTML element.
@@ -79,6 +80,7 @@ Max.Uploader.prototype.add = function(fileOrFiles, index, callback) {
     reader.readAsDataURL(fileOrFiles[index]);
     //reader.readAsArrayBuffer(fileOrFiles[i]);
 };
+
 /**
  * Close the multipart/form-data body.
  */
@@ -87,24 +89,45 @@ Max.Uploader.prototype.close = function() {
     //this.message = '--'+this.boundary+'\r\n'+'Content-Type: application/json\r\n\r\n'+JSON.stringify(body)+'\r\n\r\n'+this.message;
     return this.message;
 };
+
 /**
- * Upload the files to the server.
+ * Upload channel message attachments.
  * @param {Max.Channel} channel The channel the file will be sent to.
  * @param {string} messageId The XMPP message ID, used to associate an uploaded file with a {Max.Message}.
  * @returns {Max.Promise} A promise object returning a list of attachment metadata or request error.
  */
-Max.Uploader.prototype.upload = function(channel, messageId) {
+Max.Uploader.prototype.channelUpload = function(channel, messageId) {
+    return this.upload({
+        metadata_message_id: messageId,
+        metadata_channel_name: channel.name,
+        metadata_channel_is_public: !channel.privateChannel
+    });
+};
+
+/**
+ * Upload user avatar.
+ * @param {string} userId User identifier.
+ * @returns {Max.Promise} A promise object returning a list of attachment metadata or request error.
+ */
+Max.Uploader.prototype.avatarUpload = function(userId) {
+    return this.upload({
+        metadata_file_id: userId
+    });
+};
+
+/**
+ * Upload the files to the server.
+ * @param {object} headers upload HTTP headers.
+ * @returns {Max.Promise} A promise object returning a list of attachment metadata or request error.
+ */
+Max.Uploader.prototype.upload = function(headers) {
     var self = this;
     var def = Max.Request({
         method: 'POST',
         url: '/com.magnet.server/file/save/multiple',
         data: self.message,
         contentType: self.contentType,
-        headers: {
-            metadata_message_id: messageId,
-            metadata_channel_name: channel.name,
-            metadata_channel_is_public: !channel.privateChannel
-        },
+        headers: headers,
         isBinary: true
     }, function(res) {
         // TODO: this makes it only support one file
@@ -128,6 +151,7 @@ Max.Attachment = function(attachmentRef) {
     this.downloadUrl = Max.Config.baseUrl+'/com.magnet.server/file/download/'+this.attachmentId
         +'?access_token='+Max.App.hatCredentials.access_token+'&user_id='+this.senderId;
 };
+
 /**
  * Get the full download url of the attachment.
  * @returns {string} The public location of the attachment.

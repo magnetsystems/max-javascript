@@ -754,7 +754,7 @@ Max.Channel.prototype.unsubscribe = function() {
 /**
  * Publish a message and/or attachments to the channel.
  * @param {Max.Message} mmxMessage A {Max.Message} instance containing message payload.
- * @param {FileUpload|FileUpload[]} [attachments] A FileUpload object created by an input[type="file"] HTML element.
+ * @param {FileUpload} [attachments] A FileUpload object created by an input[type="file"] HTML element.
  * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
  */
 Max.Channel.prototype.publish = function(mmxMessage, attachments) {
@@ -810,7 +810,7 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
         new Max.Uploader(attachments, function(e, multipart) {
             if (e || !multipart) return def.reject(e);
 
-            multipart.upload(self, iqId).success(function(attachments) {
+            multipart.channelUpload(self, iqId).success(function(attachments) {
                 sendMessage(Max.Utils.mergeObj(mmxMessage.messageContent || {}, {
                     _attachments: JSON.stringify(attachments)
                 }));

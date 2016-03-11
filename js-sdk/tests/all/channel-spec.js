@@ -1095,7 +1095,7 @@ describe('Channel publish', function() {
             Max.App.hatCredentials = {
                 access_token: 'test-token'
             };
-            this.upload = function() {
+            this.channelUpload = function() {
                 var self = this;
                 var uploadDef = new Max.Deferred();
                 setTimeout(function() {

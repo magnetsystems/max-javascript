@@ -9,6 +9,7 @@
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
  * @param {string} [userObj.email] User's email.
+ * @param {object} [userObj.extras] User's additional custom metadata.
  * @property {string} userId User's user identifier.
  * @property {string} userName User's username.
  * @property {string} [firstName] User's first name.
@@ -27,9 +28,15 @@ Max.User = function(userObj) {
     if (userObj.userId && userObj.userId.indexOf('%') != -1)
         userObj.userId = userObj.userId.split('%')[0];
 
+    if (userObj.userAccountData) {
+        userObj.extras = userObj.userAccountData;
+        delete userObj.userAccountData;
+    }
+
     if (!userObj.userId && userObj.userIdentifier) userObj.userId = userObj.userIdentifier;
     delete userObj.userIdentifier;
     userObj.userName = userObj.userName || userObj.username || userObj.displayName;
+    userObj.extras = userObj.extras || {};
 
     Max.Utils.mergeObj(this, userObj);
     return this;
@@ -43,9 +50,11 @@ Max.User = function(userObj) {
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
  * @param {string} [userObj.email] User's email.
+ * @param {object} [userObj.extras] Additional custom metadata to associate with the user.
  * @returns {Max.Promise} A promise object returning the new {Max.User} or reason of failure.
  */
 Max.User.register = function(userObj) {
+    userObj = Max.Utils.mergeObj({}, userObj);
     userObj.userName = userObj.userName || userObj.username;
     var auth;
 
@@ -54,6 +63,11 @@ Max.User.register = function(userObj) {
             'Authorization': 'Bearer '
             + (Max.App.catCredentials || Max.App.hatCredentials || {}).access_token
         };
+
+    if (userObj.extras) {
+        userObj.userAccountData = userObj.extras;
+        delete userObj.extras;
+    }
 
     var def = Max.Request({
         method: 'POST',
@@ -181,7 +195,7 @@ Max.User.loginWithAccessToken = function(callback) {
     };
 
     Max.User.getUserInfo().success(function(user) {
-        mCurrentUser = user;
+        mCurrentUser = new Max.User(user);
 
         Max.MMXClient.registerDeviceAndConnect(token)
             .success(function() {
@@ -342,7 +356,40 @@ Max.User.getUserInfo = function() {
         url: '/com.magnet.server/userinfo',
         bypassReady: true
     }, function(data, details) {
-        def.resolve.apply(def, [new Max.User(data), details]);
+        mCurrentUser = new Max.User(data);
+        def.resolve.apply(def, [mCurrentUser, details]);
+    }, function() {
+        def.reject.apply(def, arguments);
+    });
+    return def.promise;
+};
+
+/**
+ * Update user profile.
+ * @param {object} userObj An object containing user information.
+ * @param {string} [userObj.password] User's preferred password.
+ * @param {string} [userObj.firstName] User's first name.
+ * @param {string} [userObj.lastName] User's last name.
+ * @param {string} [userObj.email] User's email.
+ * @param {object} [userObj.extras] Additional custom metadata to associate with the user.
+ * @returns {Max.Promise} A promise object returning the updated {Max.User} or reason of failure.
+ */
+Max.User.updateProfile = function(userObj) {
+    userObj = userObj || {};
+    userObj = Max.Utils.mergeObj({}, userObj);
+
+    if (userObj.extras) {
+        userObj.userAccountData = userObj.extras;
+        delete userObj.extras;
+    }
+
+    var def = Max.Request({
+        method: 'PUT',
+        url: '/com.magnet.server/user/profile',
+        data: userObj
+    }, function(user, details) {
+        mCurrentUser = new Max.User(user);
+        def.resolve.apply(def, [mCurrentUser, details]);
     }, function() {
         def.reject.apply(def, arguments);
     });
@@ -382,4 +429,57 @@ Max.User.clearSession = function(reason) {
     Cookie.remove('magnet-max-refresh-token');
     ChannelStore.clear();
     Max.invoke('not-authenticated', reason);
+};
+
+/**
+ * Get user profile picture url.
+ * @returns {string} User profile download Url.
+ */
+Max.User.prototype.getAvatarUrl = function() {
+    if (!this.userId
+        //|| !this.extras
+        //|| !this.extras.hasAvatar
+        || !Max.App.hatCredentials) return null;
+
+    return Max.Config.baseUrl+'/com.magnet.server/file/download/'+this.userId
+        +'?access_token='+Max.App.hatCredentials.access_token+'&user_id='+this.userId;
+};
+
+/**
+ * Upload user profile picture.
+ * @param {FileUpload} picture A FileUpload object created by an input[type="file"] HTML element.
+ * @returns {string} User profile download URL
+ */
+Max.User.prototype.setAvatar = function(picture) {
+    var self = this, userObj;
+    var def = new Max.Deferred();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!picture) return def.reject('picture not set');
+
+        new Max.Uploader(picture, function(e, multipart) {
+            if (e || !multipart) return def.reject(e);
+
+            multipart.avatarUpload(mCurrentUser.userId).success(function() {
+                if (mCurrentUser.extras && mCurrentUser.extras.hasAvatar)
+                    return def.resolve(self.getAvatarUrl);
+
+                userObj = Max.Utils.mergeObj(mCurrentUser, {
+                    password: null,
+                    extras: { hasAvatar: true }
+                });
+
+                Max.User.updateProfile(userObj).success(function() {
+                    def.resolve(self.getAvatarUrl)
+                }).error(function(e) {
+                    def.reject(e);
+                })
+            }).error(function(e) {
+                def.reject(e);
+            });
+        });
+    }, 0);
+
+    return def.promise;
 };

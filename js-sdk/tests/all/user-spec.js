@@ -54,18 +54,22 @@ describe('User register', function() {
         xhr.restore();
 	});
 
-    xit('should register a new user', function(done) {
+    it('should register a new user', function(done) {
         var userObj = {
             userName: 'jack.doe',
             firstName: 'Jack',
             lastName: 'Doe',
             password: 'magnet',
-            email: 'jack.doe@magnet.com'
+            email: 'jack.doe@magnet.com',
+            extras: {
+                foo: 'bar'
+            }
         };
         Max.User.register(userObj).success(function(user) {
             expect(user.userName).toEqual(userObj.userName);
             expect(user.firstName).toEqual(userObj.firstName);
             expect(user.email).toEqual(userObj.email);
+            expect(user.extras.foo).toEqual(userObj.extras.foo);
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
@@ -88,7 +92,9 @@ describe('User register', function() {
                     "USER"
                 ],
                 "tags": null,
-                "userAccountData": null,
+                "userAccountData": {
+                    foo: 'bar'
+                },
                 "userIdentifier": "4028ba81531e7be0015333f9440e0017",
                 "userName": userObj.userName,
                 "userRealm": "DB",
@@ -290,6 +296,10 @@ describe('User loginWithRefreshToken', function() {
 });
 
 describe('User loginWithAccessToken', function() {
+    var userId = "40288192510694f6015106960150000a";
+    var userName = "jack.doe";
+    var clientId = "a7a9e901-abc5-4485-af1c-0b088b34f44d";
+
     beforeEach(function () {
         Max.App.hatCredentials = {
             access_token: 'test-token'
@@ -319,12 +329,28 @@ describe('User loginWithAccessToken', function() {
         });
     });
 
-    it('should return error if unable to connect to mmx', function (done) {
+    it('should return error if auth failure', function (done) {
         Max.Cookie.create('magnet-max-auth-token', 'test-token', 1);
         var err = 'auth failure';
         var getUserInfoStub = sinon.stub(Max.User, 'getUserInfo', function() {
             var d = new Max.Deferred();
-            setTimeout(function(){d.resolve() }, 0);
+            setTimeout(function(){
+                d.resolve({
+                    "userIdentifier": userId,
+                    "clientId": clientId,
+                    "firstName": "Jack",
+                    "lastName": "Doe",
+                    "email": "jack.doe@magnet.com",
+                    "userName": userName,
+                    "password": "n/a",
+                    "userRealm": "DB",
+                    "roles": [
+                        "USER"
+                    ],
+                    "otpCode": "n/a",
+                    "userAccountData": {}
+                })
+            }, 0);
             return d.promise;
         });
         var registerDeviceAndConnectStub = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect', function() {
@@ -340,11 +366,28 @@ describe('User loginWithAccessToken', function() {
         });
     });
 
-    it('should return error if unable to connect to mmx', function (done) {
+    it('should login and get user info', function (done) {
+        Max.setUser(null);
         Max.Cookie.create('magnet-max-auth-token', 'test-token', 1);
         var getUserInfoStub = sinon.stub(Max.User, 'getUserInfo', function() {
             var d = new Max.Deferred();
-            setTimeout(function(){d.resolve() }, 0);
+            setTimeout(function(){
+                d.resolve({
+                    "userIdentifier": userId,
+                    "clientId": clientId,
+                    "firstName": "Jack",
+                    "lastName": "Doe",
+                    "email": "jack.doe@magnet.com",
+                    "userName": userName,
+                    "password": "n/a",
+                    "userRealm": "DB",
+                    "roles": [
+                        "USER"
+                    ],
+                    "otpCode": "n/a",
+                    "userAccountData": {}
+                })
+            }, 0);
             return d.promise;
         });
         var registerDeviceAndConnectStub = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect', function() {
@@ -353,6 +396,8 @@ describe('User loginWithAccessToken', function() {
             return d.promise;
         });
         Max.User.loginWithAccessToken(function(e) {
+            expect(Max.getCurrentUser().userId).toEqual(userId);
+            expect(Max.getCurrentUser().userName).toEqual(userName);
             expect(e).toBeUndefined();
             Max.User.getUserInfo.restore();
             Max.MMXClient.registerDeviceAndConnect.restore();
@@ -397,6 +442,70 @@ describe('User getUserInfo', function() {
             expect(user.userId).toEqual(userId);
             expect(user.userName).toEqual(userName);
             expect(user.clientId).toEqual(clientId);
+            Max.Request.restore();
+            done();
+        }).error(function (e) {
+            expect(e).toEqual('failed-test');
+            Max.Request.restore();
+            done();
+        });
+    });
+
+});
+
+describe('User updateProfile', function() {
+    beforeEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+    });
+
+    it('should update user information, including extras', function (done) {
+        var userId = "40288192510694f6015106960150000a";
+        var userName = "jack.doe";
+        var clientId = "a7a9e901-abc5-4485-af1c-0b088b34f44d";
+        var userObj = {
+            "firstName": "Jack",
+            "lastName": "Doe",
+            "email": "jack.doe@magnet.com",
+            "userName": userName,
+            "password": "n/a",
+            "userRealm": "DB",
+            "roles": [
+                "USER"
+            ],
+            "otpCode": "n/a",
+            "extras": {
+                update: 'test'
+            }
+        };
+        var requestStub = sinon.stub(Max, 'Request', function(req, cb) {
+            setTimeout(function() {
+                cb({
+                    "userIdentifier": userId,
+                    "clientId": clientId,
+                    "firstName": "Jack",
+                    "lastName": "Doe",
+                    "email": "jack.doe@magnet.com",
+                    "userName": userName,
+                    "password": "n/a",
+                    "userRealm": "DB",
+                    "roles": [
+                        "USER"
+                    ],
+                    "otpCode": "n/a",
+                    "userAccountData": {
+                        update: 'test'
+                    }
+                });
+            }, 0);
+            return new Max.Deferred();
+        });
+        Max.User.updateProfile(userObj).success(function (user) {
+            expect(user.userId).toEqual(userId);
+            expect(user.userName).toEqual(userName);
+            expect(user.clientId).toEqual(clientId);
+            expect(user.extras.update).toEqual(userObj.extras.update);
             Max.Request.restore();
             done();
         }).error(function (e) {
@@ -712,6 +821,25 @@ describe('User logout', function() {
 
 });
 
+describe('User getAvatarUrl', function() {
+    var userName = 'test-user';
+    var userId = 'test-id';
+
+    it('should get avatar url', function (done) {
+        var user = new Max.User({
+            userName: userName,
+            userId: userId
+        });
+        Max.setUser(user);
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        expect(Max.getCurrentUser().getAvatarUrl())
+            .toEqual('http://localhost:7777/api/com.magnet.server/file/download/test-id?access_token=test-token&user_id=test-id');
+        done();
+    });
+
+});
 
 describe('User clearSession', function() {
     var userName = 'test-user';
@@ -724,7 +852,7 @@ describe('User clearSession', function() {
         Max.App.initialized = true;
         Max.setUser({
             userName: userName,
-            userIdentifier: userId
+            userId: userId
         });
     });
 
@@ -735,7 +863,7 @@ describe('User clearSession', function() {
         Max.App.initialized = true;
         Max.setUser({
             userName: userName,
-            userIdentifier: userId
+            userId: userId
         });
     });
 
