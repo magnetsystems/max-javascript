@@ -475,8 +475,9 @@ Max.Channel.getChannel = function(channelName, userId) {
             var payload, channel;
 
             if (!json || !json.mmx) return def.reject('channel not found');
-
             payload = JSON.parse(json.mmx);
+            if (payload.message) return def.reject(payload.message);
+
             channel = new Max.Channel(payload);
 
             Max.Channel.setSubscriptionState(channel, function(e, channel) {
