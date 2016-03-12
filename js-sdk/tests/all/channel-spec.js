@@ -65,12 +65,17 @@ describe('Channel findChannels', function() {
             connected: true
         };
         Max.setConnection(connStub);
+        var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
+            cb(null, input);
+        });
         Max.Channel.findPublicChannels(channelName).success(function(channels) {
             expect(channels.length).toEqual(1);
             expect(sendSpy.calledOnce).toEqual(true);
+            Max.Channel.setSubscriptionState.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
+            Max.Channel.setSubscriptionState.restore();
             done();
         });
     });
@@ -93,12 +98,17 @@ describe('Channel findChannels', function() {
             connected: true
         };
         Max.setConnection(connStub);
+        var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
+            cb(null, input);
+        });
         Max.Channel.findPrivateChannels(channelName).success(function(channels) {
             expect(channels.length).toEqual(1);
             expect(sendSpy.calledOnce).toEqual(true);
+            Max.Channel.setSubscriptionState.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
+            Max.Channel.setSubscriptionState.restore();
             done();
         });
     });
@@ -121,12 +131,17 @@ describe('Channel findChannels', function() {
             connected: true
         };
         Max.setConnection(connStub);
+        var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
+            cb(null, input);
+        });
         Max.Channel.findChannels(channelName).success(function(channels) {
             expect(channels.length).toEqual(1);
             expect(sendSpy.calledOnce).toEqual(true);
+            Max.Channel.setSubscriptionState.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
+            Max.Channel.setSubscriptionState.restore();
             done();
         });
     });
@@ -283,6 +298,9 @@ describe('Channel getAllSubscriptions', function() {
             }, 0);
             return d.promise;
         });
+        var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
+            cb(null, input);
+        });
         var connStub = {
             addHandler: function(cb) {
                 var xmlStr = "<pubsub xmlns='http://jabber.org/protocol/pubsub'><subscriptions><s" +
@@ -307,10 +325,12 @@ describe('Channel getAllSubscriptions', function() {
             expect(channels[1].isPublic).toEqual(false);
             expect(sendSpy.calledOnce).toEqual(true);
             Max.Channel.getChannels.restore();
+            Max.Channel.setSubscriptionState.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
             Max.Channel.getChannels.restore();
+            Max.Channel.setSubscriptionState.restore();
             done();
         });
     });
@@ -350,16 +370,21 @@ describe('Channel findChannelsBySubscribers', function() {
                 }]
             });
         });
+        var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
+            cb(null, input);
+        });
         Max.Channel.findChannelsBySubscribers(testUserId).success(function(channels) {
             expect(channels.length).toEqual(1);
             expect(channels[0].name).toEqual(testChannelId);
             expect(channels[0].ownerUserID).toEqual(testUserId);
             expect(channels[0].isPublic).toEqual(true);
             Max.Request.restore();
+            Max.Channel.setSubscriptionState.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
             Max.Request.restore();
+            Max.Channel.setSubscriptionState.restore();
             done();
         });
     });
@@ -495,15 +520,20 @@ describe('Channel getChannel', function() {
             send: sendSpy,
             connected: true
         };
+        var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
+            cb(null, input);
+        });
         Max.setConnection(connStub);
         Max.Channel.getChannel(testChannelName, testUserId).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
             expect(channel.isPublic).toEqual(true);
             expect(channel.ownerUserID).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
+            Max.Channel.setSubscriptionState.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
+            Max.Channel.setSubscriptionState.restore();
             done();
         });
     });
@@ -526,14 +556,19 @@ describe('Channel getChannel', function() {
             connected: true
         };
         Max.setConnection(connStub);
+        var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
+            cb(null, input);
+        });
         Max.Channel.getPrivateChannel(testChannelName).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
             expect(channel.isPublic).toEqual(false);
             expect(channel.ownerUserID).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
+            Max.Channel.setSubscriptionState.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
+            Max.Channel.setSubscriptionState.restore();
             done();
         });
     });
@@ -556,14 +591,19 @@ describe('Channel getChannel', function() {
             connected: true
         };
         Max.setConnection(connStub);
+        var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
+            cb(null, input);
+        });
         Max.Channel.getPublicChannel(testChannelName).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
             expect(channel.isPublic).toEqual(true);
             expect(channel.ownerUserID).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
+            Max.Channel.setSubscriptionState.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
+            Max.Channel.setSubscriptionState.restore();
             done();
         });
     });
@@ -605,15 +645,20 @@ describe('Channel getChannels', function() {
             connected: true
         };
         Max.setConnection(connStub);
+        var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
+            cb(null, input);
+        });
         Max.Channel.getChannels(testChannelName).success(function (channels) {
             expect(channels.length).toEqual(1);
             expect(channels[0].name).toEqual(testChannelName);
             expect(channels[0].isPublic).toEqual(true);
             expect(channels[0].ownerUserID).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
+            Max.Channel.setSubscriptionState.restore();
             done();
         }).error(function (e) {
             expect(e).toEqual('failed-test');
+            Max.Channel.setSubscriptionState.restore();
             done();
         });
     });
@@ -1375,6 +1420,185 @@ describe('Channel getMessages', function() {
             expect(messages[0].messageID).toEqual('4114db4e87904d27d46de28da2840d4ec');
             expect(messages[0].channel.name).toEqual(testChannelName);
             expect(messages[0].messageContent.message).toEqual('message to channel');
+            done();
+        });
+    });
+
+});
+
+xdescribe('Channel setSubscriptionState', function() {
+    var testChannelName;
+    var testUserId;
+    var testChannelName2;
+    var testUserId2;
+
+    beforeEach(function () {
+        testChannelName = 'test-channel';
+        testUserId = '402881295313de27015315659c71000a';
+        testChannelName2 = 'test-channel2';
+        testUserId2 = '402881295313de27015315659c71000b';
+    });
+
+    it('should should set subscription to true if subscription match', function (done) {
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": testChannelName,
+            "privateChannel": true
+        });
+        var getAllSubscriptionsStub = sinon.stub(Max.Channel, 'getAllSubscriptions', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve([
+                    {userId: testUserId, name: 'wrong-name'}
+                ]);
+            }, 0);
+            return d.promise;
+        });
+        Max.Channel.setSubscriptionState(channel, function(e, updatedChannel) {
+            expect(channel.isSubscribed).toEqual(true);
+            expect(updatedChannel.isSubscribed).toEqual(true);
+            Max.Channel.getAllSubscriptions.restore();
+            done();
+        });
+    });
+
+    it('should should set subscription to false if subscription not match', function (done) {
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": testChannelName,
+            "privateChannel": true
+        });
+        var getAllSubscriptionsStub = sinon.stub(Max.Channel, 'getAllSubscriptions', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve([
+                    {userId: testUserId, name: 'wrong-name'}
+                ]);
+            }, 0);
+            return d.promise;
+        });
+        Max.Channel.setSubscriptionState(channel, function(e, updatedChannel) {
+            expect(channel.isSubscribed).toEqual(false);
+            expect(updatedChannel.isSubscribed).toEqual(false);
+            Max.Channel.getAllSubscriptions.restore();
+            done();
+        });
+    });
+
+    it('should should set subscription to true if subscription match for array', function (done) {
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": testChannelName,
+            "privateChannel": true
+        });
+        var channel2 = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId2,
+            "subscriptionEnabled": true,
+            "topicName": testChannelName2,
+            "privateChannel": true
+        });
+        var channels = [channel, channel2];
+        var getAllSubscriptionsStub = sinon.stub(Max.Channel, 'getAllSubscriptions', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve([
+                    {userId: testUserId, name: testChannelName},
+                    {userId: testUserId2, name: testChannelName2}
+                ]);
+            }, 0);
+            return d.promise;
+        });
+        Max.Channel.setSubscriptionState(channels, function(e, updatedChannels) {
+            expect(channels[0].isSubscribed).toEqual(true);
+            expect(updatedChannels[0].isSubscribed).toEqual(true);
+            expect(channels[1].isSubscribed).toEqual(true);
+            expect(updatedChannels[1].isSubscribed).toEqual(true);
+            Max.Channel.getAllSubscriptions.restore();
+            done();
+        });
+    });
+
+    it('should should set subscription to false if subscription not match for array', function (done) {
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": testChannelName,
+            "privateChannel": true
+        });
+        var channel2 = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId2,
+            "subscriptionEnabled": true,
+            "topicName": testChannelName2,
+            "privateChannel": true
+        });
+        var channels = [channel, channel2];
+        var getAllSubscriptionsStub = sinon.stub(Max.Channel, 'getAllSubscriptions', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve([
+                    {userId: testUserId, name: 'wrong-name1'},
+                    {userId: testUserId2, name: 'wrong-name2'}
+                ]);
+            }, 0);
+            return d.promise;
+        });
+        Max.Channel.setSubscriptionState(channels, function(e, updatedChannels) {
+            expect(channels[0].isSubscribed).toEqual(false);
+            expect(updatedChannels[0].isSubscribed).toEqual(false);
+            expect(channels[1].isSubscribed).toEqual(false);
+            expect(updatedChannels[1].isSubscribed).toEqual(false);
+            Max.Channel.getAllSubscriptions.restore();
             done();
         });
     });

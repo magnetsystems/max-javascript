@@ -319,6 +319,7 @@ Max.Message.prototype.formatMessage = function(msg, channel, callback) {
         } else if (msg.event && msg.event.items && msg.event.items._node) {
             var channelObj = nodePathToChannel(msg.event.items._node);
             if (ChannelStore.get(channelObj)) {
+                ChannelStore.get(channelObj).isSubscribed = true;
                 self.channel = ChannelStore.get(channelObj);
                 return callback();
             }
@@ -342,8 +343,11 @@ Max.Message.prototype.formatMessage = function(msg, channel, callback) {
 // non-persistent cache of channel information to improve message receive performance
 var ChannelStore = {
     store: {},
-    add: function(channel) {
-        this.store[this.getChannelId(channel)] = channel;
+    add: function(channelOrChannels) {
+        if (!Max.Utils.isArray(channelOrChannels))
+            return this.store[this.getChannelId(channelOrChannels)] = channelOrChannels;
+        for (var i=0;i<channelOrChannels.length;++i)
+            this.store[this.getChannelId(channelOrChannels[i])] = channelOrChannels[i];
     },
     get: function(channel) {
         return this.store[this.getChannelId(channel)];

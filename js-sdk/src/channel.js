@@ -6,6 +6,7 @@
  * @param {object} channelObj An object containing channel information.
  * @property {string} name The name of the channel.
  * @property {boolean} isPublic True if the channel public.
+ * @property {boolean} isSubscribed True if the current user is subscribed to the channel.
  * @property {string} [summary] An optional summary of the channel.
  * @property {string} [publishPermission] Permissions level required to be able to post, must be in
  * ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
@@ -43,6 +44,9 @@ Max.Channel = function(channelObj) {
         channelObj.userId = channelObj.userId || channelObj.ownerUserID;
     if (channelObj.privateChannel === false)
         delete channelObj.userId;
+
+    if (typeof channelObj.isSubscribed === 'undefined')
+        channelObj.isSubscribed = false;
 
     channelObj.isPublic = !channelObj.privateChannel;
     delete channelObj.privateChannel;
@@ -104,60 +108,83 @@ Max.Channel.findChannels = function(channelName, tags, limit, offset, type) {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var mmxMeta = {
-                operator: 'AND',
-                limit: limit,     // -1 for max # of records imposed by system, or > 0
-                offset: offset,
-                type: type
+        var mmxMeta = {
+            operator: 'AND',
+            limit: limit,     // -1 for max # of records imposed by system, or > 0
+            offset: offset,
+            type: type
+        };
+        if (channelName)
+            mmxMeta.topicName = {
+                match: 'PREFIX',
+                value: channelName
             };
-            if (channelName)
-                mmxMeta.topicName = {
-                    match: 'PREFIX',
-                    value: channelName
-                };
-            if (tags && tags.length)
-                mmxMeta.tags = {
-                    match: 'EXACT',
-                    value: tags
-                };
-            /*
-                description: {
-                    match: EXACT|PREFIX|SUFFIX,     // optional
-                    value: topic description
-                },
-                t
-             */
+        if (tags && tags.length)
+            mmxMeta.tags = {
+                match: 'EXACT',
+                value: tags
+            };
+        /*
+            description: {
+                match: EXACT|PREFIX|SUFFIX,     // optional
+                value: topic description
+            },
+            t
+         */
 
-            mmxMeta = JSON.stringify(mmxMeta);
+        mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
-                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'searchTopic', ctype: 'application/json'}, mmxMeta);
+        var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'searchTopic', ctype: 'application/json'}, mmxMeta);
 
-            mXMPPConnection.addHandler(function(msg) {
-                var payload, json = x2js.xml2json(msg);
+        mXMPPConnection.addHandler(function(msg) {
+            var payload, json = x2js.xml2json(msg);
+            json = json || {};
 
-                if (json.mmx) {
-                    payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
-                    if (payload && payload.results && payload.results) {
-                        payload.results = Max.Utils.objToObjAry(payload.results);
-                        for (var i=0;i<payload.results.length;++i) {
-                            channels.push(new Max.Channel(payload.results[i]));
-                            ChannelStore.add(channels[i]);
-                        }
-                    }
-                }
+            payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx || {});
+            if (!payload || !payload.results || !payload.results.length) return def.resolve([]);
+
+            payload.results = Max.Utils.objToObjAry(payload.results);
+
+            for (var i=0;i<payload.results.length;++i)
+                channels.push(new Max.Channel(payload.results[i]));
+
+            Max.Channel.setSubscriptionState(channels, function(e, channels) {
+                ChannelStore.add(channels);
                 def.resolve(channels);
-            }, null, null, null, iqId,  null);
+            });
+        }, null, null, null, iqId,  null);
 
-            mXMPPConnection.send(payload.tree());
-
-        } catch (e) {
-            def.reject(e);
-        }
+        mXMPPConnection.send(payload.tree());
     }, 0);
 
     return def.promise;
+};
+
+// set subscribed flag for a list of channels
+Max.Channel.setSubscriptionState = function(channelOrChannels, cb) {
+    var ids = {}, i;
+
+    function getId(obj) {
+        return (obj.userId || '*') + '/' + obj.name.toLowerCase();
+    }
+
+    Max.Channel.getAllSubscriptions(true).success(function(channelObjs) {
+        for (i=0;i<channelObjs.length;++i)
+            ids[getId(channelObjs[i])] = true;
+
+        if (!Max.Utils.isArray(channelOrChannels) && ids[getId(channelOrChannels)]) {
+            channelOrChannels.isSubscribed = true;
+        } else if (Max.Utils.isArray(channelOrChannels)) {
+            for (i=0;i<channelOrChannels.length;++i) {
+                if (ids[getId(channelOrChannels[i])])
+                    channelOrChannels[i].isSubscribed = true;
+            }
+        }
+        cb(null, channelOrChannels);
+    }).error(function(e) {
+        cb(e);
+    });
 };
 
 /**
@@ -173,7 +200,6 @@ Max.Channel.findChannels = function(channelName, tags, limit, offset, type) {
  */
 Max.Channel.create = function(channelObj) {
     var def = new Max.Deferred();
-    var dt = Max.Utils.dateToISO8601(new Date());
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
@@ -187,8 +213,6 @@ Max.Channel.create = function(channelObj) {
         channelObj.ownerId = mCurrentUser.userId;
         channelObj.privateChannel = (channelObj.isPublic === true || channelObj.isPublic === false)
             ? !channelObj.isPublic : false;
-        channelObj.creationDate = dt;
-        channelObj.lastTimeActive = dt;
         if (channelObj.summary) channelObj.description = channelObj.summary;
         if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userId;
         if (channelObj.publishPermission) channelObj.publishPermissions = channelObj.publishPermission;
@@ -203,6 +227,7 @@ Max.Channel.create = function(channelObj) {
             delete channelObj.ownerId;
             delete channelObj.channelName;
             channelObj.creator = mCurrentUser.userId;
+            channelObj.isSubscribed = true;
 
             def.resolve(new Max.Channel(channelObj), details);
         }, function () {
@@ -214,9 +239,7 @@ Max.Channel.create = function(channelObj) {
 };
 
 /**
- * Get all the channels the current user is the subscribed to. The returned {Max.Channel} object
- * only contains basic channel information. Use the {Max.Channel.getPublicChannel} and
- * {Max.Channel.getPrivateChannel} methods to obtain the full information.
+ * Get all the channels the current user is the subscribed to.
  * @returns {Max.Promise} A promise object returning a list of {Max.Channel} (containing basic information
  * only) or reason of failure.
  */
@@ -228,38 +251,36 @@ Max.Channel.getAllSubscriptions = function(subscriptionOnly) {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'get', id: msgId})
-                .c('pubsub', {xmlns: 'http://jabber.org/protocol/pubsub'})
-                .c('subscriptions');
+        var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'get', id: msgId})
+            .c('pubsub', {xmlns: 'http://jabber.org/protocol/pubsub'})
+            .c('subscriptions');
 
-            mXMPPConnection.addHandler(function(msg) {
-                var json = x2js.xml2json(msg);
-                var channels = [];
+        mXMPPConnection.addHandler(function(msg) {
+            var json = x2js.xml2json(msg);
+            var channels = [];
 
-                if (!json.pubsub || !json.pubsub.subscriptions || !json.pubsub.subscriptions.subscription)
-                    return def.resolve(channels);
+            if (!json.pubsub || !json.pubsub.subscriptions || !json.pubsub.subscriptions.subscription)
+                return def.resolve(channels);
 
-                var subs = Max.Utils.objToObjAry(json.pubsub.subscriptions.subscription);
+            var subs = Max.Utils.objToObjAry(json.pubsub.subscriptions.subscription);
 
-                for (var i=0;i<subs.length;++i)
-                    channels.push(nodePathToChannel(subs[i]._node));
+            for (var i=0;i<subs.length;++i) {
+                channels.push(nodePathToChannel(subs[i]._node));
+                channels[i].isSubscribed = true;
+            }
 
-                if (subscriptionOnly) return def.resolve(channels);
+            if (subscriptionOnly) return def.resolve(channels);
 
-                Max.Channel.getChannels(channels).success(function() {
-                    def.resolve.apply(def, arguments);
-                }).error(function() {
-                    def.reject.apply(def, arguments);
-                });
+            Max.Channel.getChannels(channels, true).success(function(channels) {
+                ChannelStore.add(channels);
+                def.resolve(channels);
+            }).error(function() {
+                def.reject.apply(def, arguments);
+            });
+        }, null, null, null, msgId,  null);
 
-            }, null, null, null, msgId,  null);
+        mXMPPConnection.send(payload.tree());
 
-            mXMPPConnection.send(payload.tree());
-
-        } catch (e) {
-            def.reject(e);
-        }
     }, 0);
 
     return def.promise;
@@ -292,12 +313,15 @@ Max.Channel.findChannelsBySubscribers = function(subscribers) {
                 matchFilter: 'EXACT_MATCH'
             }
         }, function(data, details) {
-            if (data.channels && data.channels.length) {
-                for (var i=0;i<data.channels.length;++i)
-                    channels.push(new Max.Channel(data.channels[i]));
-            }
+            if (!data.channels || !data.channels.length) return  def.resolve(channels, details);
 
-            def.resolve(channels, details);
+            for (var i=0;i<data.channels.length;++i)
+                channels.push(new Max.Channel(data.channels[i]));
+
+            Max.Channel.setSubscriptionState(channels, function(e, channels) {
+                ChannelStore.add(channels);
+                def.resolve(channels);
+            });
         }, function() {
             def.reject.apply(def, arguments);
         });
@@ -436,35 +460,33 @@ Max.Channel.getChannel = function(channelName, userId) {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var mmxMeta = {
-                userId: userId,
-                topicName: channelName
-            };
+        var mmxMeta = {
+            userId: userId,
+            topicName: channelName
+        };
 
-            mmxMeta = JSON.stringify(mmxMeta);
+        mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
-                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getTopic', ctype: 'application/json'}, mmxMeta);
+        var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getTopic', ctype: 'application/json'}, mmxMeta);
 
-            mXMPPConnection.addHandler(function(msg) {
-                var json = x2js.xml2json(msg);
-                var payload, channel;
+        mXMPPConnection.addHandler(function(msg) {
+            var json = x2js.xml2json(msg);
+            var payload, channel;
 
-                if (json.mmx) {
-                    payload = JSON.parse(json.mmx);
-                    channel = new Max.Channel(payload);
-                    ChannelStore.add(channel);
-                }
+            if (!json || !json.mmx) return def.reject('channel not found');
 
+            payload = JSON.parse(json.mmx);
+            channel = new Max.Channel(payload);
+
+            Max.Channel.setSubscriptionState(channel, function(e, channel) {
+                ChannelStore.add(channel);
                 def.resolve(channel);
-            }, null, null, null, msgId,  null);
+            });
+        }, null, null, null, msgId,  null);
 
-            mXMPPConnection.send(payload.tree());
+        mXMPPConnection.send(payload.tree());
 
-        } catch (e) {
-            def.reject(e);
-        }
     }, 0);
 
     return def.promise;
@@ -477,7 +499,7 @@ Max.Channel.getChannel = function(channelName, userId) {
  * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
  * @ignore
  */
-Max.Channel.getChannels = function(channelOrChannels) {
+Max.Channel.getChannels = function(channelOrChannels, allSubscribed) {
     var def = new Max.Deferred();
     var msgId = Max.Utils.getCleanGUID();
 
@@ -488,40 +510,40 @@ Max.Channel.getChannels = function(channelOrChannels) {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var mmxMeta = [];
-            for (var i=0;i<channelOrChannels.length;++i)
-                mmxMeta.push({
-                    topicName: channelOrChannels[i].name,
-                    userId: channelOrChannels[i].userId
-                });
+        var mmxMeta = [];
+        for (var i=0;i<channelOrChannels.length;++i)
+            mmxMeta.push({
+                topicName: channelOrChannels[i].name,
+                userId: channelOrChannels[i].userId
+            });
 
-            mmxMeta = JSON.stringify(mmxMeta);
+        mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
-                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getTopics', ctype: 'application/json'}, mmxMeta);
+        var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getTopics', ctype: 'application/json'}, mmxMeta);
 
-            mXMPPConnection.addHandler(function(msg) {
-                var json = x2js.xml2json(msg);
-                var payload, channels = [];
+        mXMPPConnection.addHandler(function(msg) {
+            var json = x2js.xml2json(msg);
+            var payload, channels = [];
 
-                if (json.mmx) {
-                    payload = JSON.parse(json.mmx);
-                    payload = Max.Utils.objToObjAry(payload);
-                    for (var i=0;i<payload.length;++i) {
-                        channels.push(new Max.Channel(payload[i]));
-                        ChannelStore.add(channels[i]);
-                    }
-                }
+            if (!json || !json.mmx) return def.resolve([]);
 
+            payload = Max.Utils.objToObjAry(JSON.parse(json.mmx));
+
+            for (var i=0;i<payload.length;++i) {
+                if (allSubscribed) payload[i].isSubscribed = true;
+                channels.push(new Max.Channel(payload[i]));
+            }
+
+            if (allSubscribed) return def.resolve(channels);
+
+            Max.Channel.setSubscriptionState(channels, function(e, channels) {
+                ChannelStore.add(channels);
                 def.resolve(channels);
-            }, null, null, null, msgId,  null);
+            });
+        }, null, null, null, msgId,  null);
 
-            mXMPPConnection.send(payload.tree());
-
-        } catch (e) {
-            def.reject(e);
-        }
+        mXMPPConnection.send(payload.tree());
     }, 0);
 
     return def.promise;
@@ -545,42 +567,37 @@ Max.Channel.prototype.getAllSubscribers = function(limit, offset) {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var mmxMeta = {
-                userId: self.userId,     // null for global topic, or a user topic under a user ID
-                topicName: self.name,    // without /appID/* or /appID/userID
-                limit: limit,            // -1 for unlimited, or > 0
-                offset: offset           // offset starting from zero
-            };
+        var mmxMeta = {
+            userId: self.userId,     // null for global topic, or a user topic under a user ID
+            topicName: self.name,    // without /appID/* or /appID/userID
+            limit: limit,            // -1 for unlimited, or > 0
+            offset: offset           // offset starting from zero
+        };
 
-            mmxMeta = JSON.stringify(mmxMeta);
+        mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: iqId})
-                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getSubscribers', ctype: 'application/json'}, mmxMeta);
+        var payload = $iq({from: mCurrentUser.jid, type: 'get', id: iqId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getSubscribers', ctype: 'application/json'}, mmxMeta);
 
-            mXMPPConnection.addHandler(function(msg) {
-                var payload, json = x2js.xml2json(msg);
-                payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
+        mXMPPConnection.addHandler(function(msg) {
+            var payload, json = x2js.xml2json(msg);
+            payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
 
-                if (!payload || !payload.subscribers) return def.resolve([]);
+            if (!payload || !payload.subscribers) return def.resolve([]);
 
-                payload.subscribers = Max.Utils.objToObjAry(payload.subscribers);
-                for (var i=0;i<payload.subscribers.length;++i)
-                    userIds.push(payload.subscribers[i].userId);
+            payload.subscribers = Max.Utils.objToObjAry(payload.subscribers);
+            for (var i=0;i<payload.subscribers.length;++i)
+                userIds.push(payload.subscribers[i].userId);
 
-                Max.User.getUsersByUserIds(userIds).success(function() {
-                    def.resolve.apply(def, arguments);
-                }).error(function(e) {
-                    def.reject(e);
-                });
+            Max.User.getUsersByUserIds(userIds).success(function() {
+                def.resolve.apply(def, arguments);
+            }).error(function(e) {
+                def.reject(e);
+            });
 
-            }, null, null, null, iqId,  null);
+        }, null, null, null, iqId,  null);
 
-            mXMPPConnection.send(payload.tree());
-
-        } catch (e) {
-            def.reject(e);
-        }
+        mXMPPConnection.send(payload.tree());
     }, 0);
 
     return def.promise;
@@ -675,33 +692,30 @@ Max.Channel.prototype.subscribe = function() {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var mmxMeta = {
-                userId: self.userId,     // null for global topic, or a user topic under a user ID
-                topicName: self.name,    // without /appID/* or /appID/userID
-                devId: null,             // null for any devices, or a specific device
-                errorOnDup: false        // true to report error if duplicated subscription, false (default) to not report error
-            };
+        var mmxMeta = {
+            userId: self.userId,     // null for global topic, or a user topic under a user ID
+            topicName: self.name,    // without /appID/* or /appID/userID
+            devId: null,             // null for any devices, or a specific device
+            errorOnDup: false        // true to report error if duplicated subscription, false (default) to not report error
+        };
 
-            mmxMeta = JSON.stringify(mmxMeta);
+        mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
-                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'subscribe', ctype: 'application/json'}, mmxMeta);
+        var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'subscribe', ctype: 'application/json'}, mmxMeta);
 
-            mXMPPConnection.addHandler(function(msg) {
-                var payload, json = x2js.xml2json(msg);
+        mXMPPConnection.addHandler(function(msg) {
+            var payload, json = x2js.xml2json(msg);
 
-                if (json.mmx)
-                    payload = JSON.parse(json.mmx);
+            if (json.mmx)
+                payload = JSON.parse(json.mmx);
 
-                def.resolve(payload.subscriptionId);
-            }, null, null, null, iqId,  null);
+            self.isSubscribed = true;
+            ChannelStore.add(self);
+            def.resolve(payload.subscriptionId);
+        }, null, null, null, iqId,  null);
 
-            mXMPPConnection.send(payload.tree());
-
-        } catch (e) {
-            def.reject(e);
-        }
+        mXMPPConnection.send(payload.tree());
     }, 0);
 
     return def.promise;
@@ -720,32 +734,30 @@ Max.Channel.prototype.unsubscribe = function() {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var mmxMeta = {
-                userId: self.userId,        // null for global topic, or a user topic under a user ID
-                topicName: self.name,       // without /appID/* or /appID/userID
-                subscriptionId: null        // | a-subscription-ID  // null for all subscriptions to the topic
-            };
+        var mmxMeta = {
+            userId: self.userId,        // null for global topic, or a user topic under a user ID
+            topicName: self.name,       // without /appID/* or /appID/userID
+            subscriptionId: null        // | a-subscription-ID  // null for all subscriptions to the topic
+        };
 
-            mmxMeta = JSON.stringify(mmxMeta);
+        mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
-                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'unsubscribe', ctype: 'application/json'}, mmxMeta);
+        var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'unsubscribe', ctype: 'application/json'}, mmxMeta);
 
-            mXMPPConnection.addHandler(function(msg) {
-                var payload, json = x2js.xml2json(msg);
+        mXMPPConnection.addHandler(function(msg) {
+            var payload, json = x2js.xml2json(msg);
 
-                if (json.mmx)
-                    payload = JSON.parse(json.mmx);
+            if (json.mmx)
+                payload = JSON.parse(json.mmx);
 
-                def.resolve(payload.message);
-            }, null, null, null, iqId,  null);
+            self.isSubscribed = false;
+            ChannelStore.add(self);
+            def.resolve(payload.message);
+        }, null, null, null, iqId,  null);
 
-            mXMPPConnection.send(payload.tree());
+        mXMPPConnection.send(payload.tree());
 
-        } catch (e) {
-            def.reject(e);
-        }
     }, 0);
 
     return def.promise;
@@ -769,40 +781,35 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
         function sendMessage(msgMeta) {
-            try {
-                var meta = JSON.stringify(msgMeta);
-                var mmxMeta = {
-                    From: {
-                        userId: mCurrentUser.userId,
-                        devId: mCurrentDevice.deviceId,
-                        displayName: mCurrentUser.userName
-                    }
-                };
-                mmxMeta = JSON.stringify(mmxMeta);
+            var meta = JSON.stringify(msgMeta);
+            var mmxMeta = {
+                From: {
+                    userId: mCurrentUser.userId,
+                    devId: mCurrentDevice.deviceId,
+                    displayName: mCurrentUser.userName
+                }
+            };
+            mmxMeta = JSON.stringify(mmxMeta);
 
-                var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'set', id: iqId})
-                    .c('pubsub', {xmlns: 'http://jabber.org/protocol/pubsub'})
-                    .c('publish', {node: self.getNodePath()})
-                    .c('item', {id: self.msgId})
-                    .c('mmx', {xmlns: 'com.magnet:msg:payload'})
-                    .c('mmxmeta', mmxMeta).up()
-                    .c('meta', meta).up()
-                    .c('payload', {mtype: 'unknown', stamp: dt, chunk: '0/0/0'});
+            var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'set', id: iqId})
+                .c('pubsub', {xmlns: 'http://jabber.org/protocol/pubsub'})
+                .c('publish', {node: self.getNodePath()})
+                .c('item', {id: self.msgId})
+                .c('mmx', {xmlns: 'com.magnet:msg:payload'})
+                .c('mmxmeta', mmxMeta).up()
+                .c('meta', meta).up()
+                .c('payload', {mtype: 'unknown', stamp: dt, chunk: '0/0/0'});
 
-                mXMPPConnection.addHandler(function(msg) {
-                    var json = x2js.xml2json(msg);
+            mXMPPConnection.addHandler(function(msg) {
+                var json = x2js.xml2json(msg);
 
-                    if (json.error)
-                        return def.reject(json.error._code + ' : ' + json.error._type);
+                if (json.error)
+                    return def.reject(json.error._code + ' : ' + json.error._type);
 
-                    def.resolve(self.msgId);
-                }, null, null, null, iqId, null);
+                def.resolve(self.msgId);
+            }, null, null, null, iqId, null);
 
-                mXMPPConnection.send(payload.tree());
-
-            } catch (e) {
-                def.reject(e);
-            }
+            mXMPPConnection.send(payload.tree());
         }
 
         if (!attachments) return sendMessage(mmxMessage.messageContent);
@@ -847,44 +854,40 @@ Max.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, 
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var mmxMeta = {
-                userId: self.userId,         // null for global topic, or a user topic under a user ID
-                topicName: self.name,        // without /appID/* or /appID/userID
-                options: {
-                    subscriptionId: null,    // optional (if null, any subscriptions to the topic will be assumed)
-                    since: startDate,        // optional (inclusive, 2015-03-06T13:23:45.783Z)
-                    until: endDate,          // optional (inclusive)
-                    ascending: ascending,    // optional.  Default is false (i.e. descending)
-                    maxItems: limit,         // optional.  -1 (default) for system specified max, or > 0.
-                    offset: offset           // optional.  offset starting from zero
+        var mmxMeta = {
+            userId: self.userId,         // null for global topic, or a user topic under a user ID
+            topicName: self.name,        // without /appID/* or /appID/userID
+            options: {
+                subscriptionId: null,    // optional (if null, any subscriptions to the topic will be assumed)
+                since: startDate,        // optional (inclusive, 2015-03-06T13:23:45.783Z)
+                until: endDate,          // optional (inclusive)
+                ascending: ascending,    // optional.  Default is false (i.e. descending)
+                maxItems: limit,         // optional.  -1 (default) for system specified max, or > 0.
+                offset: offset           // optional.  offset starting from zero
+            }
+        };
+
+        mmxMeta = JSON.stringify(mmxMeta);
+
+        var payload = $iq({from: mCurrentUser.jid, type: 'get', id: iqId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'fetch', ctype: 'application/json'}, mmxMeta);
+
+        mXMPPConnection.addHandler(function(msg, json) {
+            json = json || x2js.xml2json(msg);
+
+            if (json.mmx) {
+                payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
+                if (payload) {
+                    payload.items = Max.Utils.objToObjAry(payload.items);
+                    formatMessage([], self, payload.items, 0, function(messages) {
+                        def.resolve(messages, payload.totalCount);
+                    });
                 }
-            };
+            }
+        }, null, null, null, iqId,  null);
 
-            mmxMeta = JSON.stringify(mmxMeta);
+        mXMPPConnection.send(payload.tree());
 
-            var payload = $iq({from: mCurrentUser.jid, type: 'get', id: iqId})
-                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'fetch', ctype: 'application/json'}, mmxMeta);
-
-            mXMPPConnection.addHandler(function(msg, json) {
-                json = json || x2js.xml2json(msg);
-
-                if (json.mmx) {
-                    payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
-                    if (payload) {
-                        payload.items = Max.Utils.objToObjAry(payload.items);
-                        formatMessage([], self, payload.items, 0, function(messages) {
-                            def.resolve(messages, payload.totalCount);
-                        });
-                    }
-                }
-            }, null, null, null, iqId,  null);
-
-            mXMPPConnection.send(payload.tree());
-
-        } catch (e) {
-            def.reject(e);
-        }
     }, 0);
 
     return def.promise;
@@ -916,31 +919,26 @@ Max.Channel.prototype.delete = function() {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
 
-        try {
-            var mmxMeta = {
-                topicName: self.name,                   // without /appID/* or /appID/userID
-                isPersonal: self.userId ? true : false  // true for personal user topic, false for global topic
-            };
+        var mmxMeta = {
+            topicName: self.name,                   // without /appID/* or /appID/userID
+            isPersonal: self.userId ? true : false  // true for personal user topic, false for global topic
+        };
 
-            mmxMeta = JSON.stringify(mmxMeta);
+        mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
-                .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'deletetopic', ctype: 'application/json'}, mmxMeta);
+        var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'deletetopic', ctype: 'application/json'}, mmxMeta);
 
-            mXMPPConnection.addHandler(function(msg) {
-                var payload, json = x2js.xml2json(msg);
+        mXMPPConnection.addHandler(function(msg) {
+            var payload, json = x2js.xml2json(msg);
 
-                if (json.mmx)
-                    payload = JSON.parse(json.mmx);
+            if (json.mmx)
+                payload = JSON.parse(json.mmx);
 
-                def.resolve(payload.message);
-            }, null, null, null, iqId,  null);
+            def.resolve(payload.message);
+        }, null, null, null, iqId,  null);
 
-            mXMPPConnection.send(payload.tree());
-
-        } catch (e) {
-            def.reject(e);
-        }
+        mXMPPConnection.send(payload.tree());
     }, 0);
 
     return def.promise;
