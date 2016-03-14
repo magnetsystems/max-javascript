@@ -482,7 +482,7 @@ Max.User.prototype.setAvatar = function(picture) {
                     extras: { hasAvatar: true }
                 });
 
-                Max.User.updateProfile(userObj).success(function() {
+                mCurrentUser.updateProfile(userObj).success(function() {
                     def.resolve(self.getAvatarUrl())
                 }).error(function(e) {
                     def.reject(e);
