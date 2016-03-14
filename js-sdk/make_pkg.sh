@@ -41,10 +41,10 @@ zip -r $APP_NAME-$APP_VERSION-docs.zip ./docs
 
 # zip the sample apps
 cd ../../samples/web
-zip -r ../../js-sdk/target/magnet-getstarted-js-$APP_VERSION.zip getstarted
-zip -r ../../js-sdk/target/magnet-kitchensink-js-$APP_VERSION.zip kitchen-sink
+zip -r ../../js-sdk/target/magnet-getstarted-js.zip getstarted
+zip -r ../../js-sdk/target/magnet-kitchensink-js.zip kitchen-sink
 cd messenger/www
-zip -r ../../../../js-sdk/target/magnet-messenger-ionic-js-$APP_VERSION.zip .
+zip -r ../../../../js-sdk/target/magnet-messenger-ionic-js.zip .
 
 # build and zip the messenger desktop app
 cd ../../messenger-desktop
@@ -52,7 +52,7 @@ npm install
 bower install
 grunt build
 cd dist
-zip -r ../../../../js-sdk/target/magnet-messenger-js-$APP_VERSION.zip .
+zip -r ../../../../js-sdk/target/magnet-messenger-js.zip .
 
 
 
