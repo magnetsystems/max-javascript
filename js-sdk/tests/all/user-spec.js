@@ -896,9 +896,7 @@ describe('User setAvatar', function() {
         var user = new Max.User({
             userName: userName,
             userId: userId,
-            extras: {
-                hasAvatar: true
-            }
+            extras: {}
         });
         Max.setUser(user);
         Max.App.hatCredentials = {
@@ -933,7 +931,7 @@ describe('User setAvatar', function() {
         };
         Max.getCurrentUser().setAvatar(mockFile).success(function() {
             expect(avatarUploaderStub.calledOnce).toEqual(true);
-            expect(updateProfileStub.calledOnce).toEqual(false);
+            expect(updateProfileStub.calledOnce).toEqual(true);
             expect(Max.getCurrentUser().extras).not.toBeUndefined();
             expect(Max.getCurrentUser().extras.hasAvatar).toEqual(true);
             Max.User.updateProfile.restore();

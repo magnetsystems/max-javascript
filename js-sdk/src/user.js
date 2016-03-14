@@ -386,7 +386,7 @@ Max.User.getUserInfo = function() {
  * @param {object} [userObj.extras] Additional custom metadata to associate with the user.
  * @returns {Max.Promise} A promise object returning the updated {Max.User} or reason of failure.
  */
-Max.User.updateProfile = function(userObj) {
+Max.User.prototype.updateProfile = function(userObj) {
     userObj = userObj || {};
     userObj = Max.Utils.mergeObj({}, userObj);
 
