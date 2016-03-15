@@ -274,7 +274,7 @@ function formatUser(userOrUserId) {
 Max.Message.prototype.formatMessage = function(msg, channel, callback) {
     var self = this;
 
-    try {
+    //try {
         this.receivedMessage = true;
         this.messageType = msg._type;
         this.messageID = (msg.event && msg.event.items && msg.event.items.item)
@@ -334,10 +334,10 @@ Max.Message.prototype.formatMessage = function(msg, channel, callback) {
         } else {
             callback();
         }
-
-    } catch(e) {
-        Max.Log.fine('MMXMessage.formatMessage', e);
-    }
+    //
+    //} catch(e) {
+    //    Max.Log.fine('MMXMessage.formatMessage', e);
+    //}
 };
 
 // non-persistent cache of channel information to improve message receive performance
