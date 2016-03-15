@@ -55,7 +55,7 @@ module.exports = function(grunt){
             },
             webDesktopMessenger : {
                 src  : full,
-                dest : '../samples/web/messenger-desktop/app/scripts/plugins/<%= pkg.name %>.js'
+                dest : '../samples/web/messenger-desktop/app/scripts/<%= pkg.name %>.js'
             },
             full : {
                 src  : full,
