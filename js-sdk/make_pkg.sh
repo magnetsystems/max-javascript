@@ -48,6 +48,10 @@ zip -r ../../../../js-sdk/target/magnet-messenger-ionic-js.zip .
 
 # build and zip the messenger desktop app
 cd ../../messenger-desktop
+
+### sdk location update ##
+sed -i -- 's/\/\/cdn.magnet.com\/downloads\/magnet-max-sdk.min.js/scripts\/magnet-max-sdk.js/g' app/index.html
+
 npm install
 bower install
 grunt build

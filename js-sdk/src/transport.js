@@ -39,7 +39,7 @@ Max.Request = function(request, callback, failback) {
             });
 
             // TODO: need to rework the .status === 0 once CORS is full implemented by server
-            if ((details.status === 401 || details.status === 0) && !request.isLogin) {
+            if ((details.status === 401) && !request.isLogin) {
                 if (Cookie.get('magnet-max-refresh-token'))
                     return Max.User.loginWithRefreshToken(request, callback, failback);
                 else
@@ -49,7 +49,7 @@ Max.Request = function(request, callback, failback) {
             if (details.status === 403 && !request.isLogin)
                 Max.invoke('not-authorized', e, details);
 
-            if (details.status === 413)
+            if (details.status === 413 || details.status === 0)
                 e = 'maximum filesize exceeded';
 
             options.call.state = Max.CallState.FAILED;
