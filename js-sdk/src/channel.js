@@ -401,7 +401,8 @@ function parseMessageList(ary, channel) {
     for (j = 0; j < ary.length; ++j) {
         var mmxMsg = new Max.Message();
         mmxMsg.sender = new Max.User(ary[j].publisher);
-        mmxMsg.timestamp = Max.Utils.ISO8601ToDate(ary[j].metaData.creationDate);
+        if (ary[j].metaData)
+            mmxMsg.timestamp = Max.Utils.ISO8601ToDate(ary[j].metaData.creationDate);
         mmxMsg.channel = channel;
         mmxMsg.messageID = ary[j].itemId;
         if (ary[j].content) {
