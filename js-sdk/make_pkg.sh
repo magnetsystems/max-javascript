@@ -26,8 +26,10 @@ fi
 grunt full
 
 ### version update ###
-sed -i -- 's/1.0.0-SNAPSHOT/$APP_VERSION/g' target/$APP_NAME-$APP_VERSION.js
-sed -i -- 's/1.0.0-SNAPSHOT/$APP_VERSION/g' target/$APP_NAME-$APP_VERSION.min.js
+sed -i -- "s/1.0.0-SNAPSHOT/$APP_VERSION/g" target/$APP_NAME.js
+sed -i -- "s/1.0.0-SNAPSHOT/$APP_VERSION/g" target/$APP_NAME.min.js
+sed -i -- "s/1.0.0-SNAPSHOT/$APP_VERSION/g" target/$APP_NAME-$APP_VERSION.js
+sed -i -- "s/1.0.0-SNAPSHOT/$APP_VERSION/g" target/$APP_NAME-$APP_VERSION.min.js
 
 ### PACKAGE ###
 # collect temp files in target dir  (maven standard)
