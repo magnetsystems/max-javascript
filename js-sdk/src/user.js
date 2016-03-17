@@ -285,7 +285,7 @@ Max.User.getUsersByUserIds = function(userIds) {
  * Search for users with an advanced search query.
  * @param {string|object} [query] An object containing the user property and the search value as a key-value pair. Alternatively,
  * you can pass an ElasticSearch query string as described at
- * [Simple Query Syntax] {@link https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-simple-query-string-query.html}
+ * [URI Search] {@link https://www.elastic.co/guide/en/elasticsearch/reference/current/search-uri-request.html}
  * For example, to search for a user by username, the object can be {userName:'jon.doe'}. See {Max.User} properties
  * for acceptable search properties.
  * @param {number} [limit] The number of results to return per page. Default is 10.
