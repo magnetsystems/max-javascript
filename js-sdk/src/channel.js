@@ -788,7 +788,10 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
                 From: {
                     userId: mCurrentUser.userId,
                     devId: mCurrentDevice.deviceId,
-                    displayName: mCurrentUser.userName
+                    displayName: (mCurrentUser.firstName || '') + ' ' + (mCurrentUser.lastName || ''),
+                    firstName: mCurrentUser.firstName,
+                    lastName: mCurrentUser.lastName,
+                    userName: mCurrentUser.userName
                 }
             };
             mmxMeta = JSON.stringify(mmxMeta);
