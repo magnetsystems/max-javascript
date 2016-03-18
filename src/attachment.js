@@ -2,7 +2,7 @@
  * @constructor
  * @class
  * The Uploader class is a local representation of an attachment. This class provides methods to build the file and upload it to the server.
- * @param {FileUpload|FileUpload[]|FileList} fileOrFiles One or more FileUpload objects created by an input[type="file"] HTML element.
+ * @param {File|File[]|FileList} fileOrFiles One or more File objects created by an input[type="file"] HTML element.
  * @param {function} callback Fires after the file body is parsed.
  * @ignore
  */
@@ -48,7 +48,7 @@ Max.Uploader = function(fileOrFiles, callback) {
 
 /**
  * Add a part to the multipart/form-data body.
- * @param {FileUpload|FileUpload[]|FileList} fileOrFiles One or more FileUpload objects created by an input[type="file"] HTML element.
+ * @param {File|File[]|FileList} fileOrFiles One or more File objects created by an input[type="file"] HTML element.
  * @param {number} index The current file index.
  * @param {function} callback Fires when there are no more files to add.
  */
@@ -106,6 +106,17 @@ Max.Uploader.prototype.channelUpload = function(channel, messageId) {
 };
 
 /**
+ * Upload channel message attachments.
+ * @param {string} messageId The XMPP message ID, used to associate an uploaded file with a {Max.Message}.
+ * @returns {Max.Promise} A promise object returning a list of attachment metadata or request error.
+ */
+Max.Uploader.prototype.messageUpload = function(messageId) {
+    return this.upload({
+        metadata_message_id: messageId
+    });
+};
+
+/**
  * Upload user avatar.
  * @param {string} userId The identifier of the user who the avatar belongs to.
  * @returns {Max.Promise} A promise object returning a list of attachment metadata or request error.
@@ -145,9 +156,14 @@ Max.Uploader.prototype.upload = function(headers) {
  * @constructor
  * @class
  * The Attachment class is the local representation of an attachment.
+ * @property {string} name Filename of the attachment.
+ * @property {string} mimeType MIME-type of the attachment.
+ * @property {string} downloadUrl Url to download the attachment. For example, this url can be inserted directly into an <img> tag to display an image.
+ * @property {string} attachmentId A unique identifier of the attachment.
  */
 Max.Attachment = function(attachmentRef) {
     Max.Utils.mergeObj(this, attachmentRef);
+    this.name = attachmentRef.ref;
     this.downloadUrl = Max.Config.baseUrl+'/com.magnet.server/file/download/'+this.attachmentId
         +'?access_token='+Max.App.hatCredentials.access_token+'&user_id='+this.senderId;
 };
