@@ -528,6 +528,60 @@ describe('Message send', function() {
         });
     });
 
+    it('should send a message with attachment', function(done) {
+        Max.setUser({
+            userId: testUserId
+        });
+        var sendSpy = sinon.spy();
+        var connStub = {
+            addHandler: function(cb) {
+                var xml = document.implementation.createDocument(null, 'message');
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        var content = {
+            my: messageContent
+        };
+        var recipients = [{
+            userName: 'userName1',
+            userId: testUserId
+        }];
+        var mockFile = {
+            type: 'text/plain'
+        };
+        var oUploader = Max.Uploader;
+        Max.Uploader = function(attachments, cb) {
+            Max.App.hatCredentials = {
+                access_token: 'test-token'
+            };
+            this.messageUpload = function() {
+                var self = this;
+                var uploadDef = new Max.Deferred();
+                setTimeout(function() {
+                    uploadDef
+                        .resolve(self.attachmentRefs);
+                }, 5);
+                return uploadDef.promise;
+            };
+            this.attachmentRefs = [{"mimeType":"text/plain","senderId":"test-id","attachmentId":"test-attachment-id"}];
+            cb(null, this);
+        };
+        var msg = new Max.Message(content, recipients, mockFile);
+        msg.send().success(function(msgId) {
+            expect(msg.msgId).toEqual(msgId);
+            expect(sendSpy.calledOnce).toEqual(true);
+            Max.Uploader = oUploader;
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.Uploader = oUploader;
+            done();
+        });
+    });
+
     it('should fail with no recipients', function (done) {
         var content = {
             my: messageContent
@@ -580,6 +634,153 @@ describe('Message send', function() {
             expect(e).toEqual('not connected');
             done();
         });
+    });
+
+});
+
+
+describe('Message addAttachments', function() {
+
+    it('should add FileList object', function(done) {
+        var mimeType = 'text/plain';
+        var mimeType2 = 'image/jpeg';
+        var msg = new Max.Message();
+        var FileListMock = [{
+            type: mimeType
+        }, {
+            type: mimeType2
+        }];
+        msg.addAttachments(FileListMock);
+        expect(msg._attachments[0].type).toEqual(mimeType);
+        expect(msg._attachments[1].type).toEqual(mimeType2);
+        done();
+    });
+
+    it('should add an array of File objects', function(done) {
+        var mimeType = 'text/plain';
+        var msg = new Max.Message();
+        var aryFileMock = [{
+            type: mimeType
+        }];
+        msg.addAttachments(aryFileMock);
+        expect(msg._attachments[0].type).toEqual(mimeType);
+        done();
+    });
+
+    it('should add a File object', function(done) {
+        var mimeType = 'text/plain';
+        var msg = new Max.Message();
+        var FileMock = {
+            type: mimeType
+        };
+        msg.addAttachments(FileMock);
+        expect(msg._attachments[0].type).toEqual(mimeType);
+        done();
+    });
+
+});
+
+describe('Message reply', function() {
+
+    var testUserId = 'test-user-id-1';
+    var testDeviceId = 'test-device-id-1';
+    var messageContent = 'test-message';
+
+    beforeEach(function() {
+        Max.setUser({
+            userId: testUserId
+        });
+        Max.setDevice({
+            deviceId: testDeviceId
+        });
+        Max.setConnection(null);
+    });
+    afterEach(function() {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should send a reply', function(done) {
+        var senderUserId = 'test-sender-id';
+        var testMsg = 'new';
+        var sendStub = sinon.stub(Max.Message.prototype, 'send', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var msg = new Max.Message();
+        msg.sender = {
+            userId: senderUserId
+        };
+        msg.reply({
+            something: testMsg
+        }).success(function() {
+            expect(msg.recipients[0].userId).toEqual(senderUserId);
+            expect(msg.messageContent.something).toEqual(testMsg);
+            Max.Message.prototype.send.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.Message.prototype.send.restore();
+            done();
+        });
+
+    });
+
+    it('should not reply to self', function(done) {
+        var senderUserId = 'test-sender-id';
+        var testMsg = 'new';
+        var sendStub = sinon.stub(Max.Message.prototype, 'send', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var msg = new Max.Message();
+        msg.sender = {
+            userId: testUserId
+        };
+        msg.reply({
+            something: testMsg
+        }).success(function(res) {
+            expect(res).toEqual('failed-test');
+            Max.Message.prototype.send.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('cannot reply to yourself');
+            Max.Message.prototype.send.restore();
+            done();
+        });
+
+    });
+
+    it('should not send with no content', function(done) {
+        var senderUserId = 'test-sender-id';
+        var testMsg = 'new';
+        var sendStub = sinon.stub(Max.Message.prototype, 'send', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var msg = new Max.Message();
+        msg.sender = {
+            userId: testUserId
+        };
+        msg.reply().success(function(res) {
+            expect(res).toEqual('failed-test');
+            Max.Message.prototype.send.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('invalid reply message content');
+            Max.Message.prototype.send.restore();
+            done();
+        });
+
     });
 
 });

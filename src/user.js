@@ -457,7 +457,7 @@ Max.User.prototype.getAvatarUrl = function() {
 
 /**
  * Upload user profile picture.
- * @param {FileUpload} picture A FileUpload object created by an input[type="file"] HTML element.
+ * @param {File} picture A File object created by an input[type="file"] HTML element.
  * @returns {string} User profile download URL
  */
 Max.User.prototype.setAvatar = function(picture) {

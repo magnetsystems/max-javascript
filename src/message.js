@@ -218,6 +218,7 @@ Max.MMXClient = {
  * The Message class is the local representation of a message. This class provides  various message specific methods, like send or reply.
  * @param {object} contents an object containing your custom message body.
  * @param {Max.User|Max.User[]|string|string[]} recipientOrRecipients One or more {Max.User}
+ * @param {File|File[]|FileList} [attachments] One or more File objects created by an input[type="file"] HTML element.
  * @property {object|Max.User} sender The message sender.
  * @property {object} messageContent The custom message body object sent by the sender.
  * @property {string} messageID An identifier for the message. It can be used to determine whether a message has already been displayed on a chat screen.
@@ -228,9 +229,10 @@ Max.MMXClient = {
  * individual users instead of through a channel.
  * objects or userIds to be recipients for your message.
  */
-Max.Message = function(contents, recipientOrRecipients) {
+Max.Message = function(contents, recipientOrRecipients, attachments) {
     this.meta = {};
     this.recipients = [];
+    this._attachments = [];
 
     if (contents)
         this.messageContent = contents;
@@ -243,6 +245,9 @@ Max.Message = function(contents, recipientOrRecipients) {
             this.recipients.push(formatUser(recipientOrRecipients));
         }
     }
+
+    if (attachments)
+        this.addAttachments(attachments);
 
     if (mCurrentUser)
         this.sender = mCurrentUser;
@@ -269,70 +274,65 @@ function formatUser(userOrUserId) {
 Max.Message.prototype.formatMessage = function(msg, channel, callback) {
     var self = this;
 
-    //try {
-        this.receivedMessage = true;
-        this.messageType = msg._type;
-        this.messageID = (msg.event && msg.event.items && msg.event.items.item)
-            ? msg.event.items.item._id : msg._id;
-        this.channel = null;
-        this.attachments = null;
+    this.receivedMessage = true;
+    this.messageType = msg._type;
+    this.messageID = (msg.event && msg.event.items && msg.event.items.item)
+        ? msg.event.items.item._id : msg._id;
+    this.channel = null;
+    this.attachments = null;
 
-        this.meta = {
-            from: msg._from,
-            to: msg._to,
-            id: msg._id
-        };
+    this.meta = {
+        from: msg._from,
+        to: msg._to,
+        id: msg._id
+    };
 
-        msg.mmx = (
-          msg.event &&
-          msg.event.items &&
-          msg.event.items.item &&
-          msg.event.items.item.mmx
-        ) ? msg.event.items.item.mmx : msg.mmx;
+    msg.mmx = (
+      msg.event &&
+      msg.event.items &&
+      msg.event.items.item &&
+      msg.event.items.item.mmx
+    ) ? msg.event.items.item.mmx : msg.mmx;
 
-        this.meta.ns = msg.mmx ? msg.mmx._xmlns : '';
+    this.meta.ns = msg.mmx ? msg.mmx._xmlns : '';
 
-        if (msg.mmx && msg.mmx.meta) {
-            var msgMeta = JSON.parse(msg.mmx.meta);
-            attachmentRefsToAttachment(this, msgMeta);
-            this.messageContent = msgMeta;
+    if (msg.mmx && msg.mmx.meta) {
+        var msgMeta = JSON.parse(msg.mmx.meta);
+        attachmentRefsToAttachment(this, msgMeta);
+        this.messageContent = msgMeta;
+    }
+
+    if (msg.mmx && msg.mmx.mmxmeta) {
+        var mmxMeta = JSON.parse(msg.mmx.mmxmeta);
+        this.recipients = mmxMeta.To;
+        if (mmxMeta.From) this.sender = new Max.User(mmxMeta.From);
+    }
+
+    if (msg.mmx && msg.mmx.payload) {
+        this.timestamp = Max.Utils.ISO8601ToDate(msg.mmx.payload._stamp);
+    }
+
+    if (channel) {
+        self.channel = channel;
+        callback();
+    } else if (msg.event && msg.event.items && msg.event.items._node) {
+        var channelObj = nodePathToChannel(msg.event.items._node);
+        if (ChannelStore.get(channelObj)) {
+            ChannelStore.get(channelObj).isSubscribed = true;
+            self.channel = ChannelStore.get(channelObj);
+            return callback();
         }
 
-        if (msg.mmx && msg.mmx.mmxmeta) {
-            var mmxMeta = JSON.parse(msg.mmx.mmxmeta);
-            this.recipients = mmxMeta.To;
-            if (mmxMeta.From) this.sender = new Max.User(mmxMeta.From);
-        }
-
-        if (msg.mmx && msg.mmx.payload) {
-            this.timestamp = Max.Utils.ISO8601ToDate(msg.mmx.payload._stamp);
-        }
-
-        if (channel) {
+        Max.Channel.getChannel(channelObj.name, channelObj.userId).success(function(channel) {
             self.channel = channel;
             callback();
-        } else if (msg.event && msg.event.items && msg.event.items._node) {
-            var channelObj = nodePathToChannel(msg.event.items._node);
-            if (ChannelStore.get(channelObj)) {
-                ChannelStore.get(channelObj).isSubscribed = true;
-                self.channel = ChannelStore.get(channelObj);
-                return callback();
-            }
-
-            Max.Channel.getChannel(channelObj.name, channelObj.userId).success(function(channel) {
-                self.channel = channel;
-                callback();
-            }).error(function() {
-                callback();
-            });
-
-        } else {
+        }).error(function() {
             callback();
-        }
-    //
-    //} catch(e) {
-    //    Max.Log.fine('MMXMessage.formatMessage', e);
-    //}
+        });
+
+    } else {
+        callback();
+    }
 };
 
 // non-persistent cache of channel information to improve message receive performance
@@ -412,30 +412,30 @@ function nodePathToChannel(nodeStr) {
  */
 Max.Message.prototype.send = function() {
     var self = this;
-    var deferred = new Max.Deferred();
+    var def = new Max.Deferred();
     var dt = Max.Utils.dateToISO8601(new Date());
     self.msgId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
         if (!self.recipients.length)
-            return deferred.reject('no recipients');
+            return def.reject('no recipients');
         if (!mCurrentUser)
-            return deferred.reject('session expired');
+            return def.reject('session expired');
 
         if (!mXMPPConnection || !mXMPPConnection.connected)
-            return deferred.reject('not connected');
+            return def.reject('not connected');
 
-        self.sender = {
-            userId: mCurrentUser.userId,
-            devId: mCurrentDevice.deviceId,
-            displayName: (mCurrentUser.firstName || '') + ' ' + (mCurrentUser.lastName || ''),
-            firstName: mCurrentUser.firstName,
-            lastName: mCurrentUser.lastName,
-            userName: mCurrentUser.userName
-        };
+        function sendMessage(msgMeta) {
+            self.sender = {
+                userId: mCurrentUser.userId,
+                devId: mCurrentDevice.deviceId,
+                displayName: (mCurrentUser.firstName || '') + ' ' + (mCurrentUser.lastName || ''),
+                firstName: mCurrentUser.firstName,
+                lastName: mCurrentUser.lastName,
+                userName: mCurrentUser.userName
+            };
 
-        try {
-            var meta = JSON.stringify(self.messageContent);
+            var meta = JSON.stringify(msgMeta);
             var mmxMeta = {
                 To: self.recipients,
                 From: self.sender,
@@ -452,33 +452,75 @@ Max.Message.prototype.send = function() {
                 .c('request', {xmlns: 'urn:xmpp:receipts'}).up()
                 .c('body', '.');
 
-            mXMPPConnection.addHandler(function(msg) {
+            mXMPPConnection.addHandler(function (msg) {
                 var json = x2js.xml2json(msg);
 
                 if (json.error)
-                    return deferred.reject(json.error._code + ' : ' + json.error._type);
+                    return def.reject(json.error._code + ' : ' + json.error._type);
 
-                deferred.resolve(self.msgId);
+                def.resolve(self.msgId);
             }, null, null, null, self.msgId, null);
 
             mXMPPConnection.send(payload.tree());
-
-        } catch (e) {
-            deferred.reject(e);
         }
+
+        if (!self._attachments.length) return sendMessage(self.messageContent);
+
+        new Max.Uploader(self._attachments, function(e, multipart) {
+            if (e || !multipart) return def.reject(e);
+
+            multipart.messageUpload(self, self.msgId).success(function(attachments) {
+                sendMessage(Max.Utils.mergeObj(self.messageContent || {}, {
+                    _attachments: JSON.stringify(attachments)
+                }));
+            }).error(function(e) {
+                def.reject(e);
+            });
+        });
+
     }, 0);
 
-    return deferred.promise;
+    return def.promise;
 };
 
-// TODO: not implemented
 /**
- * Reply to the message.
- * @param {object} content A message content object.
+ * Add an attachment.
+ * @param {File|File[]|FileList} [attachmentOrAttachments] One or more File objects created by an input[type="file"] HTML element.
+ */
+Max.Message.prototype.addAttachments = function(attachmentOrAttachments) {
+    if (!attachmentOrAttachments) return;
+
+    if (attachmentOrAttachments[0] && attachmentOrAttachments[0].type) {
+        this._attachments = this._attachments.concat(Array.prototype.slice.call(attachmentOrAttachments));
+    } else if (Max.Utils.isArray(attachmentOrAttachments)) {
+        this._attachments = this._attachments.concat(attachmentOrAttachments);
+    } else {
+        this._attachments.push(attachmentOrAttachments);
+    }
+};
+
+/**
+ * Reply to a received message.
+ * @param {object} contents an object containing your custom message body.
  * @ignore
  */
-//Max.Message.prototype.reply = function(content, cb) {
-//    if (!this.receivedMessage) return cb('unable to reply: not a received message.');
-//    $msg({to: this.meta.from, from: this.meta.to, type: 'chat'})
-//        .cnode(Strophe.copyElement(content));
-//};
+Max.Message.prototype.reply = function(contents) {
+    var self = this;
+    var def = new Max.Deferred();
+
+    setTimeout(function() {
+        if (!contents) return def.reject('invalid reply message content');
+        if (self.sender.userId == mCurrentUser.userId) return def.reject('cannot reply to yourself');
+
+        self.recipients = [formatUser(self.sender)];
+        self.messageContent = contents;
+
+        self.send().success(function() {
+           def.resolve.apply(def, arguments);
+        }).error(function() {
+           def.reject.apply(def, arguments);
+        });
+    }, 0);
+
+    return def.promise;
+};
