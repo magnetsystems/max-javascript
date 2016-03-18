@@ -1616,7 +1616,7 @@ Max.init = function(cfg) {
 
     Max.App.clientId = cfg.clientId;
     Max.App.clientSecret = cfg.clientSecret;
-    Max.Config.baseUrl = cfg.baseUrl;
+    Max.Config.baseUrl = cfg.baseUrl || Max.Config.baseUrl;
 
     Max.Device.checkInWithDevice(function(deviceErr) {
         Max.User.loginWithAccessToken(function(tokenErr) {
