@@ -1,8 +1,7 @@
 /**
  * @constructor
  * @class
- * The Uploader class is a local representation of an attachment. This class provides methods to build
- * the file and upload it to the server.
+ * The Uploader class is a local representation of an attachment. This class provides methods to build the file and upload it to the server.
  * @param {FileUpload|FileUpload[]|FileList} fileOrFiles One or more FileUpload objects created by an input[type="file"] HTML element.
  * @param {function} callback Fires after the file body is parsed.
  * @ignore

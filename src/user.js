@@ -1,8 +1,7 @@
 /**
  * @constructor
  * @class
- * The User class is a local representation of a user in the MagnetMax platform. This class provides
- * various user specific methods, like authentication, signing up, and search.
+ * The User class is a local representation of a user in the MagnetMax platform. This class provides various user specific methods, like authentication, signing up, and search.
  * @param {object} [userObj] An object containing user information.
  * @param {string} [userObj.userName] User's username.
  * @param {string} [userObj.password] User's preferred password.
@@ -283,11 +282,8 @@ Max.User.getUsersByUserIds = function(userIds) {
 
 /**
  * Search for users with an advanced search query.
- * @param {string|object} [query] An object containing the user property and the search value as a key-value pair. Alternatively,
- * you can pass an ElasticSearch query string as described at
- * [URI Search] {@link https://www.elastic.co/guide/en/elasticsearch/reference/current/search-uri-request.html}
- * For example, to search for a user by username, the object can be {userName:'jon.doe'}. See {Max.User} properties
- * for acceptable search properties.
+ * @param {string|object} [query] An object containing the user property and the search value as a key-value pair. Alternatively, you can pass an ElasticSearch query string as described at {@link https://www.elastic.co/guide/en/elasticsearch/reference/current/search-uri-request.html|URI Search}.
+ * For example, to search for a user by username, the object can be {userName:'jon.doe'}. See {Max.User} properties for acceptable search properties.
  * @param {number} [limit] The number of results to return per page. Default is 10.
  * @param {number} [offset] The starting index of results.
  * @param {object} [orderby] An object containing the user property and the sort direction

@@ -1,15 +1,13 @@
 /**
  * @constructor
  * @class
- * The Channel class is the local representation of a channel. This class provides
- * various channel specific methods, like publishing and subscribing users.
+ * The Channel class is the local representation of a channel. This class provides various channel specific methods, like publishing and subscribing users.
  * @param {object} channelObj An object containing channel information.
  * @property {string} name The name of the channel.
  * @property {boolean} isPublic True if the channel public.
  * @property {boolean} isSubscribed True if the current user is subscribed to the channel.
  * @property {string} [summary] An optional summary of the channel.
- * @property {string} [publishPermission] Permissions level required to be able to post, must be in
- * ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
+ * @property {string} [publishPermission] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
  * @property {string} [ownerUserID] The userID for the owner/creator of the channel.
  */
 Max.Channel = function(channelObj) {
@@ -58,8 +56,7 @@ Max.Channel = function(channelObj) {
 
 /**
  * Find public channels based on search criteria.
- * @param {string} [channelName] A channel prefix to find all channels starting with the given string,
- * or null to return all.
+ * @param {string} [channelName] A channel prefix to find all channels starting with the given string, or null to return all.
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
@@ -70,10 +67,8 @@ Max.Channel.findPublicChannels = function(channelName, tags, limit, offset) {
 };
 
 /**
- * Find private channels based on search criteria. Only private channels created by the current
- * user will be returned.
- * @param {string} [channelName] A channel prefix to find all channels starting with the given string,
- * or null to return all.
+ * Find private channels based on search criteria. Only private channels created by the current user will be returned.
+ * @param {string} [channelName] A channel prefix to find all channels starting with the given string, or null to return all.
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
@@ -84,10 +79,8 @@ Max.Channel.findPrivateChannels = function(channelName, tags, limit, offset) {
 };
 
 /**
- * Find public or private channels that start with the specified text. Only private channels created by the current
- * user will be returned.
- * @param {string} [channelName] A channel prefix to find all channels starting with the given string,
- * or null to return all.
+ * Find public or private channels that start with the specified text. Only private channels created by the current user will be returned.
+ * @param {string} [channelName] A channel prefix to find all channels starting with the given string, or null to return all.
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
@@ -193,9 +186,7 @@ Max.Channel.setSubscriptionState = function(channelOrChannels, cb) {
  * @param {string} channelObj.name The name of the channel.
  * @param {string} [channelObj.summary] An optional summary of the channel.
  * @param {boolean} [channelObj.isPublic] Set to true to make the channel public. Defaults to true.
- * @param {string} [channelObj.publishPermission] Permissions level required to be able to post, must be in
- * ['anyone', 'owner', 'subscribers']. The channel owner can always publish. Defaults to 'subscribers' only
- * if private channel, and 'anyone' if public channel.
+ * @param {string} [channelObj.publishPermission] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish. Defaults to 'subscribers' only if private channel, and 'anyone' if public channel.
  * @returns {Max.Promise} A promise object returning the new {Max.Channel} or reason of failure.
  */
 Max.Channel.create = function(channelObj) {
@@ -240,8 +231,7 @@ Max.Channel.create = function(channelObj) {
 
 /**
  * Get all the channels the current user is the subscribed to.
- * @returns {Max.Promise} A promise object returning a list of {Max.Channel} (containing basic information
- * only) or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} (containing basic information only) or reason of failure.
  */
 Max.Channel.getAllSubscriptions = function(subscriptionOnly) {
     var def = new Max.Deferred();
@@ -289,8 +279,7 @@ Max.Channel.getAllSubscriptions = function(subscriptionOnly) {
 /**
  * Get channels the given subscribers are subscribed to.
  * @param {string[]|Max.User[]} subscribers A list of userId or {Max.User} objects.
- * @returns {Max.Promise} A promise object returning a list of {Max.Channel} (containing basic information
- * only) or reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} (containing basic information only) or reason of failure.
  */
 Max.Channel.findChannelsBySubscribers = function(subscribers) {
     var def = new Max.Deferred();
@@ -428,8 +417,7 @@ function matchChannel(channels, matchName, matchOwner) {
 }
 
 /**
- * Get the basic information about a private channel. Only private channels created by the current
- * user will be returned.
+ * Get the basic information about a private channel. Only private channels created by the current user will be returned.
  * @param {string} channelName The channel name.
  * @returns {Max.Promise} A promise object returning a {Max.Channel} or reason of failure.
  */
@@ -496,8 +484,7 @@ Max.Channel.getChannel = function(channelName, userId) {
 
 /**
  * Get the full channel information using basic channel object (name and userId).
- * @param {object|object[]} channelOrChannels One or more channel objects containing channel name
- * (and userId, if private channel). Should be in the format {name: 'channelName', userId: 'your-user-id'}.
+ * @param {object|object[]} channelOrChannels One or more channel objects containing channel name (and userId, if private channel). Should be in the format {name: 'channelName', userId: 'your-user-id'}.
  * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
  * @ignore
  */
@@ -842,8 +829,7 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
  * @param {number} [limit] The number of messages to return in the request.
  * @param {number} [offset]	The starting index of messages to return.
  * @param {boolean} [ascending] Set to false to sort by descending order. Defaults to true.
- * @returns {Max.Promise} A promise object returning a list of {Max.Message} and total number of messages
- * payloador reason of failure.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Message} and total number of messages payload or reason of failure.
  */
 Max.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, ascending) {
     var self = this;

@@ -18,9 +18,7 @@ Max.Config = {
      */
     logLevel               : 'INFO',
     /**
-     * @property {string} logHandler Define the log handler used to handle logs if logging is enabled. Specifying 'DB' stores
-     * to the database configured in {Max.Storage}, 'Console' outputs log via console.log, and 'Console&DB' stores to
-     * database and outputs simultaneously.
+     * @property {string} logHandler Define the log handler used to handle logs if logging is enabled. Specifying 'DB' stores to the database configured in {Max.Storage}, 'Console' outputs log via console.log, and 'Console&DB' stores to database and outputs simultaneously.
      */
     logHandler             : 'Console',
     /**
@@ -637,9 +635,7 @@ Max.Utils = {
 };
 
 /**
- * @class A simple implementation of the Promise API. A Promise object manages state and facilitates a callback after
- * all the associated asynchronous actions of a Deferred object have completed. Multiple promises can be chained with
- * the 'then' function.
+ * @class An implementation of the Promise API. A Promise object manages state and facilitates a callback after all the associated asynchronous actions of a Deferred object have completed. Multiple promises can be chained with the 'then' function.
  * @constructor
  */
 Max.Promise = function() {
@@ -1255,9 +1251,7 @@ Max.MemoryStoreConnector = {
 };
 
 /**
- * A class for storing a value into persistent storage. Currently relies on HTML5 localStorage.
- * Clients that do not support localStorage will fall back to a memory store that will not persist past a
- * restart of the app.
+ * A class for storing a value into persistent storage. Currently relies on HTML5 localStorage. Clients that do not support localStorage will fall back to a memory store that will not persist past a restart of the app.
  * @memberof Max
  * @namespace Storage
  * @ignore
@@ -1380,9 +1374,7 @@ Max.Storage.setupConnector();
 
 
 /**
- * The {Max.Log} makes it easier to troubleshoot client side problems in mobile applications installed
- * on mobile devices, where examining logs of individual devices is not possible. Since the logs can be sent
- * by the SDK without user intervention, problems can be identified and fixed without user involvement.
+ * The {Max.Log} makes it easier to troubleshoot client side problems in mobile applications installed on mobile devices, where examining logs of individual devices is not possible. Since the logs can be sent by the SDK without user intervention, problems can be identified and fixed without user involvement.
  * @memberof Max
  * @namespace Log
  * @ignore
