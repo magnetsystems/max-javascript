@@ -484,7 +484,7 @@ Max.Message.prototype.send = function() {
 };
 
 /**
- * Add an attachment.
+ * Add on or more attachments.
  * @param {File|File[]|FileList} [attachmentOrAttachments] One or more File objects created by an input[type="file"] HTML element.
  */
 Max.Message.prototype.addAttachments = function(attachmentOrAttachments) {
@@ -502,7 +502,6 @@ Max.Message.prototype.addAttachments = function(attachmentOrAttachments) {
 /**
  * Reply to a received message.
  * @param {object} contents an object containing your custom message body.
- * @ignore
  */
 Max.Message.prototype.reply = function(contents) {
     var self = this;
