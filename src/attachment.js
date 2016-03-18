@@ -1,8 +1,7 @@
 /**
  * @constructor
  * @class
- * The Uploader class is a local representation of an attachment. This class provides methods to build
- * the file and upload it to the server.
+ * The Uploader class is a local representation of an attachment. This class provides methods to build the file and upload it to the server.
  * @param {FileUpload|FileUpload[]|FileList} fileOrFiles One or more FileUpload objects created by an input[type="file"] HTML element.
  * @param {function} callback Fires after the file body is parsed.
  * @ignore
@@ -30,12 +29,11 @@ Max.Uploader = function(fileOrFiles, callback) {
         delete this.contentType;
 
         for (var i = 0; i < fileOrFiles.length; ++i) {
-            var ref = 'attachment' + i;
-            this.message.append('file', fileOrFiles[i], ref);
+            this.message.append('file', fileOrFiles[i], fileOrFiles[i].name);
             this.attachmentRefs.push({
                 mimeType: fileOrFiles[i].type,
                 senderId: mCurrentUser.userId,
-                ref: ref
+                ref: fileOrFiles[i].name
             });
         }
 
@@ -62,10 +60,9 @@ Max.Uploader.prototype.add = function(fileOrFiles, index, callback) {
 
     reader.addEventListener('load', function() {
         var id = self.prefix+String(++self.index);
-        var ref = 'attachment' + index;
         self.message += '--'+self.boundary+'\r\n';
         self.message += 'Content-Type: '+fileOrFiles[index].type+'\r\n';
-        self.message += 'Content-Disposition: form-data; name="file"; filename="'+ref+'"\r\n\r\n';
+        self.message += 'Content-Disposition: form-data; name="file"; filename="'+fileOrFiles[index].name+'"\r\n\r\n';
         self.message += 'Content-Transfer-Encoding: base64\r\n';
         //self.message += 'Content-Id: '+id+'\r\n\r\n';
         self.message += reader.result+'\r\n\r\n';
@@ -73,7 +70,7 @@ Max.Uploader.prototype.add = function(fileOrFiles, index, callback) {
         self.attachmentRefs.push({
             mimeType: fileOrFiles[index].type,
             senderId: mCurrentUser.userId,
-            ref: ref
+            ref: fileOrFiles[index].name
         });
 
         if (++index == self.fileCount) callback();

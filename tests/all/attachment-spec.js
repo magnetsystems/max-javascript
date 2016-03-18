@@ -49,7 +49,8 @@ describe('Uploader', function() {
             }, 5);
         };
         var mockFile = {
-            type: 'text/plain'
+            type: 'text/plain',
+            name: 'foo.txt'
         };
         Max.setUser({
             userName: 'test-user',
@@ -83,7 +84,8 @@ describe('Uploader', function() {
             }, 5);
         };
         var mockFile = {
-            type: testMIMEType
+            type: testMIMEType,
+            name: 'foo.txt'
         };
         Max.setUser({
             userName: 'test-user',
@@ -109,7 +111,7 @@ describe('Uploader', function() {
                 requests[0].respond(200, {
                     'Content-Type': 'application/json'
                 }, JSON.stringify({
-                    attachment0: testAttachmentId
+                    'foo.txt': testAttachmentId
                 }));
             }, 5);
         });

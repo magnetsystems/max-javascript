@@ -55,8 +55,7 @@ Max.unregisterListener = function(listenerOrListenerId) {
  * @constructor
  * @memberof Max
  * @class MessageListener The MessageListener is used to listen for incoming messages and subsequently call the given handler function.
- * @param {string|function} [idOrHandler] A string ID for the handler, or a function to be fired
- * when a message is received. The string ID should be specified if you plan to unregister the handler as some point.
+ * @param {string|function} [idOrHandler] A string ID for the handler, or a function to be fired when a message is received. The string ID should be specified if you plan to unregister the handler as some point.
  * @param {function} [handler] Function to be fired when a message is received.
  */
 Max.MessageListener = function(idOrHandler, handler) {
@@ -216,18 +215,14 @@ Max.MMXClient = {
 /**
  * @constructor
  * @class
- * The Message class is the local representation of a message. This class provides
- * various message specific methods, like send or reply.
+ * The Message class is the local representation of a message. This class provides  various message specific methods, like send or reply.
  * @param {object} contents an object containing your custom message body.
  * @param {Max.User|Max.User[]|string|string[]} recipientOrRecipients One or more {Max.User}
  * @property {object|Max.User} sender The message sender.
  * @property {object} messageContent The custom message body object sent by the sender.
- * @property {string} messageID An identifier for the message. It can be used to determine whether a message
- * has already been displayed on a chat screen.
+ * @property {string} messageID An identifier for the message. It can be used to determine whether a message has already been displayed on a chat screen.
  * @property {Max.Attachment[]} [attachments] An array of message attachments.
- * @property {Max.Channel} [channel] If the message was sent to a channel, the channel object will be
- * populated with basic channel information. Use the {Max.Channel.getChannel} method to obtain full channel
- * information.
+ * @property {Max.Channel} [channel] If the message was sent to a channel, the channel object will be populated with basic channel information. Use the {Max.Channel.getChannel} method to obtain full channel information.
  * @property {Date} timestamp ISO-8601 formatted timestamp.
  * @property {object[]|Max.User[]} [recipients] An array of recipients, if the message was sent to
  * individual users instead of through a channel.

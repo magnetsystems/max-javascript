@@ -40,25 +40,3 @@ zip -r $APP_NAME-$APP_VERSION.zip ./$APP_NAME-$APP_VERSION.js ./$APP_NAME-$APP_V
 
 # zip the docs
 zip -r $APP_NAME-$APP_VERSION-docs.zip ./docs
-
-# zip the sample apps
-cd ../../samples/web
-zip -r ../../js-sdk/target/magnet-getstarted-js.zip getstarted
-zip -r ../../js-sdk/target/magnet-kitchensink-js.zip kitchen-sink
-cd messenger/www
-zip -r ../../../../js-sdk/target/magnet-messenger-ionic-js.zip .
-
-# build and zip the messenger desktop app
-cd ../../messenger-desktop
-
-### sdk location update ##
-sed -i -- 's/\/\/cdn.magnet.com\/downloads\/magnet-max-sdk.min.js/scripts\/magnet-max-sdk.js/g' app/index.html
-
-npm install
-bower install
-grunt build
-cd dist
-zip -r ../../../../js-sdk/target/magnet-messenger-js.zip .
-
-
-

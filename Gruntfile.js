@@ -41,22 +41,6 @@ module.exports = function(grunt){
             options : {
                 stripBanners : false
             },
-            webGetStarted : {
-                src  : full,
-                dest : '../samples/web/getstarted/<%= pkg.name %>.js'
-            },
-            webKitchenSink : {
-                src  : full,
-                dest : '../samples/web/kitchen-sink/<%= pkg.name %>.js'
-            },
-            webMessenger : {
-                src  : full,
-                dest : '../samples/web/messenger/www/js/<%= pkg.name %>.js'
-            },
-            webDesktopMessenger : {
-                src  : full,
-                dest : '../samples/web/messenger-desktop/app/scripts/<%= pkg.name %>.js'
-            },
             full : {
                 src  : full,
                 dest : 'target/<%= pkg.name %>-<%= pkg.version %>.js'
@@ -163,38 +147,14 @@ module.exports = function(grunt){
             deploy_sdk  : {
                 options : {
                     groupId    : 'com.magnet',
-                    artifactId : 'magnet-mobile-javascript-sdk'
+                    artifactId : 'magnet-max-javascript-sdk'
                 },
-                src  : ['target/magnet-sdk**']
-            },
-            deploy_kitchensink : {
-                options : {
-                    groupId    : 'com.magnet.demo',
-                    artifactId : 'magnet-apps-demo-javascript-kitchen-sink'
-                },
-                src : ['../samples/phonegap/feature-test/platforms/**']
-            },
-            deploy_peopleatwork : {
-                options : {
-                    groupId    : 'com.magnet.demo',
-                    artifactId : 'magnet-apps-demo-javascript-people'
-                },
-                src : ['../samples/phonegap/People/platforms/**']
-            },
-            deploy_jumpstart : {
-                options : {
-                    groupId    : 'com.magnet.demo',
-                    artifactId : 'magnet-apps-demo-javascript-jumpstart'
-                },
-                src : ['../samples/phonegap/Jumpstart/platforms/**']
+                src  : ['target/magnet-max**']
             }
         },
         clean : [
             'target/**',
-            'magnet-mobile-javascript-sdk*',
-            'magnet-apps-demo-javascript-kitchen-sink*',
-            'magnet-apps-demo-javascript-people*',
-            'magnet-apps-demo-javascript-jumpstart*'
+            'magnet-max-javascript-sdk*'
         ]
     });
 
