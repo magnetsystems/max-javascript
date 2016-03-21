@@ -8,12 +8,14 @@
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
  * @param {string} [userObj.email] User's email.
+ * @param {string[]} [userObj.tags] User's tags.
  * @param {object} [userObj.extras] User's additional custom metadata.
  * @property {string} userId User's user identifier.
  * @property {string} userName User's username.
  * @property {string} [firstName] User's first name.
  * @property {string} [lastName] User's last name.
  * @property {string} [email] User's email.
+ * @property {string[]} [tags] User's tags.
  */
 Max.User = function(userObj) {
     if (userObj.displayName == 'null null') delete userObj.displayName;
@@ -49,6 +51,7 @@ Max.User = function(userObj) {
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
  * @param {string} [userObj.email] User's email.
+ * @param {string[]} [userObj.tags] User's tags.
  * @param {object} [userObj.extras] Additional custom metadata to associate with the user.
  * @returns {Max.Promise} A promise object returning the new {Max.User} or reason of failure.
  */
@@ -381,6 +384,7 @@ Max.User.getUserInfo = function() {
  * @param {string} [userObj.firstName] User's first name.
  * @param {string} [userObj.lastName] User's last name.
  * @param {string} [userObj.email] User's email.
+ * @param {string[]} [userObj.tags] User's tags.
  * @param {object} [userObj.extras] Additional custom metadata to associate with the user.
  * @returns {Max.Promise} A promise object returning the updated {Max.User} or reason of failure.
  */

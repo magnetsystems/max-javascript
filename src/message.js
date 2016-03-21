@@ -503,7 +503,7 @@ Max.Message.prototype.addAttachments = function(attachmentOrAttachments) {
  * Reply to a received message.
  * @param {object} contents an object containing your custom message body.
  */
-Max.Message.prototype.reply = function(contents) {
+Max.Message.prototype.reply = function(contents, replyAll) {
     var self = this;
     var def = new Max.Deferred();
 
@@ -511,7 +511,16 @@ Max.Message.prototype.reply = function(contents) {
         if (!contents) return def.reject('invalid reply message content');
         if (self.sender.userId == mCurrentUser.userId) return def.reject('cannot reply to yourself');
 
-        self.recipients = [formatUser(self.sender)];
+        self.recipients = (replyAll && self.recipients && self.recipients.length) ? self.recipients : [];
+        self.recipients.push(formatUser(self.sender));
+
+        for (var i=0;i<self.recipients.length;++i) {
+            if (mCurrentUser && self.recipients[i].userId == mCurrentUser.userId) {
+                self.splice(i, 1);
+                break;
+            }
+        }
+
         self.messageContent = contents;
 
         self.send().success(function() {
@@ -522,4 +531,12 @@ Max.Message.prototype.reply = function(contents) {
     }, 0);
 
     return def.promise;
+};
+
+/**
+ * Reply to all recipients of a received message.
+ * @param {object} contents an object containing your custom message body.
+ */
+Max.Message.prototype.replyAll = function(contents) {
+    return this.reply(contents, true);
 };
