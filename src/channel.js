@@ -57,25 +57,34 @@ Max.Channel = function(channelObj) {
 /**
  * Find public channels based on search criteria.
  * @param {string} [channelName] A channel prefix to find all channels starting with the given string, or null to return all.
- * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
  * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
  */
-Max.Channel.findPublicChannels = function(channelName, tags, limit, offset) {
-    return Max.Channel.findChannels(channelName, tags, limit, offset, 'public');
+Max.Channel.findPublicChannels = function(channelName, limit, offset) {
+    return Max.Channel.findChannels(channelName, null, limit, offset, 'public');
 };
 
 /**
  * Find private channels based on search criteria. Only private channels created by the current user will be returned.
  * @param {string} [channelName] A channel prefix to find all channels starting with the given string, or null to return all.
+ * @param {number} [limit] The number of users to return in the request. Defaults to 10.
+ * @param {number} [offset]	The starting index of users to return.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
+ */
+Max.Channel.findPrivateChannels = function(channelName, limit, offset) {
+    return Max.Channel.findChannels(channelName, null, limit, offset, 'private');
+};
+
+/**
+ * Find channels which contain any of the specified tags.
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
  * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
  */
-Max.Channel.findPrivateChannels = function(channelName, tags, limit, offset) {
-    return Max.Channel.findChannels(channelName, tags, limit, offset, 'private');
+Max.Channel.findByTags = function(tags, limit, offset) {
+    return Max.Channel.findChannels(null, tags, limit, offset, 'both');
 };
 
 /**
@@ -86,6 +95,7 @@ Max.Channel.findPrivateChannels = function(channelName, tags, limit, offset) {
  * @param {number} [offset]	The starting index of users to return.
  * @param {string} [type] The type of search. Must be in ['private', 'public', 'both']. Defaults to both.
  * @returns {Max.Promise} A promise object returning a list of {Max.Channel} or reason of failure.
+ * @ignore
  */
 Max.Channel.findChannels = function(channelName, tags, limit, offset, type) {
     var def = new Max.Deferred();
@@ -115,7 +125,7 @@ Max.Channel.findChannels = function(channelName, tags, limit, offset, type) {
         if (tags && tags.length)
             mmxMeta.tags = {
                 match: 'EXACT',
-                value: tags
+                values: tags
             };
         /*
             description: {
@@ -127,7 +137,7 @@ Max.Channel.findChannels = function(channelName, tags, limit, offset, type) {
 
         mmxMeta = JSON.stringify(mmxMeta);
 
-        var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+        var payload = $iq({from: mCurrentUser.jid, type: 'get', id: iqId})
             .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'searchTopic', ctype: 'application/json'}, mmxMeta);
 
         mXMPPConnection.addHandler(function(msg) {
@@ -896,6 +906,127 @@ function formatMessage(messages, channel, msgAry, index, cb) {
         formatMessage(messages, channel, msgAry, ++index, cb);
     });
 }
+
+/**
+ * Get the tags for this channel.
+ * @returns {Max.Promise} A promise object returning a list of tags or reason of failure.
+ */
+Max.Channel.prototype.getTags = function() {
+    var self = this;
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+
+        var mmxMeta = {
+            userId: self.userId,
+            topicName: self.name
+        };
+
+        mmxMeta = JSON.stringify(mmxMeta);
+
+        var payload = $iq({from: mCurrentUser.jid, type: 'get', id: iqId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getTags', ctype: 'application/json'}, mmxMeta);
+
+        mXMPPConnection.addHandler(function(msg) {
+            var payload, json = x2js.xml2json(msg);
+
+            if (json.mmx)
+                payload = JSON.parse(json.mmx);
+
+            if (!payload || !payload.tags) return def.resolve([]);
+
+            payload.tags = Max.Utils.objToObjAry(payload.tags);
+
+            def.resolve(payload.tags, payload.lastModTime);
+        }, null, null, null, iqId,  null);
+
+        mXMPPConnection.send(payload.tree());
+    }, 0);
+
+    return def.promise;
+};
+
+/**
+ * Set tags for a specific channel. This will overwrite ALL existing tags for the chanel. This can be used to delete tags by passing in the sub-set of existing tags that you want to keep.
+ * @param {string[]} tags An array of tags.
+ * @returns {Max.Promise} A promise object returning a list of tags or reason of failure.
+ */
+Max.Channel.prototype.setTags = function(tags) {
+    var self = this;
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!tags || !Max.Utils.isArray(tags)) return def.reject('missing tags property');
+
+        var mmxMeta = {
+            userId: self.userId,
+            topicName: self.name,
+            tags: tags
+        };
+
+        mmxMeta = JSON.stringify(mmxMeta);
+
+        var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'setTags', ctype: 'application/json'}, mmxMeta);
+
+        mXMPPConnection.addHandler(function(msg) {
+            var payload, json = x2js.xml2json(msg);
+
+            if (json.mmx) payload = JSON.parse(json.mmx);
+            if (payload.code != 200) return def.reject(payload.message);
+
+            def.resolve(payload.message);
+        }, null, null, null, iqId,  null);
+
+        mXMPPConnection.send(payload.tree());
+    }, 0);
+
+    return def.promise;
+};
+
+/**
+ * Delete this channel
+ * @returns {Max.Promise} A promise object returning success report or reason of failure.
+ */
+Max.Channel.prototype.inviteUsers = function() {
+    var self = this;
+    var def = new Max.Deferred();
+    var iqId = Max.Utils.getCleanGUID();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+
+        var mmxMeta = {
+            topicName: self.name,                   // without /appID/* or /appID/userID
+            isPersonal: self.userId ? true : false  // true for personal user topic, false for global topic
+        };
+
+        mmxMeta = JSON.stringify(mmxMeta);
+
+        var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'deletetopic', ctype: 'application/json'}, mmxMeta);
+
+        mXMPPConnection.addHandler(function(msg) {
+            var payload, json = x2js.xml2json(msg);
+
+            if (json.mmx)
+                payload = JSON.parse(json.mmx);
+
+            def.resolve(payload.message);
+        }, null, null, null, iqId,  null);
+
+        mXMPPConnection.send(payload.tree());
+    }, 0);
+
+    return def.promise;
+};
 
 /**
  * Delete this channel

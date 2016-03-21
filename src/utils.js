@@ -385,7 +385,8 @@ Max.Utils = {
             + pad(d.getUTCDate())+'T'
             + pad(d.getUTCHours())+':'
             + pad(d.getUTCMinutes())+':'
-            + pad(d.getUTCSeconds())+'Z';
+            + pad(d.getUTCSeconds())+'.'
+            + (d.getUTCMilliseconds() / 1000).toFixed(3).slice(2, 5)+'Z';
     },
     /**
      * Converts the specified Date string as an ISO 8601 Extended Format Date object.
