@@ -19,19 +19,31 @@ Max.stop = function() {
 };
 
 /**
+ * @attribute {object} ListenerType A key-value pair of all listener types.
+ * @ignore
+ */
+Max.ListenerType = {
+    MESSAGE: 100,
+    INVITATION: 200
+};
+
+/**
  * @method
  * @desc Register a listener to handle incoming messages.
  * @param {Max.MessageListener} listener A message listener.
  */
 Max.registerListener = function(listener) {
-    xmppStore = xmppStore || {};
-    xmppStore[listener.id] = mXMPPConnection.addHandler(function(msg) {
+    //Max.unregisterListener(listener);
+    console.log('reg', mListenerStore);
+    mListenerStore[listener.id] = mXMPPConnection.addHandler(function(msg) {
+
+        console.log(msg);
 
         var jsonObj = x2js.xml2json(msg);
         var mmxMsg = new Max.Message();
 
         mmxMsg.formatMessage(jsonObj, null, function() {
-            listener.handler(mmxMsg);
+            listener.messageHandler(mmxMsg);
         });
         return true;
 
@@ -45,26 +57,31 @@ Max.registerListener = function(listener) {
  * during creation.
  */
 Max.unregisterListener = function(listenerOrListenerId) {
-    if (!xmppStore || !listenerOrListenerId || !mXMPPConnection) return;
+    if (!mListenerStore || !listenerOrListenerId || !mXMPPConnection) return;
     if (typeof listenerOrListenerId === 'object') listenerOrListenerId = listenerOrListenerId.id;
-    mXMPPConnection.deleteHandler(xmppStore[listenerOrListenerId]);
-    delete xmppStore[listenerOrListenerId];
+    mXMPPConnection.deleteHandler(mListenerStore[listenerOrListenerId]);
+    delete mListenerStore[listenerOrListenerId];
 };
 
 /**
  * @constructor
  * @memberof Max
- * @class MessageListener The MessageListener is used to listen for incoming messages and subsequently call the given handler function.
- * @param {string|function} [idOrHandler] A string ID for the handler, or a function to be fired when a message is received. The string ID should be specified if you plan to unregister the handler as some point.
- * @param {function} [handler] Function to be fired when a message is received.
+ * @class EventListener The EventListener is used to listen for incoming messages and channel invitations, and subsequently call the given handler function.
+ * @param {string|function} id A string ID for the handler. The string ID should be specified if you plan to unregister the handler at some point.
+ * @param {function} [messageHandler] Function to be fired when a message is received.
+ * @param {function} [invitationHandler] Function to be fired when an invitation is received.
  */
-Max.MessageListener = function(idOrHandler, handler) {
-    if (typeof handler == typeof Function)
-        this.handler = handler;
-    else
-        this.handler = idOrHandler;
-    this.id = typeof idOrHandler == 'string' ? idOrHandler : Max.Utils.getGUID();
+Max.EventListener = function(id, messageHandler, invitationHandler) {
+    this.id = typeof id == 'string' ? id : Max.Utils.getGUID();
+
+    if (typeof messageHandler == typeof Function)
+        this.messageHandler = messageHandler;
+
+    if (typeof invitationHandler == typeof Function)
+        this.invitationHandler = invitationHandler;
 };
+
+Max.MessageListener = Max.EventListener;
 
 /**
  * @constructor
@@ -411,17 +428,22 @@ function nodePathToChannel(nodeStr) {
  * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
  */
 Max.Message.prototype.send = function() {
-    var self = this;
+    var self = this, mtype, to, from;
     var def = new Max.Deferred();
     var dt = Max.Utils.dateToISO8601(new Date());
     self.msgId = Max.Utils.getCleanGUID();
+
+    if (self.invitation) {
+        from = mCurrentUser.jid;
+        to = 'mmx$multicast%'+Max.App.appId+'@'+Max.Config.mmxDomain;
+        mtype = 'invitation';
+    }
 
     setTimeout(function() {
         if (!self.recipients.length)
             return def.reject('no recipients');
         if (!mCurrentUser)
             return def.reject('session expired');
-
         if (!mXMPPConnection || !mXMPPConnection.connected)
             return def.reject('not connected');
 
@@ -444,15 +466,16 @@ Max.Message.prototype.send = function() {
             };
             mmxMeta = JSON.stringify(mmxMeta);
 
-            var payload = $msg({type: 'chat', id: self.msgId})
+            var payload = $msg({type: 'chat', from: mCurrentUser.jid,
+                to: 'mmx$multicast%'+Max.App.appId+'@'+Max.Config.mmxDomain, id: self.msgId})
                 .c('mmx', {xmlns: 'com.magnet:msg:payload'})
                 .c('mmxmeta', mmxMeta).up()
                 .c('meta', meta).up()
-                .c('payload', {stamp: dt, chunk: '0/0/0'}).up().up()
-                .c('request', {xmlns: 'urn:xmpp:receipts'}).up()
+                .c('payload', {mtype:'unknown', stamp: dt, chunk: '0/0/0'}).up().up()
+                //.c('request', {xmlns: 'urn:xmpp:receipts'}).up()
                 .c('body', '.');
 
-            mXMPPConnection.addHandler(function (msg) {
+            mXMPPConnection.addHandler(function(msg) {
                 var json = x2js.xml2json(msg);
 
                 if (json.error)
