@@ -1603,7 +1603,7 @@ var mCurrentDevice = null;
 var mCurrentUser = null;
 var mXMPPConnection = null;
 var MMS_DEVICE_ID = '1111-2222-3333-4444';
-var xmppStore;
+var mListenerStore = {};
 var mChannelStore = {};
 
 Max.Events.create(Max);
@@ -1668,5 +1668,5 @@ Max.setConnection = function(conn) {
     mXMPPConnection = conn;
 };
 Max.getStore = function() {
-    return xmppStore || null;
+    return mListenerStore || null;
 };

@@ -991,38 +991,39 @@ Max.Channel.prototype.setTags = function(tags) {
 };
 
 /**
- * Delete this channel
+ * Sends invitations to the specified users for this channel. If the recipients accept the invitation, they will be
+ * become subscibed to the channel.
+ * @param {string|Max.User|string[]|Max.User[]} recipients A list of userId or {Max.User} objects.
+ * @param {string} message Text to include in the invitation.
  * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
-Max.Channel.prototype.inviteUsers = function() {
-    var self = this;
+Max.Channel.prototype.inviteUsers = function(recipients, message) {
+    var self = this, msg;
     var def = new Max.Deferred();
-    var iqId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject('session expired');
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!self.isOwner()) return def.reject('must be channel owner');
 
-        var mmxMeta = {
-            topicName: self.name,                   // without /appID/* or /appID/userID
-            isPersonal: self.userId ? true : false  // true for personal user topic, false for global topic
-        };
+        msg = new Max.Message({
+            text: message,
+            channelSummary: self.summary,
+            channelName: self.name,
+            channelIsPublic: self.isPublic+'',
+            channelOwnerId: self.ownerUserID,
+            channelPublishPermissions: self.publishPermission,
+            channelCreationDate: self.creationDate
+            //_attachments: 'encoded-JSON-string'   // optional, see Attachments section
+        }, recipients);
 
-        mmxMeta = JSON.stringify(mmxMeta);
+        msg.invitation = true;
 
-        var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
-            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'deletetopic', ctype: 'application/json'}, mmxMeta);
-
-        mXMPPConnection.addHandler(function(msg) {
-            var payload, json = x2js.xml2json(msg);
-
-            if (json.mmx)
-                payload = JSON.parse(json.mmx);
-
-            def.resolve(payload.message);
-        }, null, null, null, iqId,  null);
-
-        mXMPPConnection.send(payload.tree());
+        msg.send().success(function() {
+            def.resolve.apply(def, arguments);
+        }).error(function() {
+            def.reject.apply(def, arguments);
+        });
     }, 0);
 
     return def.promise;

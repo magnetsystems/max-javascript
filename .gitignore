@@ -5,5 +5,5 @@ node_modules
 js-sdk/node_modules
 js-sdk/target
 magnet-max-sdk.js
-magnet-max-sdk-min.js
+magnet-max-sdk.min.js
 testing
