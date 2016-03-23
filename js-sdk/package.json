@@ -1,0 +1,16 @@
+{
+  "name": "magnet-max-sdk",
+  "version": "2.6.0-SNAPSHOT",
+  "devDependencies": {
+    "grunt": "~0.4.5",
+    "grunt-contrib-clean": "~0.5.0",
+    "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-jasmine": "1.0.0",
+    "grunt-contrib-uglify": "~0.2.7",
+    "grunt-contrib-watch": "^0.6.1",
+    "grunt-jasmine-node-coverage": "0.1.6",
+    "grunt-jsdoc": "1.1.0",
+    "grunt-maven-tasks": "~1.2.0",
+    "grunt-template-jasmine-istanbul": "~0.3.0"
+  }
+}
