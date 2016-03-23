@@ -1031,6 +1031,33 @@ Max.Channel.prototype.inviteUsers = function(recipients, comments) {
 };
 
 /**
+ * Delete a message from the channel. Must be channel owner, message creator, or administrator.
+ * @param {string} messageID Identifier of the message to delete.
+ * @returns {Max.Promise} A promise object returning success report or reason of failure.
+ */
+Max.Channel.prototype.deleteMessage = function(messageID) {
+    var self = this;
+    var def = new Max.Deferred();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!self.name) return def.reject('invalid channel');
+        if (!self.isOwner()) return def.reject('insufficient privileges');
+
+        Max.Request({
+            method: 'DELETE',
+            url: '/com.magnet.server/channel/message/' + messageID
+        }, function(res) {
+            def.resolve(res.message, res.code);
+        }, function() {
+            def.reject.apply(def, arguments);
+        });
+    }, 0);
+
+    return def.promise;
+};
+
+/**
  * Delete this channel
  * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
