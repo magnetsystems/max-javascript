@@ -1426,7 +1426,7 @@ describe('Channel getMessages', function() {
 
 });
 
-xdescribe('Channel setSubscriptionState', function() {
+describe('Channel setSubscriptionState', function() {
     var testChannelName;
     var testUserId;
     var testChannelName2;
@@ -1458,7 +1458,7 @@ xdescribe('Channel setSubscriptionState', function() {
             var d = new Max.Deferred();
             setTimeout(function() {
                 d.resolve([
-                    {userId: testUserId, name: 'wrong-name'}
+                    {userId: testUserId, name: testChannelName}
                 ]);
             }, 0);
             return d.promise;
@@ -1603,4 +1603,224 @@ xdescribe('Channel setSubscriptionState', function() {
         });
     });
 
+});
+
+describe('Channel getTags', function() {
+     var sendSpy;
+    var testUserId = '4028812953356a8901533b0617650002';
+    var channelName = '1456984203652';
+
+    beforeEach(function() {
+        Max.setUser({
+            userId: testUserId
+        });
+        Max.setConnection({
+            connected: true
+        });
+        sendSpy = sinon.spy();
+    });
+    afterEach(function() {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should get channel tags', function(done) {
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = '<mmx xmlns="com.magnet:pubsub" command="getTags" ctype="application/json">' +
+                    '{"userId":"'+testUserId+'","topicName":"'+channelName+'","tags":["tag1","tag2"],"lastModTime":"2014-03-22T23:54:50.017Z"}</mmx>';
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": channelName,
+            "privateChannel": true
+        });
+        channel.getTags().success(function(tags, lastModified) {
+            expect(tags.length).toEqual(2);
+            expect(tags[0]).toEqual('tag1');
+            expect(tags[1]).toEqual('tag2');
+            expect(typeof lastModified).toEqual('object');
+            expect(lastModified.getFullYear()).toEqual(2014);
+            expect(lastModified.getMonth()).toEqual(2);
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+});
+
+describe('Channel setTags', function() {
+     var sendSpy;
+    var testUserId = '4028812953356a8901533b0617650002';
+    var channelName = '1456984203652';
+
+    beforeEach(function() {
+        Max.setUser({
+            userId: testUserId
+        });
+        Max.setConnection({
+            connected: true
+        });
+        sendSpy = sinon.spy();
+    });
+    afterEach(function() {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should fail if no tags passed', function(done) {
+        var responseText = 'ok';
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = '<mmx xmlns="com.magnet:pubsub" command="setTags" ctype="application/json">{"code": 200, "message": "'+responseText+'"}</mmx>';
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": channelName,
+            "privateChannel": true
+        });
+        channel.setTags().success(function(message) {
+            expect(message).toEqual('failed-test');
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('missing tags property');
+            done();
+        });
+    });
+
+    it('should get channel tags', function(done) {
+        var responseText = 'ok';
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = '<mmx xmlns="com.magnet:pubsub" command="setTags" ctype="application/json">{"code": 200, "message": "'+responseText+'"}</mmx>';
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": channelName,
+            "privateChannel": true
+        });
+        var tags = ['tags1', 'tags2'];
+        channel.setTags(tags).success(function(message) {
+            expect(responseText).toEqual(message);
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+});
+
+describe('Channel inviteUsers', function() {
+    var sendSpy;
+    var testUserId = '4028812953356a8901533b0617650002';
+    var channelName = '1456984203652';
+
+    beforeEach(function () {
+        Max.setUser({
+            userId: testUserId
+        });
+        Max.setConnection({
+            connected: true
+        });
+        sendSpy = sinon.spy();
+    });
+    afterEach(function () {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should fail if no tags passed', function (done) {
+        var isPublic = false;
+        var sendStub = sinon.stub(Max.Message.prototype, 'send', function() {
+
+            expect(this.mType).toEqual(Max.MessageType.INVITATION);
+            expect(this.messageContent.channelName).toEqual(channelName);
+            expect(this.messageContent.channelOwnerId).toEqual(testUserId);
+            expect(this.messageContent.channelIsPublic).toEqual(isPublic+'');
+
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": channelName,
+            "privateChannel": !isPublic
+        });
+        var recipients = [{
+            userName: 'userName1',
+            userId: testUserId
+        }, {
+            userName: 'userName2',
+            userId: 'test-user-id-2'
+        }];
+        var comment = 'hey join now';
+        channel.inviteUsers(recipients, comment).success(function (message) {
+            Max.Message.prototype.send.restore();
+            done();
+        }).error(function (e) {
+            expect(e).toEqual('failed-test');
+            Max.Message.prototype.send.restore();
+            done();
+        });
+    });
 });

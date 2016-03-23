@@ -29,26 +29,89 @@ describe('start', function() {
 describe('registerListener', function() {
     var xml;
     beforeEach(function() {
-        xml = "<message></message>";
+        xml = "<message><mmx><mmxmeta></mmxmeta></mmx></message>";
     });
 
-    it('should register a listener', function(done){
+    it('should register a MESSAGE listener', function(done){
         Max.setConnection({
             addHandler: function(cb) {
                 return cb;
             }
         });
-        var messageStub = sinon.stub(Max.Message.prototype, 'formatMessage');
-        messageStub.callsArg(2);
+        var testMsg = {
+            recipients: [],
+            meta: {}
+        };
+        var formatEventStub = sinon.stub(Max.Message, 'formatEvent', function(json, channel, cb) {
+            cb(null, testMsg);
+        });
         var testHandlerId = 'testHandler';
-        var listener = new Max.MessageListener(testHandlerId, function(mmxMessage) {
+        var listener = new Max.EventListener(testHandlerId, function(mmxMessage) {
             expect(JSON.stringify(mmxMessage)).toContain('recipients');
             expect(JSON.stringify(mmxMessage)).toContain('meta');
-            Max.Message.prototype.formatMessage.restore();
+            Max.Message.formatEvent.restore();
             done();
         });
         expect(listener.id).toEqual(testHandlerId);
-        expect(typeof listener.handler).toEqual('function');
+        expect(typeof listener.messageHandler).toEqual('function');
+        Max.registerListener(listener);
+        expect(Max.getStore()[listener.id]).not.toBeUndefined();
+        Max.getStore()[listener.id](xml);
+
+    });
+
+    it('should register an INVITATION listener', function(done){
+        Max.setConnection({
+            addHandler: function(cb) {
+                return cb;
+            }
+        });
+        var testMsg = {
+            recipients: [],
+            meta: {},
+            mType: Max.MessageType.INVITATION
+        };
+        var formatEventStub = sinon.stub(Max.Message, 'formatEvent', function(json, channel, cb) {
+            cb(null, testMsg);
+        });
+        var testHandlerId = 'testHandler';
+        var listener = new Max.EventListener(testHandlerId, null, function(mmxMessage) {
+            expect(JSON.stringify(mmxMessage)).toContain('recipients');
+            expect(JSON.stringify(mmxMessage)).toContain('meta');
+            Max.Message.formatEvent.restore();
+            done();
+        });
+        expect(listener.id).toEqual(testHandlerId);
+        expect(typeof listener.invitationHandler).toEqual('function');
+        Max.registerListener(listener);
+        expect(Max.getStore()[listener.id]).not.toBeUndefined();
+        Max.getStore()[listener.id](xml);
+
+    });
+
+    it('should register an INVITATION_RESPONSE listener', function(done){
+        Max.setConnection({
+            addHandler: function(cb) {
+                return cb;
+            }
+        });
+        var testMsg = {
+            recipients: [],
+            meta: {},
+            mType: Max.MessageType.INVITATION_RESPONSE
+        };
+        var formatEventStub = sinon.stub(Max.Message, 'formatEvent', function(json, channel, cb) {
+            cb(null, testMsg);
+        });
+        var testHandlerId = 'testHandler';
+        var listener = new Max.EventListener(testHandlerId, null, null, function(mmxMessage) {
+            expect(JSON.stringify(mmxMessage)).toContain('recipients');
+            expect(JSON.stringify(mmxMessage)).toContain('meta');
+            Max.Message.formatEvent.restore();
+            done();
+        });
+        expect(listener.id).toEqual(testHandlerId);
+        expect(typeof listener.invitationResponseHandler).toEqual('function');
         Max.registerListener(listener);
         expect(Max.getStore()[listener.id]).not.toBeUndefined();
         Max.getStore()[listener.id](xml);
@@ -74,19 +137,24 @@ describe('unregisterListener', function() {
 
             }
         });
-        var messageStub = sinon.stub(Max.Message.prototype, 'formatMessage');
-        messageStub.callsArg(2);
+        var testMsg = {
+            recipients: [],
+            meta: {}
+        };
+        var formatEventStub = sinon.stub(Max.Message, 'formatEvent', function(json, channel, cb) {
+            cb(null, testMsg);
+        });
         var testHandlerId = 'testHandler';
-        var listener = new Max.MessageListener(testHandlerId, function(mmxMessage) {
+        var listener = new Max.EventListener(testHandlerId, function(mmxMessage) {
             expect(JSON.stringify(mmxMessage)).toContain('recipients');
             expect(JSON.stringify(mmxMessage)).toContain('meta');
-            Max.Message.prototype.formatMessage.restore();
+            Max.Message.formatEvent.restore();
             Max.unregisterListener(testHandlerId);
             expect(Max.getStore()[listener.id]).toBeUndefined();
             done();
         });
         expect(listener.id).toEqual(testHandlerId);
-        expect(typeof listener.handler).toEqual('function');
+        expect(typeof listener.messageHandler).toEqual('function');
         Max.registerListener(listener);
         expect(Max.getStore()[listener.id]).not.toBeUndefined();
         Max.getStore()[listener.id](xml);
@@ -395,7 +463,7 @@ describe('Message', function() {
 
 });
 
-describe('Message formatMessage', function() {
+describe('Message formatEvent', function() {
 
     it('should parse an incoming message', function (done) {
         Max.App.hatCredentials = {
@@ -459,8 +527,7 @@ describe('Message formatMessage', function() {
             }, 0);
             return d.promise;
         });
-        var msg = new Max.Message();
-        msg.formatMessage(msgText, null, function() {
+        Max.Message.formatEvent(msgText, null, function(e, msg) {
             expect(msg.receivedMessage).toEqual(true);
             expect(msg.sender.userId).toEqual(fromUid);
             expect(msg.attachments).not.toBeUndefined();
@@ -473,6 +540,158 @@ describe('Message formatMessage', function() {
         });
     });
 
+    it('should parse an incoming invitation', function (done) {
+        Max.App.hatCredentials = {
+            access_token: 'test-access-token'
+        };
+        var comment = 'hello dude';
+        var fromUid = '402881295313de0d015315c820bc0004';
+        var attachmentMeta = '{"text":"'+comment+'","channelSummary":" ","channelName":"myprivfirstuser","channelIsPublic":"false","channelOwnerId":"4028ba815381b6db01539b6d35760041","channelPublishPermissions":"subscribers","channelCreationDate":"2016-03-21T23:05:39.664Z"}';
+        var channelName = '1456521126999';
+        var channelOwnerUid = '402881295313de0d015315c820bc0004';
+        var msgText = {
+            "event": {
+                "items": {
+                    "item": {
+                        "mmx": {
+                            "mmxmeta": "{\"From\":{\"userId\":\"" + fromUid + "\",\"devId\":\"js-680a5326-ffbb-42e5-82a1-b81122fbfb8a\",\"displayName\":\"web@magnet.com\"}}",
+                            "meta": attachmentMeta,
+                            "payload": {
+                                "_mtype": Max.MessageType.INVITATION,
+                                "_stamp": "2016-03-02T04:54:50Z",
+                                "_chunk": "0/0/0"
+                            },
+                            "_xmlns": "com.magnet:msg:payload"
+                        },
+                        "_id": "3b22786f64a241d3c322fdc24bda98db"
+                    },
+                    "_node": "/gmbil1ewswo/" + channelOwnerUid + "/" + channelName
+                },
+                "_xmlns": "http://jabber.org/protocol/pubsub#event"
+            },
+            "headers": {
+                "header": {
+                    "_name": "SubID",
+                    "__text": "1NMwX0i5PB46C5rMdJ7SmHgR5KeQiN0ycJnu4cHC"
+                },
+                "_xmlns": "http://jabber.org/protocol/shim"
+            },
+            "_xmlns": "jabber:client",
+            "_from": "pubsub.mmx",
+            "_to": "402881295313de0d015315c820bc0004%gmbil1ewswo@mmx",
+            "_id": "/gmbil1ewswo/402881295313de0d015315c820bc0004/1456521126999__402881295313de0d015315c820bc0004%gmbil1ewswo@mmx__53yFQ"
+        };
+        var getChannelStub = sinon.stub(Max.Channel, 'getChannel', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve(new Max.Channel({
+                    "isCollection": false,
+                    "description": "",
+                    "isPersistent": true,
+                    "maxItems": -1,
+                    "maxPayloadSize": 2097152,
+                    "creationDate": "2016-02-26T21:27:23.014Z",
+                    "modificationDate": "2016-02-26T21:27:23.015Z",
+                    "publisherType": "subscribers",
+                    "creator": channelOwnerUid,
+                    "subscriptionEnabled": true,
+                    "topicName": channelName,
+                    "privateChannel": true
+                }));
+            }, 0);
+            return d.promise;
+        });
+        Max.Message.formatEvent(msgText, null, function(e, msg) {
+            expect(msg.receivedMessage).toBeUndefined();
+            expect(msg.sender.userId).toEqual(fromUid);
+            expect(msg.attachments).toBeUndefined();
+            expect(msg.comments).toEqual(comment);
+            expect(msg.mType).toEqual(Max.MessageType.INVITATION);
+            expect(msg.channel).not.toBeUndefined();
+            expect(msg.channel.name).toEqual(channelName);
+            expect(msg.channel.userId).toEqual(channelOwnerUid);
+            expect(msg.channel.isPublic).toEqual(false);
+            Max.Channel.getChannel.restore();
+            done();
+        });
+    });
+
+    it('should parse an incoming invitation response', function (done) {
+        Max.App.hatCredentials = {
+            access_token: 'test-access-token'
+        };
+        var comment = 'sure thing';
+        var fromUid = '402881295313de0d015315c820bc0004';
+        var attachmentMeta = '{"text":"hello dude","channelSummary":" ","channelName":"myprivfirstuser","channelIsPublic":"false","channelOwnerId":"4028ba815381b6db01539b6d35760041","channelPublishPermissions":"subscribers","channelCreationDate":"2016-03-21T23:05:39.664Z","inviteResponseText":"'+comment+'","inviteIsAccepted":"true"}';
+        var channelName = '1456521126999';
+        var channelOwnerUid = '402881295313de0d015315c820bc0004';
+        var msgText = {
+            "event": {
+                "items": {
+                    "item": {
+                        "mmx": {
+                            "mmxmeta": "{\"From\":{\"userId\":\"" + fromUid + "\",\"devId\":\"js-680a5326-ffbb-42e5-82a1-b81122fbfb8a\",\"displayName\":\"web@magnet.com\"}}",
+                            "meta": attachmentMeta,
+                            "payload": {
+                                "_mtype": Max.MessageType.INVITATION_RESPONSE,
+                                "_stamp": "2016-03-02T04:54:50Z",
+                                "_chunk": "0/0/0"
+                            },
+                            "_xmlns": "com.magnet:msg:payload"
+                        },
+                        "_id": "3b22786f64a241d3c322fdc24bda98db"
+                    },
+                    "_node": "/gmbil1ewswo/" + channelOwnerUid + "/" + channelName
+                },
+                "_xmlns": "http://jabber.org/protocol/pubsub#event"
+            },
+            "headers": {
+                "header": {
+                    "_name": "SubID",
+                    "__text": "1NMwX0i5PB46C5rMdJ7SmHgR5KeQiN0ycJnu4cHC"
+                },
+                "_xmlns": "http://jabber.org/protocol/shim"
+            },
+            "_xmlns": "jabber:client",
+            "_from": "pubsub.mmx",
+            "_to": "402881295313de0d015315c820bc0004%gmbil1ewswo@mmx",
+            "_id": "/gmbil1ewswo/402881295313de0d015315c820bc0004/1456521126999__402881295313de0d015315c820bc0004%gmbil1ewswo@mmx__53yFQ"
+        };
+        var getChannelStub = sinon.stub(Max.Channel, 'getChannel', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve(new Max.Channel({
+                    "isCollection": false,
+                    "description": "",
+                    "isPersistent": true,
+                    "maxItems": -1,
+                    "maxPayloadSize": 2097152,
+                    "creationDate": "2016-02-26T21:27:23.014Z",
+                    "modificationDate": "2016-02-26T21:27:23.015Z",
+                    "publisherType": "subscribers",
+                    "creator": channelOwnerUid,
+                    "subscriptionEnabled": true,
+                    "topicName": channelName,
+                    "privateChannel": true
+                }));
+            }, 0);
+            return d.promise;
+        });
+        Max.Message.formatEvent(msgText, null, function(e, msg) {
+            expect(msg.receivedMessage).toBeUndefined();
+            expect(msg.sender.userId).toEqual(fromUid);
+            expect(msg.attachments).toBeUndefined();
+            expect(msg.comments).toEqual(comment);
+            expect(msg.mType).toEqual(Max.MessageType.INVITATION_RESPONSE);
+            expect(msg.accepted).toEqual(true);
+            expect(msg.channel).not.toBeUndefined();
+            expect(msg.channel.name).toEqual(channelName);
+            expect(msg.channel.userId).toEqual(channelOwnerUid);
+            expect(msg.channel.isPublic).toEqual(false);
+            Max.Channel.getChannel.restore();
+            done();
+        });
+    });
 });
 
 
@@ -500,16 +719,6 @@ describe('Message send', function() {
         Max.setUser({
             userId: testUserId
         });
-        var sendSpy = sinon.spy();
-        var connStub = {
-            addHandler: function(cb) {
-                var xml = document.implementation.createDocument(null, 'message');
-                cb(xml);
-            },
-            send: sendSpy,
-            connected: true
-        };
-        Max.setConnection(connStub);
         var content = {
             my: messageContent
         };
@@ -518,6 +727,24 @@ describe('Message send', function() {
             userId: testUserId
         }];
         var msg = new Max.Message(content, recipients);
+        var testMsgId = Max.Utils.getCleanGUID();
+        var sendSpy = sinon.spy();
+        var connStub = {
+            addHandler: function(cb) {
+                msg.msgId = testMsgId;
+                var xmlStr = "<mmx xmlns='com.magnet:msg:signal'>\
+                    <mmxmeta>{&quot;endack&quot;:{&quot;errorCode&quot;:&quot;NO_ERROR&quot;,&quot;ackForMsgId&quot;:&quot;" + testMsgId + "&quot;,&quot;sender&quot;:\
+                    {&quot;devId&quot;:&quot;js-34410bb7-c1f5-43f8-9620-c2a4ab3607bc&quot;,&quot;\
+                    userId&quot;:&quot;4028ba815381b6db01539b6d35760041&quot;},&quot;badReceivers&quot;:[]}}\
+                    </mmxmeta>\
+                </mmx>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
         msg.send().success(function(msgId) {
             expect(msg.msgId).toEqual(msgId);
             expect(sendSpy.calledOnce).toEqual(true);
@@ -532,16 +759,6 @@ describe('Message send', function() {
         Max.setUser({
             userId: testUserId
         });
-        var sendSpy = sinon.spy();
-        var connStub = {
-            addHandler: function(cb) {
-                var xml = document.implementation.createDocument(null, 'message');
-                cb(xml);
-            },
-            send: sendSpy,
-            connected: true
-        };
-        Max.setConnection(connStub);
         var content = {
             my: messageContent
         };
@@ -552,6 +769,25 @@ describe('Message send', function() {
         var mockFile = {
             type: 'text/plain'
         };
+        var msg = new Max.Message(content, recipients, mockFile);
+        var testMsgId = Max.Utils.getCleanGUID();
+        var sendSpy = sinon.spy();
+        var connStub = {
+            addHandler: function(cb) {
+                msg.msgId = testMsgId;
+                var xmlStr = "<mmx xmlns='com.magnet:msg:signal'>\
+                    <mmxmeta>{&quot;endack&quot;:{&quot;errorCode&quot;:&quot;NO_ERROR&quot;,&quot;ackForMsgId&quot;:&quot;" + testMsgId + "&quot;,&quot;sender&quot;:\
+                    {&quot;devId&quot;:&quot;js-34410bb7-c1f5-43f8-9620-c2a4ab3607bc&quot;,&quot;\
+                    userId&quot;:&quot;4028ba815381b6db01539b6d35760041&quot;},&quot;badReceivers&quot;:[]}}\
+                    </mmxmeta>\
+                </mmx>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
         var oUploader = Max.Uploader;
         Max.Uploader = function(attachments, cb) {
             Max.App.hatCredentials = {
@@ -569,7 +805,6 @@ describe('Message send', function() {
             this.attachmentRefs = [{"mimeType":"text/plain","senderId":"test-id","attachmentId":"test-attachment-id"}];
             cb(null, this);
         };
-        var msg = new Max.Message(content, recipients, mockFile);
         msg.send().success(function(msgId) {
             expect(msg.msgId).toEqual(msgId);
             expect(sendSpy.calledOnce).toEqual(true);
@@ -781,6 +1016,234 @@ describe('Message reply', function() {
             done();
         });
 
+    });
+
+});
+
+describe('Invite constructor', function() {
+
+    it('should be the correct event type', function(done) {
+        var invite = new Max.Invite();
+        expect(invite.mType).toEqual(Max.MessageType.INVITATION);
+        done();
+    });
+
+});
+
+describe('Invite respond', function() {
+
+    var testUserId = 'test-user-id-1';
+    var testDeviceId = 'test-device-id-1';
+    var messageContent = 'test-message';
+
+    beforeEach(function() {
+        Max.setUser({
+            userId: testUserId
+        });
+        Max.setDevice({
+            deviceId: testDeviceId
+        });
+        Max.setConnection({
+            connected: true
+        });
+    });
+    afterEach(function() {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should fail channel validation', function(done) {
+        var sendStub = sinon.stub(Max.Message.prototype, 'send', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var subscribeStub = sinon.stub(Max.Channel.prototype, 'subscribe', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var acceptance = false;
+        var comment = 'sure thing';
+        var invite = new Max.Invite();
+        invite.respond(acceptance, comment).success(function(res) {
+            expect(res).toEqual('failed-test');
+            Max.Message.prototype.send.restore();
+            Max.Channel.prototype.subscribe.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('missing channel information');
+            Max.Message.prototype.send.restore();
+            Max.Channel.prototype.subscribe.restore();
+            done();
+        });
+    });
+
+    it('should fail missing accept param', function(done) {
+        var sendStub = sinon.stub(Max.Message.prototype, 'send', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var subscribeStub = sinon.stub(Max.Channel.prototype, 'subscribe', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var comment = 'sure thing';
+        var invite = new Max.Invite();
+        invite.channel =  new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": "402881295313de27015315659c71000a",
+            "subscriptionEnabled": true,
+            "topicName": "myprivchannel",
+            "privateChannel": false
+        });
+        invite.invitationMeta = {
+            "text": "hello guy",
+            "channelSummary": " ",
+            "channelName": "myprivfirstuser",
+            "channelIsPublic": "false",
+            "channelOwnerId": "4028ba815381b6db01539b6d35760041",
+            "channelPublishPermissions": "subscribers",
+            "channelCreationDate": "2016-03-21T23:05:39.664Z"
+        };
+        invite.respond(null, comment).success(function(res) {
+            expect(res).toEqual('failed-test');
+            Max.Message.prototype.send.restore();
+            Max.Channel.prototype.subscribe.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('accepted property missing');
+            Max.Message.prototype.send.restore();
+            Max.Channel.prototype.subscribe.restore();
+            done();
+        });
+    });
+
+    it('should respond with accept', function(done) {
+        var sendStub = sinon.stub(Max.Message.prototype, 'send', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var subscribeStub = sinon.stub(Max.Channel.prototype, 'subscribe', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var acceptance = true;
+        var comment = 'sure thing';
+        var invite = new Max.Invite();
+        invite.channel =  new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": "402881295313de27015315659c71000a",
+            "subscriptionEnabled": true,
+            "topicName": "myprivchannel",
+            "privateChannel": false
+        });
+        invite.invitationMeta = {
+            "text": "hello guy",
+            "channelSummary": " ",
+            "channelName": "myprivfirstuser",
+            "channelIsPublic": "false",
+            "channelOwnerId": "4028ba815381b6db01539b6d35760041",
+            "channelPublishPermissions": "subscribers",
+            "channelCreationDate": "2016-03-21T23:05:39.664Z"
+        };
+        invite.respond(acceptance, comment).success(function() {
+            expect(invite.invitationMeta.inviteResponseText).toEqual(comment);
+            expect(invite.invitationMeta.inviteIsAccepted).toEqual(acceptance+'');
+            Max.Message.prototype.send.restore();
+            Max.Channel.prototype.subscribe.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.Message.prototype.send.restore();
+            Max.Channel.prototype.subscribe.restore();
+            done();
+        });
+    });
+
+    it('should respond with decline', function(done) {
+        var sendStub = sinon.stub(Max.Message.prototype, 'send', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var subscribeStub = sinon.stub(Max.Channel.prototype, 'subscribe', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var acceptance = false;
+        var comment = 'sure thing';
+        var invite = new Max.Invite();
+        invite.channel =  new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": "402881295313de27015315659c71000a",
+            "subscriptionEnabled": true,
+            "topicName": "myprivchannel",
+            "privateChannel": false
+        });
+        invite.invitationMeta = {
+            "text": "hello guy",
+            "channelSummary": " ",
+            "channelName": "myprivfirstuser",
+            "channelIsPublic": "false",
+            "channelOwnerId": "4028ba815381b6db01539b6d35760041",
+            "channelPublishPermissions": "subscribers",
+            "channelCreationDate": "2016-03-21T23:05:39.664Z"
+        };
+        invite.respond(acceptance, comment).success(function() {
+            expect(invite.invitationMeta.inviteResponseText).toEqual(comment);
+            expect(invite.invitationMeta.inviteIsAccepted).toEqual(acceptance+'');
+            Max.Message.prototype.send.restore();
+            Max.Channel.prototype.subscribe.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.Message.prototype.send.restore();
+            Max.Channel.prototype.subscribe.restore();
+            done();
+        });
     });
 
 });

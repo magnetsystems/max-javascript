@@ -52,7 +52,8 @@ Max.Device = {
             deviceStatus: 'ACTIVE',
             label: browser,
             os: 'ANDROID', // TODO: server must support web client: os.os,
-            osVersion: os.os + (os.version || '')
+            osVersion: os.os + (os.version || ''),
+            pushAuthority: 'GCM'
         };
 
         return (callback || function() {})(e, deviceInfo);

@@ -30,20 +30,21 @@ Max.ListenerType = {
 /**
  * @method
  * @desc Register a listener to handle incoming messages.
- * @param {Max.MessageListener} listener A message listener.
+ * @param {Max.EventListener} listener An event listener.
  */
 Max.registerListener = function(listener) {
-    //Max.unregisterListener(listener);
-    console.log('reg', mListenerStore);
+    Max.unregisterListener(listener);
+
     mListenerStore[listener.id] = mXMPPConnection.addHandler(function(msg) {
 
-        console.log(msg);
-
-        var jsonObj = x2js.xml2json(msg);
-        var mmxMsg = new Max.Message();
-
-        mmxMsg.formatMessage(jsonObj, null, function() {
-            listener.messageHandler(mmxMsg);
+        Max.Message.formatEvent(x2js.xml2json(msg), null, function(e, event) {
+            if (event) {
+                switch (event.mType) {
+                    case Max.MessageType.INVITATION: listener.invitationHandler(event); break;
+                    case Max.MessageType.INVITATION_RESPONSE: listener.invitationResponseHandler(event); break;
+                    default: listener.messageHandler(event); break;
+                }
+            }
         });
         return true;
 
@@ -53,11 +54,11 @@ Max.registerListener = function(listener) {
 /**
  * @method
  * @desc Unregister a listener identified by the given id to stop handling incoming messages.
- * @param {string|Max.MessageListener} listenerOrListenerId A message listener or the listener Id specified
+ * @param {string|Max.EventListener} listenerOrListenerId An event listener or the listener Id specified
  * during creation.
  */
 Max.unregisterListener = function(listenerOrListenerId) {
-    if (!mListenerStore || !listenerOrListenerId || !mXMPPConnection) return;
+    if (!mListenerStore || !listenerOrListenerId || !mXMPPConnection || !mXMPPConnection.deleteHandler) return;
     if (typeof listenerOrListenerId === 'object') listenerOrListenerId = listenerOrListenerId.id;
     mXMPPConnection.deleteHandler(mListenerStore[listenerOrListenerId]);
     delete mListenerStore[listenerOrListenerId];
@@ -68,19 +69,23 @@ Max.unregisterListener = function(listenerOrListenerId) {
  * @memberof Max
  * @class EventListener The EventListener is used to listen for incoming messages and channel invitations, and subsequently call the given handler function.
  * @param {string|function} id A string ID for the handler. The string ID should be specified if you plan to unregister the handler at some point.
- * @param {function} [messageHandler] Function to be fired when a message is received.
- * @param {function} [invitationHandler] Function to be fired when an invitation is received.
+ * @param {function} [messageHandler] Function to be fired when a {Max.Message} is received.
+ * @param {function} [invitationHandler] Function to be fired when a {Max.Invite} is received.
+ * @param {function} [invitationResponseHandler] Function to be fired when a {Max.InviteResponse} is received.
  */
-Max.EventListener = function(id, messageHandler, invitationHandler) {
+Max.EventListener = function(id, messageHandler, invitationHandler, invitationResponseHandler) {
     this.id = typeof id == 'string' ? id : Max.Utils.getGUID();
 
-    if (typeof messageHandler == typeof Function)
-        this.messageHandler = messageHandler;
-
-    if (typeof invitationHandler == typeof Function)
-        this.invitationHandler = invitationHandler;
+    this.messageHandler = messageHandler || function() {};
+    this.invitationHandler = invitationHandler || function() {};
+    this.invitationResponseHandler = invitationResponseHandler || function() {};
 };
 
+/**
+ * @constructor
+ * @memberof Max
+ * @extends Max.EventListener
+ */
 Max.MessageListener = Max.EventListener;
 
 /**
@@ -230,6 +235,16 @@ Max.MMXClient = {
 };
 
 /**
+ * @attribute {object} ListenerType A key-value pair of all listener types.
+ * @ignore
+ */
+Max.MessageType = {
+    MESSAGE: 'unknown',
+    INVITATION: 'invitation',
+    INVITATION_RESPONSE: 'invitationResponse'
+};
+
+/**
  * @constructor
  * @class
  * The Message class is the local representation of a message. This class provides  various message specific methods, like send or reply.
@@ -240,8 +255,8 @@ Max.MMXClient = {
  * @property {object} messageContent The custom message body object sent by the sender.
  * @property {string} messageID An identifier for the message. It can be used to determine whether a message has already been displayed on a chat screen.
  * @property {Max.Attachment[]} [attachments] An array of message attachments.
- * @property {Max.Channel} [channel] If the message was sent to a channel, the channel object will be populated with basic channel information. Use the {Max.Channel.getChannel} method to obtain full channel information.
- * @property {Date} timestamp ISO-8601 formatted timestamp.
+ * @property {Max.Channel} [channel] If the message was sent to a channel, the channel object will be available.
+ * @property {Date} timestamp The date and time this message was sent.
  * @property {object[]|Max.User[]} [recipients] An array of recipients, if the message was sent to
  * individual users instead of through a channel.
  * objects or userIds to be recipients for your message.
@@ -282,27 +297,14 @@ function formatUser(userOrUserId) {
 }
 
 /**
- * Given an XMPP payload converted to JSON, set the properties of the {Max.Message} object.
+ * Given an XMPP payload converted to JSON, set the properties of the object.
  * @param {object} msg A JSON representation of an xmpp payload.
  * @param {Max.Channel} [channel] The channel this message belongs to.
  * @param {function} callback This function fires after the format is complete.
  * @ignore
  */
-Max.Message.prototype.formatMessage = function(msg, channel, callback) {
-    var self = this;
-
-    this.receivedMessage = true;
-    this.messageType = msg._type;
-    this.messageID = (msg.event && msg.event.items && msg.event.items.item)
-        ? msg.event.items.item._id : msg._id;
-    this.channel = null;
-    this.attachments = null;
-
-    this.meta = {
-        from: msg._from,
-        to: msg._to,
-        id: msg._id
-    };
+Max.Message.formatEvent = function(msg, channel, callback) {
+    var self, mType;
 
     msg.mmx = (
       msg.event &&
@@ -311,46 +313,87 @@ Max.Message.prototype.formatMessage = function(msg, channel, callback) {
       msg.event.items.item.mmx
     ) ? msg.event.items.item.mmx : msg.mmx;
 
-    this.meta.ns = msg.mmx ? msg.mmx._xmlns : '';
+    if (msg.mmx && msg.mmx._xmlns == 'com.magnet:msg:signal') return callback();
+
+    mType = (msg.mmx && msg.mmx.payload && msg.mmx.payload._mtype) ? msg.mmx.payload._mtype : 'unknown';
+
+    switch (mType) {
+        case Max.MessageType.INVITATION: self = new Max.Invite(); break;
+        case Max.MessageType.INVITATION_RESPONSE: self = new Max.InviteResponse(); break;
+        default: self = new Max.Message(); break;
+    }
+
+    self.receivedMessage = true;
+    self.messageType = msg._type;
+    self.messageID = (msg.event && msg.event.items && msg.event.items.item)
+        ? msg.event.items.item._id : msg._id;
+    self.channel = null;
+    self.attachments = null;
+
+    self.meta = {
+        from: msg._from,
+        to: msg._to,
+        id: msg._id
+    };
+
+    self.meta.ns = msg.mmx ? msg.mmx._xmlns : '';
 
     if (msg.mmx && msg.mmx.meta) {
         var msgMeta = JSON.parse(msg.mmx.meta);
-        attachmentRefsToAttachment(this, msgMeta);
-        this.messageContent = msgMeta;
+        attachmentRefsToAttachment(self, msgMeta);
+        self.messageContent = msgMeta;
     }
 
     if (msg.mmx && msg.mmx.mmxmeta) {
         var mmxMeta = JSON.parse(msg.mmx.mmxmeta);
-        this.recipients = mmxMeta.To;
-        if (mmxMeta.From) this.sender = new Max.User(mmxMeta.From);
+        self.recipients = mmxMeta.To;
+        if (mmxMeta.From) self.sender = new Max.User(mmxMeta.From);
     }
 
     if (msg.mmx && msg.mmx.payload) {
-        this.timestamp = Max.Utils.ISO8601ToDate(msg.mmx.payload._stamp);
+        self.timestamp = Max.Utils.ISO8601ToDate(msg.mmx.payload._stamp);
+    }
+
+    if (self.mType == Max.MessageType.INVITATION || self.mType == Max.MessageType.INVITATION_RESPONSE) {
+        self.invitationMeta = Max.Utils.mergeObj({}, self.messageContent);
+        delete self.messageContent;
+        delete self.messageType;
+        delete self.attachments;
+        delete self.receivedMessage;
+        self.comments = self.invitationMeta.text;
+    }
+
+    if (self.mType == Max.MessageType.INVITATION_RESPONSE) {
+        self.accepted = self.invitationMeta.inviteIsAccepted === 'true';
+        self.comments = self.invitationMeta.inviteResponseText;
     }
 
     if (channel) {
         self.channel = channel;
-        callback();
-    } else if (msg.event && msg.event.items && msg.event.items._node) {
-        var channelObj = nodePathToChannel(msg.event.items._node);
+        callback(null, self);
+    } else if (self.invitationMeta || (msg.event && msg.event.items && msg.event.items._node)) {
+
+        var channelObj = self.invitationMeta ? new Max.Channel({
+            name: self.invitationMeta.channelName,
+            userId: (self.invitationMeta.channelIsPublic === 'false' ? self.invitationMeta.channelOwnerId : null)
+        }) : nodePathToChannel(msg.event.items._node);
+
         if (ChannelStore.get(channelObj)) {
             ChannelStore.get(channelObj).isSubscribed = true;
             self.channel = ChannelStore.get(channelObj);
-            return callback();
+            return callback(null, self);
         }
 
         Max.Channel.getChannel(channelObj.name, channelObj.userId).success(function(channel) {
             self.channel = channel;
-            callback();
-        }).error(function() {
-            callback();
+            callback(null, self);
+        }).error(function(e) {
+            callback(e);
         });
-
     } else {
-        callback();
+        callback(null, self);
     }
-};
+}
 
 // non-persistent cache of channel information to improve message receive performance
 var ChannelStore = {
@@ -425,19 +468,13 @@ function nodePathToChannel(nodeStr) {
 
 /**
  * Send the message to a user.
- * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
+ * @returns {Max.Promise} A promise object returning the messageID or reason of failure.
  */
 Max.Message.prototype.send = function() {
-    var self = this, mtype, to, from;
+    var self = this;
     var def = new Max.Deferred();
     var dt = Max.Utils.dateToISO8601(new Date());
     self.msgId = Max.Utils.getCleanGUID();
-
-    if (self.invitation) {
-        from = mCurrentUser.jid;
-        to = 'mmx$multicast%'+Max.App.appId+'@'+Max.Config.mmxDomain;
-        mtype = 'invitation';
-    }
 
     setTimeout(function() {
         if (!self.recipients.length)
@@ -461,28 +498,33 @@ Max.Message.prototype.send = function() {
             var mmxMeta = {
                 To: self.recipients,
                 From: self.sender,
-                NoAck: true,
+                //NoAck: true,
                 mmxdistributed: true
             };
             mmxMeta = JSON.stringify(mmxMeta);
 
             var payload = $msg({type: 'chat', from: mCurrentUser.jid,
                 to: 'mmx$multicast%'+Max.App.appId+'@'+Max.Config.mmxDomain, id: self.msgId})
-                .c('mmx', {xmlns: 'com.magnet:msg:payload'})
+                .c('mmx', {xmlns: 'com.magnet:msg:payload', id: self.msgId})
                 .c('mmxmeta', mmxMeta).up()
                 .c('meta', meta).up()
-                .c('payload', {mtype:'unknown', stamp: dt, chunk: '0/0/0'}).up().up()
-                //.c('request', {xmlns: 'urn:xmpp:receipts'}).up()
+                .c('payload', {mtype: self.mType || 'unknown', stamp: dt, id: self.msgId, chunk: '0/0/0'}).up().up()
+                .c('request', {xmlns: 'urn:xmpp:receipts'}).up()
                 .c('body', '.');
 
             mXMPPConnection.addHandler(function(msg) {
                 var json = x2js.xml2json(msg);
+                if (!json.mmx || !json.mmx.mmxmeta || json.mmx._xmlns != 'com.magnet:msg:signal') return true;
+                json = JSON.parse(json.mmx.mmxmeta);
+                if (!json.endack || json.endack.ackForMsgId != self.msgId) return true;
 
-                if (json.error)
-                    return def.reject(json.error._code + ' : ' + json.error._type);
+                if (json.endack.errorCode == 'NO_ERROR') {
+                    def.resolve(self.msgId);
+                    return false;
+                }
 
-                def.resolve(self.msgId);
-            }, null, null, null, self.msgId, null);
+                def.reject(json.endack.errorCode, json.endack.badReceivers);
+            }, null, 'message', null, null, null);
 
             mXMPPConnection.send(payload.tree());
         }
@@ -525,6 +567,7 @@ Max.Message.prototype.addAttachments = function(attachmentOrAttachments) {
 /**
  * Reply to a received message.
  * @param {object} contents an object containing your custom message body.
+ * @returns {Max.Promise} A promise object returning messageID or reason of failure.
  */
 Max.Message.prototype.reply = function(contents, replyAll) {
     var self = this;
@@ -562,4 +605,98 @@ Max.Message.prototype.reply = function(contents, replyAll) {
  */
 Max.Message.prototype.replyAll = function(contents) {
     return this.reply(contents, true);
+};
+
+/**
+ * @constructor
+ * @class
+ * A {Max.Invite} is received from the {Max.EventListener} when the current user is invited to a channel. This class
+ * contains methods to view invitation comments and subsequently accept or deny an invitation.
+ * @property {object|Max.User} sender The message sender.
+ * @property {string} comments Invitation comments sent by the sender.
+ * @property {Max.Channel} channel Channel the current user has been invited to.
+ * @property {Date} timestamp The date and time this message was sent.
+ * @property {object[]|Max.User[]} recipients An array of recipients who have been sent the invitation.
+ */
+Max.Invite = function() {
+    this.meta = {};
+    this.recipients = [];
+    this.mType = Max.MessageType.INVITATION;
+    return this;
+};
+
+/**
+ * Accept or deny the invite to the channel.
+ * @param {boolean} accepted True to accept the invitation.
+ * @param {string} [comments] An optional custom message to return to the sender.
+ * @returns {Max.Promise} A promise object returning messageID or reason of failure.
+ * @ignore
+ */
+Max.Invite.prototype.respond = function(accepted, comments) {
+    var self = this, msg;
+    var def = new Max.Deferred();
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject('session expired');
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!self.channel) return def.reject('missing channel information');
+        if (accepted === null || typeof accepted === 'undefined') return def.reject('accepted property missing');
+
+        self.invitationMeta.inviteResponseText = comments;
+        self.invitationMeta.inviteIsAccepted = accepted + '';
+
+        msg = new Max.Message(self.invitationMeta, self.sender);
+        msg.mType = Max.MessageType.INVITATION_RESPONSE;
+
+        msg.send().success(function() {
+            if (!accepted) return def.resolve.apply(def, arguments);
+
+            self.channel.subscribe().success(function() {
+                def.resolve.apply(def, arguments);
+            }).error(function() {
+                def.reject.apply(def, arguments);
+            });
+        }).error(function() {
+            def.reject.apply(def, arguments);
+        });
+    }, 0);
+
+    return def.promise;
+};
+
+/**
+ * Accept the invite to the channel and start receiving messages published to the channel.
+ * @param {string} [comments] An optional custom message to return to the sender.
+ * @returns {Max.Promise} A promise object returning messageID or reason of failure.
+ */
+Max.Invite.prototype.accept = function(comments) {
+    return this.respond(true, comments);
+};
+
+/**
+ * Decline the invite to the channel.
+ * @param {string} [comments] An optional custom message to return to the sender.
+ * @returns {Max.Promise} A promise object returning messageID or reason of failure.
+ */
+Max.Invite.prototype.decline = function(comments) {
+    return this.respond(false, comments);
+};
+
+/**
+ * @constructor
+ * @class
+ * A {Max.InviteResponse} is received from the {Max.EventListener} when a recipient of a channel invitation sent by
+ * the current user responds. This class contains information about the invitation, including whether or the user
+ * accepted or declined the channel invitation.
+ * @property {object|Max.User} sender The message sender.
+ * @property {string} comments Invitation comments sent by the sender.
+ * @property {Max.Channel} channel Channel the current user has been invited to.
+ * @property {Date} timestamp The date and time this message was sent.
+ * @property {boolean} accepted Indicates whether the invitation recipient accepted or declined the invitation.
+ */
+Max.InviteResponse = function() {
+    this.meta = {};
+    this.recipients = [];
+    this.mType = Max.MessageType.INVITATION_RESPONSE;
+    return this;
 };
