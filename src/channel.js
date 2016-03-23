@@ -1043,6 +1043,7 @@ Max.Channel.prototype.deleteMessage = function(messageID) {
         if (!mCurrentUser) return def.reject('session expired');
         if (!self.name) return def.reject('invalid channel');
         if (!self.isOwner()) return def.reject('insufficient privileges');
+        if (!messageID) return def.reject('invalid messageID');
 
         Max.Request({
             method: 'DELETE',
