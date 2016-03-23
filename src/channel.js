@@ -898,11 +898,12 @@ Max.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, 
 function formatMessage(messages, channel, msgAry, index, cb) {
     if (!msgAry[index] || !msgAry[index].payloadXML) return cb(messages);
     var jsonObj = x2js.xml_str2json(msgAry[index].payloadXML);
-    var mmxMsg = new Max.Message();
 
-    mmxMsg.formatMessage(jsonObj, channel, function() {
-        mmxMsg.messageID = msgAry[index].itemId;
-        messages.push(mmxMsg);
+    Max.Message.formatEvent(jsonObj, channel, function(e, mmxMsg) {
+        if (mmxMsg) {
+            mmxMsg.messageID = msgAry[index].itemId;
+            messages.push(mmxMsg);
+        }
         formatMessage(messages, channel, msgAry, ++index, cb);
     });
 }
@@ -940,7 +941,7 @@ Max.Channel.prototype.getTags = function() {
 
             payload.tags = Max.Utils.objToObjAry(payload.tags);
 
-            def.resolve(payload.tags, payload.lastModTime);
+            def.resolve(payload.tags, Max.Utils.ISO8601ToDate(payload.lastModTime));
         }, null, null, null, iqId,  null);
 
         mXMPPConnection.send(payload.tree());
@@ -994,10 +995,10 @@ Max.Channel.prototype.setTags = function(tags) {
  * Sends invitations to the specified users for this channel. If the recipients accept the invitation, they will be
  * become subscibed to the channel.
  * @param {string|Max.User|string[]|Max.User[]} recipients A list of userId or {Max.User} objects.
- * @param {string} message Text to include in the invitation.
+ * @param {string} comments Comments to include with the invitation.
  * @returns {Max.Promise} A promise object returning success report or reason of failure.
  */
-Max.Channel.prototype.inviteUsers = function(recipients, message) {
+Max.Channel.prototype.inviteUsers = function(recipients, comments) {
     var self = this, msg;
     var def = new Max.Deferred();
 
@@ -1007,7 +1008,7 @@ Max.Channel.prototype.inviteUsers = function(recipients, message) {
         if (!self.isOwner()) return def.reject('must be channel owner');
 
         msg = new Max.Message({
-            text: message,
+            text: comments,
             channelSummary: self.summary,
             channelName: self.name,
             channelIsPublic: self.isPublic+'',
@@ -1017,7 +1018,7 @@ Max.Channel.prototype.inviteUsers = function(recipients, message) {
             //_attachments: 'encoded-JSON-string'   // optional, see Attachments section
         }, recipients);
 
-        msg.invitation = true;
+        msg.mType = Max.MessageType.INVITATION;
 
         msg.send().success(function() {
             def.resolve.apply(def, arguments);
