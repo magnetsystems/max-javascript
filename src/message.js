@@ -69,14 +69,23 @@ Max.unregisterListener = function(listenerOrListenerId) {
  * @memberof Max
  * @class EventListener The EventListener is used to listen for incoming messages and channel invitations, and subsequently call the given handler function.
  * @param {string|function} id A string ID for the handler. The string ID should be specified if you plan to unregister the handler at some point.
- * @param {function} [messageHandler] Function to be fired when a {Max.Message} is received.
+ * @param {object|function} messageHandlerOrObject Alternatively, pass a handler object containing the callbacks. Alternatively, pass function to be fired when a {Max.Message} is received.
+ * @param {function} messageHandlerOrObject.message Function to be fired when a {Max.Message} is received.
+ * @param {function} [messageHandlerOrObject.invite] Function to be fired when a {Max.Invite} is received.
+ * @param {function} [messageHandlerOrObject.inviteResponse] Function to be fired when a {Max.InviteResponse} is received.
  * @param {function} [invitationHandler] Function to be fired when a {Max.Invite} is received.
  * @param {function} [invitationResponseHandler] Function to be fired when a {Max.InviteResponse} is received.
  */
-Max.EventListener = function(id, messageHandler, invitationHandler, invitationResponseHandler) {
+Max.EventListener = function(id, messageHandlerOrObject, invitationHandler, invitationResponseHandler) {
     this.id = typeof id == 'string' ? id : Max.Utils.getGUID();
 
-    this.messageHandler = messageHandler || function() {};
+    if (messageHandlerOrObject) {
+        if (messageHandlerOrObject.inviteResponse) invitationResponseHandler = messageHandlerOrObject.inviteResponse;
+        if (messageHandlerOrObject.invite) invitationHandler = messageHandlerOrObject.invite;
+        if (messageHandlerOrObject.message) messageHandlerOrObject = messageHandlerOrObject.message;
+    }
+
+    this.messageHandler = messageHandlerOrObject || function() {};
     this.invitationHandler = invitationHandler || function() {};
     this.invitationResponseHandler = invitationResponseHandler || function() {};
 };
@@ -393,7 +402,7 @@ Max.Message.formatEvent = function(msg, channel, callback) {
     } else {
         callback(null, self);
     }
-}
+};
 
 // non-persistent cache of channel information to improve message receive performance
 var ChannelStore = {
