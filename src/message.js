@@ -514,10 +514,10 @@ Max.Message.prototype.send = function() {
 
             var payload = $msg({type: 'chat', from: mCurrentUser.jid,
                 to: 'mmx$multicast%'+Max.App.appId+'@'+Max.Config.mmxDomain, id: self.msgId})
-                .c('mmx', {xmlns: 'com.magnet:msg:payload', id: self.msgId})
+                .c('mmx', {xmlns: 'com.magnet:msg:payload'})
                 .c('mmxmeta', mmxMeta).up()
                 .c('meta', meta).up()
-                .c('payload', {mtype: self.mType || 'unknown', stamp: dt, id: self.msgId, chunk: '0/0/0'}).up().up()
+                .c('payload', {mtype: self.mType || 'unknown', stamp: dt, chunk: '0/0/0'}).up().up()
                 .c('request', {xmlns: 'urn:xmpp:receipts'}).up()
                 .c('body', '.');
 
