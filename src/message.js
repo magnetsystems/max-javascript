@@ -85,7 +85,7 @@ Max.EventListener = function(id, messageHandlerOrObject, invitationHandler, invi
         if (messageHandlerOrObject.message) messageHandlerOrObject = messageHandlerOrObject.message;
     }
 
-    this.messageHandler = messageHandlerOrObject || function() {};
+    this.messageHandler = typeof messageHandlerOrObject === 'function' ? messageHandlerOrObject : function() {};
     this.invitationHandler = invitationHandler || function() {};
     this.invitationResponseHandler = invitationResponseHandler || function() {};
 };
