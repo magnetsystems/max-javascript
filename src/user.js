@@ -388,7 +388,7 @@ Max.User.getUserInfo = function() {
  * @param {object} [userObj.extras] Additional custom metadata to associate with the user.
  * @returns {Max.Promise} A promise object returning the updated {Max.User} or reason of failure.
  */
-Max.User.prototype.updateProfile = function(userObj) {
+Max.User.updateProfile = function(userObj) {
     userObj = userObj || {};
     userObj = Max.Utils.mergeObj({}, userObj);
 
@@ -484,7 +484,7 @@ Max.User.prototype.setAvatar = function(picture) {
                     extras: { hasAvatar: true }
                 });
 
-                mCurrentUser.updateProfile(userObj).success(function() {
+                Max.User.updateProfile(userObj).success(function() {
                     def.resolve(self.getAvatarUrl())
                 }).error(function(e) {
                     def.reject(e);

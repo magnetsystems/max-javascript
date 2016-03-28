@@ -501,8 +501,7 @@ describe('User updateProfile', function() {
             }, 0);
             return new Max.Deferred();
         });
-        var user = new Max.User(userObj);
-        user.updateProfile(userObj).success(function (user) {
+        Max.User.updateProfile(userObj).success(function (user) {
             expect(user.userId).toEqual(userId);
             expect(user.userName).toEqual(userName);
             expect(user.clientId).toEqual(clientId);
@@ -868,7 +867,7 @@ describe('User setAvatar', function() {
             }, 0);
             return d.promise;
         });
-        var updateProfileStub = sinon.stub(Max.User.prototype, 'updateProfile', function(userObj) {
+        var updateProfileStub = sinon.stub(Max.User, 'updateProfile', function(userObj) {
             var d = new Max.Deferred();
             setTimeout(function() {
                 userObj = Max.Utils.mergeObj(user, userObj);
@@ -887,7 +886,7 @@ describe('User setAvatar', function() {
             expect(updateProfileStub.calledOnce).toEqual(true);
             expect(Max.getCurrentUser().extras).not.toBeUndefined();
             expect(Max.getCurrentUser().extras.hasAvatar).toEqual(true);
-            Max.User.prototype.updateProfile.restore();
+            Max.User.updateProfile.restore();
             Max.Uploader = oUploader;
             done();
         });
@@ -916,7 +915,7 @@ describe('User setAvatar', function() {
             }, 0);
             return d.promise;
         });
-        var updateProfileStub = sinon.stub(Max.User.prototype, 'updateProfile', function(userObj) {
+        var updateProfileStub = sinon.stub(Max.User, 'updateProfile', function(userObj) {
             var d = new Max.Deferred();
             setTimeout(function() {
                 userObj = Max.Utils.mergeObj(user, userObj);
@@ -935,7 +934,7 @@ describe('User setAvatar', function() {
             expect(updateProfileStub.calledOnce).toEqual(true);
             expect(Max.getCurrentUser().extras).not.toBeUndefined();
             expect(Max.getCurrentUser().extras.hasAvatar).toEqual(true);
-            Max.User.prototype.updateProfile.restore();
+            Max.User.updateProfile.restore();
             Max.Uploader = oUploader;
             done();
         });
