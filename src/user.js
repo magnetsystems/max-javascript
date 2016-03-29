@@ -34,6 +34,9 @@ Max.User = function(userObj) {
         delete userObj.userAccountData;
     }
 
+    if (userObj.password && userObj.password == 'n/a')
+      delete userObj.password;
+
     if (!userObj.userId && userObj.userIdentifier) userObj.userId = userObj.userIdentifier;
     delete userObj.userIdentifier;
     userObj.userName = userObj.userName || userObj.username || userObj.displayName;
@@ -396,6 +399,9 @@ Max.User.updateProfile = function(userObj) {
         userObj.userAccountData = userObj.extras;
         delete userObj.extras;
     }
+
+    if (userObj.password && userObj.password == 'n/a')
+      delete userObj.password;
 
     var def = Max.Request({
         method: 'PUT',
