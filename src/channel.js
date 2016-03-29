@@ -77,7 +77,7 @@ Max.Channel.findPrivateChannels = function(channelName, limit, offset) {
 };
 
 /**
- * Find channels which contain any of the specified tags.
+ * Find channels which contain any of the specified tags. Only private channels created by the current user will be returned.
  * @param {string[]} [tags] An array of tags to filter by.
  * @param {number} [limit] The number of users to return in the request. Defaults to 10.
  * @param {number} [offset]	The starting index of users to return.
