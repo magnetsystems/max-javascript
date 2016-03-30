@@ -805,8 +805,10 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
             mXMPPConnection.addHandler(function(msg) {
                 var json = x2js.xml2json(msg);
 
-                if (json.error)
+                if (json.error) {
+                    if (json.error._type == 'auth') json.error._type = Max.Error.FORBIDDEN;
                     return def.reject(json.error._code + ' : ' + json.error._type);
+                }
 
                 def.resolve(self.msgId);
             }, null, null, null, iqId, null);
