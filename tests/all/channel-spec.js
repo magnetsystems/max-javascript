@@ -1241,8 +1241,9 @@ describe('Channel publish', function() {
         channel.publish(msg).success(function(msgId) {
             expect(msgId).toEqual('failed-test');
             done();
-        }).error(function(e) {
-            expect(e).toEqual('500 : wait');
+        }).error(function(err, code) {
+            expect(err).toEqual('wait');
+            expect(code).toEqual('500');
             done();
         });
     });
