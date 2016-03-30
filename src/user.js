@@ -508,7 +508,10 @@ Max.User.prototype.setAvatar = function(picture) {
 Max.User.prototype.deleteAvatar = function() {
     var def = Max.Request({
         method: 'DELETE',
-        url: '/com.magnet.server/file/delete/' + mCurrentUser.userId
+        url: '/com.magnet.server/file/delete/' + mCurrentUser.userId,
+        headers: {
+            'Accept': '*/*'
+        }
     }, function() {
         var userObj = Max.Utils.mergeObj(mCurrentUser, {
             password: null,
