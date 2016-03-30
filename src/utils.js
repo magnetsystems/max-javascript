@@ -1599,6 +1599,22 @@ Max.reset = function() {
     return this;
 };
 
+/**
+ * @attribute {object} Error A key-value pair of error types.
+ * @ignore
+ */
+Max.Error = {
+    FORBIDDEN: 'forbidden',
+    SESSION_EXPIRED: 'session expired',
+    NOT_CONNECTED: 'not connected',
+    INVALID_CHANNEL: 'invalid channel',
+    INVALID_MESSAGE_ID: 'invalid messageID',
+    INVALID_TAGS: 'invalid tags',
+    INVALID_CHANNEL_NAME: 'channel name required',
+    INVALID_PUBLISH_PERMISSIONS: 'publishPermission must be in ["anyone", "owner", "subscribers"]',
+    INVALID_ACCEPTED: 'accepted property missing'
+};
+
 var mCurrentDevice = null;
 var mCurrentUser = null;
 var mXMPPConnection = null;

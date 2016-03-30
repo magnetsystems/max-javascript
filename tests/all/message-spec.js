@@ -1076,7 +1076,7 @@ describe('Invite respond', function() {
             Max.Channel.prototype.subscribe.restore();
             done();
         }).error(function(e) {
-            expect(e).toEqual('missing channel information');
+            expect(e).toEqual('invalid channel');
             Max.Message.prototype.send.restore();
             Max.Channel.prototype.subscribe.restore();
             done();

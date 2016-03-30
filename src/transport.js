@@ -43,7 +43,7 @@ Max.Request = function(request, callback, failback) {
                 if (Cookie.get('magnet-max-refresh-token'))
                     return Max.User.loginWithRefreshToken(request, callback, failback);
                 else
-                    Max.User.clearSession('session expired');
+                    Max.User.clearSession(Max.Error.SESSION_EXPIRED);
             }
 
             if (details.status === 403 && !request.isLogin)
