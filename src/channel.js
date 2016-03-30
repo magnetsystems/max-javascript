@@ -807,7 +807,7 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
 
                 if (json.error) {
                     if (json.error._type == 'auth') json.error._type = Max.Error.FORBIDDEN;
-                    return def.reject(json.error._code + ' : ' + json.error._type);
+                    return def.reject(json.error._type, json.error._code);
                 }
 
                 def.resolve(self.msgId);
