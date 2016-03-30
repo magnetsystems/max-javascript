@@ -108,8 +108,8 @@ Max.Channel.findChannels = function(channelName, tags, limit, offset, type) {
     type = type == 'public' ? 'global' : type;
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var mmxMeta = {
             operator: 'AND',
@@ -203,12 +203,12 @@ Max.Channel.create = function(channelObj) {
     var def = new Max.Deferred();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
         if (!channelObj.name)
-            return def.reject('channel name required');
+            return def.reject(Max.Error.INVALID_CHANNEL_NAME);
         if (channelObj.publishPermission
             && (['anyone', 'owner', 'subscribers'].indexOf(channelObj.publishPermission) == -1))
-            return def.reject('publishPermission must be in ["anyone", "owner", "subscribers"]');
+            return def.reject(Max.Error.INVALID_PUBLISH_PERMISSIONS);
 
         channelObj.channelName = channelObj.name;
         channelObj.ownerId = mCurrentUser.userId;
@@ -248,8 +248,8 @@ Max.Channel.getAllSubscriptions = function(subscriptionOnly) {
     var msgId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'get', id: msgId})
             .c('pubsub', {xmlns: 'http://jabber.org/protocol/pubsub'})
@@ -303,7 +303,7 @@ Max.Channel.findChannelsBySubscribers = function(subscribers) {
         subscriberlist.push(Max.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
         Max.Request({
             method: 'POST',
             url: '/com.magnet.server/channel/query',
@@ -352,7 +352,7 @@ Max.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, mes
         });
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
 
         Max.Request({
             method: 'POST',
@@ -456,8 +456,8 @@ Max.Channel.getChannel = function(channelName, userId) {
     var msgId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var mmxMeta = {
             userId: userId,
@@ -473,7 +473,7 @@ Max.Channel.getChannel = function(channelName, userId) {
             var json = x2js.xml2json(msg);
             var payload, channel;
 
-            if (!json || !json.mmx) return def.reject('channel not found');
+            if (!json || !json.mmx) return def.reject(Max.Error.INVALID_CHANNEL);
             payload = JSON.parse(json.mmx);
             if (payload.message) return def.reject(payload.message);
 
@@ -506,8 +506,8 @@ Max.Channel.getChannels = function(channelOrChannels, allSubscribed) {
         channelOrChannels = [channelOrChannels];
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var mmxMeta = [];
         for (var i=0;i<channelOrChannels.length;++i)
@@ -563,8 +563,8 @@ Max.Channel.prototype.getAllSubscribers = function(limit, offset) {
     offset = offset || 0;
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var mmxMeta = {
             userId: self.userId,     // null for global topic, or a user topic under a user ID
@@ -616,9 +616,9 @@ Max.Channel.prototype.addSubscribers = function(subscribers) {
         subscribers = [subscribers];
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!self.name) return def.reject('invalid channel');
-        if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!self.name) return def.reject(Max.Error.INVALID_CHANNEL);
+        if (!self.isOwner() && !self.isPublic) return def.reject(Max.Error.FORBIDDEN);
 
         for (var i in subscribers)
             subscriberlist.push(Max.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
@@ -654,9 +654,9 @@ Max.Channel.prototype.removeSubscribers = function(subscribers) {
         subscribers = [subscribers];
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!self.name) return def.reject('invalid channel');
-        if (!self.isOwner() && !self.isPublic) return def.reject('insufficient privileges');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!self.name) return def.reject(Max.Error.INVALID_CHANNEL);
+        if (!self.isOwner() && !self.isPublic) return def.reject(Max.Error.FORBIDDEN);
 
         for (var i in subscribers)
             subscriberlist.push(Max.Utils.isObject(subscribers[i]) ? subscribers[i].userId : subscribers[i]);
@@ -688,8 +688,8 @@ Max.Channel.prototype.subscribe = function() {
     var iqId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var mmxMeta = {
             userId: self.userId,     // null for global topic, or a user topic under a user ID
@@ -730,8 +730,8 @@ Max.Channel.prototype.unsubscribe = function() {
     var iqId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var mmxMeta = {
             userId: self.userId,        // null for global topic, or a user topic under a user ID
@@ -776,8 +776,8 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
     var dt = Max.Utils.dateToISO8601(new Date());
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         function sendMessage(msgMeta) {
             var meta = JSON.stringify(msgMeta);
@@ -852,8 +852,8 @@ Max.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, 
     ascending = typeof ascending !== 'boolean' ? true : ascending;
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var mmxMeta = {
             userId: self.userId,         // null for global topic, or a user topic under a user ID
@@ -918,8 +918,8 @@ Max.Channel.prototype.getTags = function() {
     var iqId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var mmxMeta = {
             userId: self.userId,
@@ -961,9 +961,9 @@ Max.Channel.prototype.setTags = function(tags) {
     var iqId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
-        if (!tags || !Max.Utils.isArray(tags)) return def.reject('missing tags property');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
+        if (!tags || !Max.Utils.isArray(tags)) return def.reject(Max.Error.INVALID_TAGS);
 
         var mmxMeta = {
             userId: self.userId,
@@ -1003,9 +1003,9 @@ Max.Channel.prototype.inviteUsers = function(recipients, comments) {
     var def = new Max.Deferred();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
-        if (!self.isOwner()) return def.reject('must be channel owner');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
+        if (!self.isOwner()) return def.reject(Max.Error.FORBIDDEN);
 
         msg = new Max.Message({
             text: comments,
@@ -1040,10 +1040,10 @@ Max.Channel.prototype.deleteMessage = function(messageID) {
     var def = new Max.Deferred();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!self.name) return def.reject('invalid channel');
-        if (!self.isOwner()) return def.reject('insufficient privileges');
-        if (!messageID) return def.reject('invalid messageID');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!self.name) return def.reject(Max.Error.INVALID_CHANNEL);
+        if (!self.isOwner()) return def.reject(Max.Error.FORBIDDEN);
+        if (!messageID) return def.reject(Max.Error.INVALID_MESSAGE_ID);
 
         Max.Request({
             method: 'DELETE',
@@ -1068,8 +1068,8 @@ Max.Channel.prototype.delete = function() {
     var iqId = Max.Utils.getCleanGUID();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         var mmxMeta = {
             topicName: self.name,                   // without /appID/* or /appID/userID

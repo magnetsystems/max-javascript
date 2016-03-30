@@ -184,14 +184,14 @@ Max.User.loginWithRefreshToken = function(request, callback, failback) {
                 def.resolve.apply(def, arguments);
             })
             .error(function() {
-                Max.User.clearSession('session expired');
-                if (failback) failback('session expired');
+                Max.User.clearSession(Max.Error.SESSION_EXPIRED);
+                if (failback) failback(Max.Error.SESSION_EXPIRED);
                 def.reject.apply(def, arguments);
             });
 
     }, function(e, details) {
-        Max.User.clearSession('session expired');
-        if (failback) failback('session expired');
+        Max.User.clearSession(Max.Error.SESSION_EXPIRED);
+        if (failback) failback(Max.Error.SESSION_EXPIRED);
         def.reject((details && details.status == 401) ? 'incorrect credentials' : e, details);
     });
 
@@ -391,7 +391,7 @@ Max.User.getUserInfo = function() {
  * @param {object} [userObj.extras] Additional custom metadata to associate with the user.
  * @returns {Max.Promise} A promise object returning the updated {Max.User} or reason of failure.
  */
-Max.User.updateProfile = function(userObj) {
+Max.User.prototype.updateProfile = function(userObj) {
     userObj = userObj || {};
     userObj = Max.Utils.mergeObj({}, userObj);
 
@@ -456,17 +456,14 @@ Max.User.clearSession = function(reason) {
  * @returns {string} User profile download Url.
  */
 Max.User.prototype.getAvatarUrl = function() {
-    if (!this.userId
-        //|| !this.extras
-        //|| !this.extras.hasAvatar
-        || !Max.App.hatCredentials) return null;
+    if (!this.userId || !Max.App.hatCredentials) return null;
 
     return Max.Config.baseUrl+'/com.magnet.server/file/download/'+this.userId
         +'?access_token='+Max.App.hatCredentials.access_token+'&user_id='+this.userId;
 };
 
 /**
- * Upload user profile picture.
+ * Upload profile picture for the current user.
  * @param {File} picture A File object created by an input[type="file"] HTML element.
  * @returns {string} User profile download URL
  */
@@ -475,7 +472,7 @@ Max.User.prototype.setAvatar = function(picture) {
     var def = new Max.Deferred();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
         if (!picture) return def.reject('picture not set');
 
         new Max.Uploader(picture, function(e, multipart) {
@@ -490,8 +487,8 @@ Max.User.prototype.setAvatar = function(picture) {
                     extras: { hasAvatar: true }
                 });
 
-                Max.User.updateProfile(userObj).success(function() {
-                    def.resolve(self.getAvatarUrl())
+                mCurrentUser.updateProfile(userObj).success(function() {
+                    def.resolve(self.getAvatarUrl());
                 }).error(function(e) {
                     def.reject(e);
                 })
@@ -501,5 +498,30 @@ Max.User.prototype.setAvatar = function(picture) {
         });
     }, 0);
 
+    return def.promise;
+};
+
+/**
+ * Delete profile picture of the current user.
+ * @returns {Max.Promise} A promise object returning 'ok' or reason of failure.
+ */
+Max.User.prototype.deleteAvatar = function() {
+    var def = Max.Request({
+        method: 'DELETE',
+        url: '/com.magnet.server/file/delete/' + mCurrentUser.userId
+    }, function() {
+        var userObj = Max.Utils.mergeObj(mCurrentUser, {
+            password: null,
+            extras: { hasAvatar: false }
+        });
+
+        mCurrentUser.updateProfile(userObj).success(function() {
+            def.resolve('ok');
+        }).error(function(e) {
+            def.reject(e);
+        });
+    }, function() {
+        def.reject.apply(def, arguments);
+    });
     return def.promise;
 };

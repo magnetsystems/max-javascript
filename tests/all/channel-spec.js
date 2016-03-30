@@ -851,7 +851,7 @@ describe('Channel addSubscribers', function() {
             Max.Request.restore();
             done();
         }).error(function(e) {
-            expect(e).toEqual('insufficient privileges');
+            expect(e).toEqual('forbidden');
             Max.Request.restore();
             done();
         });
@@ -942,7 +942,7 @@ describe('Channel removeSubscribers', function() {
             Max.Request.restore();
             done();
         }).error(function(e) {
-            expect(e).toEqual('insufficient privileges');
+            expect(e).toEqual('forbidden');
             Max.Request.restore();
             done();
         });
@@ -1715,7 +1715,7 @@ describe('Channel setTags', function() {
             expect(message).toEqual('failed-test');
             done();
         }).error(function(e) {
-            expect(e).toEqual('missing tags property');
+            expect(e).toEqual('invalid tags');
             done();
         });
     });
@@ -1858,7 +1858,7 @@ describe('Channel deleteMessage', function() {
         channel.deleteMessage(messageId).success(function(msg) {
             expect(msg).toEqual('failed-test');
         }).error(function(e) {
-            expect(e).toEqual('insufficient privileges');
+            expect(e).toEqual('forbidden');
             done();
         });
     });

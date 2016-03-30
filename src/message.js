@@ -123,7 +123,7 @@ Max.MMXClient = {
         var initEnd = false;
 
         setTimeout(function() {
-            if (!mCurrentUser) return def.reject('session expired');
+            if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
             if (self.connectionEmitter) return def.reject('already connected');
 
             self.connectionEmitter = {};
@@ -204,7 +204,7 @@ Max.MMXClient = {
         var def = new Max.Deferred();
         var userId = mCurrentUser.userId;
         Max.Device.register().success(function() {
-            if (!mCurrentUser) return def.reject('session expired');
+            if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
             function register() {
                 Max.MMXClient.connect(userId, accessToken).success(function() {
                     def.resolve(mCurrentUser, mCurrentDevice);
@@ -489,9 +489,9 @@ Max.Message.prototype.send = function() {
         if (!self.recipients.length)
             return def.reject('no recipients');
         if (!mCurrentUser)
-            return def.reject('session expired');
+            return def.reject(Max.Error.SESSION_EXPIRED);
         if (!mXMPPConnection || !mXMPPConnection.connected)
-            return def.reject('not connected');
+            return def.reject(Max.Error.NOT_CONNECTED);
 
         function sendMessage(msgMeta) {
             self.sender = {
@@ -646,10 +646,10 @@ Max.Invite.prototype.respond = function(accepted, comments) {
     var def = new Max.Deferred();
 
     setTimeout(function() {
-        if (!mCurrentUser) return def.reject('session expired');
-        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject('not connected');
-        if (!self.channel) return def.reject('missing channel information');
-        if (accepted === null || typeof accepted === 'undefined') return def.reject('accepted property missing');
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
+        if (!self.channel) return def.reject(Max.Error.INVALID_CHANNEL);
+        if (accepted === null || typeof accepted === 'undefined') return def.reject(Max.Error.INVALID_ACCEPTED);
 
         self.invitationMeta.inviteResponseText = comments;
         self.invitationMeta.inviteIsAccepted = accepted + '';
