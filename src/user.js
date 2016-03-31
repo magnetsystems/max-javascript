@@ -391,7 +391,7 @@ Max.User.getUserInfo = function() {
  * @param {object} [userObj.extras] Additional custom metadata to associate with the user.
  * @returns {Max.Promise} A promise object returning the updated {Max.User} or reason of failure.
  */
-Max.User.prototype.updateProfile = function(userObj) {
+Max.User.updateProfile = function(userObj) {
     userObj = userObj || {};
     userObj = Max.Utils.mergeObj({}, userObj);
 
@@ -452,6 +452,14 @@ Max.User.clearSession = function(reason) {
 };
 
 /**
+ * Get profile picture url of the current user.
+ * @returns {string} User profile download Url.
+ */
+Max.User.getAvatarUrl = function() {
+    return mCurrentUser ? mCurrentUser.getAvatarUrl() : null;
+};
+
+/**
  * Get user profile picture url.
  * @returns {string} User profile download Url.
  */
@@ -467,7 +475,7 @@ Max.User.prototype.getAvatarUrl = function() {
  * @param {File} picture A File object created by an input[type="file"] HTML element.
  * @returns {string} User profile download URL
  */
-Max.User.prototype.setAvatar = function(picture) {
+Max.User.setAvatar = function(picture) {
     var self = this, userObj;
     var def = new Max.Deferred();
 
@@ -487,7 +495,7 @@ Max.User.prototype.setAvatar = function(picture) {
                     extras: { hasAvatar: true }
                 });
 
-                mCurrentUser.updateProfile(userObj).success(function() {
+                Max.User.updateProfile(userObj).success(function() {
                     def.resolve(self.getAvatarUrl());
                 }).error(function(e) {
                     def.reject(e);
@@ -505,7 +513,7 @@ Max.User.prototype.setAvatar = function(picture) {
  * Delete profile picture of the current user.
  * @returns {Max.Promise} A promise object returning 'ok' or reason of failure.
  */
-Max.User.prototype.deleteAvatar = function() {
+Max.User.deleteAvatar = function() {
     var def = Max.Request({
         method: 'DELETE',
         url: '/com.magnet.server/file/delete/' + mCurrentUser.userId,
@@ -518,7 +526,7 @@ Max.User.prototype.deleteAvatar = function() {
             extras: { hasAvatar: false }
         });
 
-        mCurrentUser.updateProfile(userObj).success(function() {
+        Max.User.updateProfile(userObj).success(function() {
             def.resolve('ok');
         }).error(function(e) {
             def.reject(e);
