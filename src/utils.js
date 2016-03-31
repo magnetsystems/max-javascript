@@ -1611,7 +1611,7 @@ Max.Error = {
     INVALID_MESSAGE_ID: 'invalid messageID',
     INVALID_TAGS: 'invalid tags',
     INVALID_CHANNEL_NAME: 'channel name required',
-    INVALID_PUBLISH_PERMISSIONS: 'publishPermission must be in ["anyone", "owner", "subscribers"]',
+    INVALID_PUBLISH_PERMISSIONS: 'publishPermissions must be in ["anyone", "owner", "subscribers"]',
     INVALID_ACCEPTED: 'accepted property missing'
 };
 
