@@ -523,7 +523,7 @@ Max.User.deleteAvatar = function() {
     }, function() {
         var userObj = Max.Utils.mergeObj(mCurrentUser, {
             password: null,
-            extras: { hasAvatar: false }
+            extras: { hasAvatar: null }
         });
 
         Max.User.updateProfile(userObj).success(function() {
