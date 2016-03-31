@@ -206,9 +206,9 @@ Max.Channel.create = function(channelObj) {
         if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
         if (!channelObj.name)
             return def.reject(Max.Error.INVALID_CHANNEL_NAME);
-        if (channelObj.publishPermission) channelObj.publishPermissions = channelObj.publishPermission;
-        if (channelObj.publishPermissions
-            && (['anyone', 'owner', 'subscribers'].indexOf(channelObj.publishPermissions) == -1))
+        if (channelObj.publishPermissions) channelObj.publishPermission = channelObj.publishPermissions;
+        if (channelObj.publishPermission
+            && (['anyone', 'owner', 'subscribers'].indexOf(channelObj.publishPermission) == -1))
             return def.reject(Max.Error.INVALID_PUBLISH_PERMISSIONS);
 
         channelObj.channelName = channelObj.name;
@@ -217,8 +217,8 @@ Max.Channel.create = function(channelObj) {
             ? !channelObj.isPublic : false;
         if (channelObj.summary) channelObj.description = channelObj.summary;
         if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userId;
-        if (!channelObj.publishPermissions && channelObj.isPublic) channelObj.publishPermissions = 'anyone';
-        if (!channelObj.publishPermissions && !channelObj.isPublic) channelObj.publishPermissions = 'subscribers';
+        if (!channelObj.publishPermission && channelObj.isPublic) channelObj.publishPermission = 'anyone';
+        if (!channelObj.publishPermission && !channelObj.isPublic) channelObj.publishPermission = 'subscribers';
 
         Max.Request({
             method: 'POST',
