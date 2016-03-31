@@ -7,7 +7,7 @@
  * @property {boolean} isPublic True if the channel public.
  * @property {boolean} isSubscribed True if the current user is subscribed to the channel.
  * @property {string} [summary] An optional summary of the channel.
- * @property {string} [publishPermission] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
+ * @property {string} [publishPermissions] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
  * @property {string} [ownerUserID] The userID for the owner/creator of the channel.
  */
 Max.Channel = function(channelObj) {
@@ -32,9 +32,9 @@ Max.Channel = function(channelObj) {
         channelObj.publishPermissions = channelObj.publisherType;
         delete channelObj.publisherType;
     }
-    if (channelObj.publishPermissions) {
-        channelObj.publishPermission = channelObj.publishPermissions;
-        delete channelObj.publishPermissions;
+    if (channelObj.publishPermission) {
+        channelObj.publishPermissions = channelObj.publishPermission;
+        delete channelObj.publishPermission;
     }
     if (channelObj.privateChannel !== false && channelObj.privateChannel !== true)
         channelObj.privateChannel = channelObj.userId ? true : false;
@@ -196,7 +196,7 @@ Max.Channel.setSubscriptionState = function(channelOrChannels, cb) {
  * @param {string} channelObj.name The name of the channel.
  * @param {string} [channelObj.summary] An optional summary of the channel.
  * @param {boolean} [channelObj.isPublic] Set to true to make the channel public. Defaults to true.
- * @param {string} [channelObj.publishPermission] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish. Defaults to 'subscribers' only if private channel, and 'anyone' if public channel.
+ * @param {string} [channelObj.publishPermissions] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish. Defaults to 'subscribers' only if private channel, and 'anyone' if public channel.
  * @returns {Max.Promise} A promise object returning the new {Max.Channel} or reason of failure.
  */
 Max.Channel.create = function(channelObj) {
@@ -206,8 +206,9 @@ Max.Channel.create = function(channelObj) {
         if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
         if (!channelObj.name)
             return def.reject(Max.Error.INVALID_CHANNEL_NAME);
-        if (channelObj.publishPermission
-            && (['anyone', 'owner', 'subscribers'].indexOf(channelObj.publishPermission) == -1))
+        if (channelObj.publishPermission) channelObj.publishPermissions = channelObj.publishPermission;
+        if (channelObj.publishPermissions
+            && (['anyone', 'owner', 'subscribers'].indexOf(channelObj.publishPermissions) == -1))
             return def.reject(Max.Error.INVALID_PUBLISH_PERMISSIONS);
 
         channelObj.channelName = channelObj.name;
@@ -216,7 +217,6 @@ Max.Channel.create = function(channelObj) {
             ? !channelObj.isPublic : false;
         if (channelObj.summary) channelObj.description = channelObj.summary;
         if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userId;
-        if (channelObj.publishPermission) channelObj.publishPermissions = channelObj.publishPermission;
         if (!channelObj.publishPermissions && channelObj.isPublic) channelObj.publishPermissions = 'anyone';
         if (!channelObj.publishPermissions && !channelObj.isPublic) channelObj.publishPermissions = 'subscribers';
 
@@ -1015,7 +1015,7 @@ Max.Channel.prototype.inviteUsers = function(recipients, comments) {
             channelName: self.name,
             channelIsPublic: self.isPublic+'',
             channelOwnerId: self.ownerUserID,
-            channelPublishPermissions: self.publishPermission,
+            channelPublishPermissions: self.publishPermissions,
             channelCreationDate: self.creationDate
             //_attachments: 'encoded-JSON-string'   // optional, see Attachments section
         }, recipients);

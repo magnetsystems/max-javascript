@@ -184,7 +184,7 @@ describe('Channel create', function() {
     it('should create a private channel', function(done) {
         var channelObj = {
             "name": channelName,
-            publishPermission: 'subscribers',
+            publishPermissions: 'subscribers',
             isPublic: false
         };
         var requestStub = sinon.stub(Max, 'Request');
@@ -205,7 +205,7 @@ describe('Channel create', function() {
     it('should fail creation given invalid publish permissions', function(done) {
         var channelObj = {
             "name": channelName,
-            publishPermission: 'myself',
+            publishPermissions: 'myself',
             isPublic: false
         };
         var requestStub = sinon.stub(Max, 'Request');
@@ -215,7 +215,7 @@ describe('Channel create', function() {
             Max.Request.restore();
             done();
         }).error(function(e) {
-            expect(e).toContain('publishPermission must be');
+            expect(e).toContain('publishPermissions must be');
             Max.Request.restore();
             done();
         });
@@ -223,7 +223,7 @@ describe('Channel create', function() {
 
     it('should fail creation if name not set', function(done) {
         var channelObj = {
-            publishPermission: 'myself',
+            publishPermissions: 'myself',
             isPublic: false
         };
         var requestStub = sinon.stub(Max, 'Request');
