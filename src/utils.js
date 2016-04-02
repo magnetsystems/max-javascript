@@ -1541,32 +1541,45 @@ if (typeof window !== 'undefined' && typeof window.onError !== 'undefined') {
  * @ignore
  */
 var Cookie = {
+    storeId: 'magnet-max-session',
     create : function(name, val, days) {
-        if (days) {
-            var date = new Date();
-            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-            var expires = '; expires=' + date.toGMTString();
+        if (window && window.process && window.process.type && window.localStorage) {
+            localStorage.setItem(encodeURIComponent(name), encodeURIComponent(val));
         } else {
-            var expires = '';
+            if (days) {
+                var date = new Date();
+                date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+                var expires = '; expires=' + date.toGMTString();
+            } else {
+                var expires = '';
+            }
+            document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(val) + expires + '; path=/';
         }
-        document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(val) + expires + '; path=/';
     },
     get : function(name) {
-        var nameEQ = encodeURIComponent(name) + '=';
-        var ca = document.cookie.split(';');
-        for (var i=0;i<ca.length;i++) {
-            var c = ca[i];
-            while (c.charAt(0) == ' ') {
-                c = c.substring(1, c.length)
-            };
-            if (c.indexOf(nameEQ) == 0) {
-                return decodeURIComponent(c.substring(nameEQ.length, c.length))
+        if (window && window.process && window.process.type && window.localStorage) {
+            return localStorage.getItem(encodeURIComponent(name));
+        } else {
+            var nameEQ = encodeURIComponent(name) + '=';
+            var ca = document.cookie.split(';');
+            for (var i=0;i<ca.length;i++) {
+                var c = ca[i];
+                while (c.charAt(0) == ' ') {
+                    c = c.substring(1, c.length)
+                };
+                if (c.indexOf(nameEQ) == 0) {
+                    return decodeURIComponent(c.substring(nameEQ.length, c.length))
+                }
             }
         }
         return null;
     },
     remove : function(name) {
-        this.create(name, "", -1);
+        if (window && window.process && window.process.type && window.localStorage) {
+            return localStorage.removeItem(decodeURIComponent(name));
+        } else {
+            this.create(name, "", -1);
+        }
     }
 };
 Max.Cookie = Cookie;
