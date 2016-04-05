@@ -1840,30 +1840,6 @@ describe('Channel deleteMessage', function() {
         Max.App.initialized = true;
     });
 
-    it('should not delete if not channel owner', function (done) {
-        var channel = new Max.Channel({
-            "isCollection": false,
-            "description": "",
-            "isPersistent": true,
-            "maxItems": -1,
-            "maxPayloadSize": 2097152,
-            "creationDate": "2016-02-26T21:27:23.014Z",
-            "modificationDate": "2016-02-26T21:27:23.015Z",
-            "publisherType": "subscribers",
-            "userId": 'other user id',
-            "subscriptionEnabled": true,
-            "topicName": channelName,
-            "privateChannel": true
-        });
-        var messageId = 'test-message-id';
-        channel.deleteMessage(messageId).success(function(msg) {
-            expect(msg).toEqual('failed-test');
-        }).error(function(e) {
-            expect(e).toEqual('forbidden');
-            done();
-        });
-    });
-
     it('should not delete if invalid msg id', function (done) {
         var channel = new Max.Channel({
             "isCollection": false,
