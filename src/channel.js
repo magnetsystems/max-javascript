@@ -1044,7 +1044,6 @@ Max.Channel.prototype.deleteMessage = function(messageID) {
     setTimeout(function() {
         if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
         if (!self.name) return def.reject(Max.Error.INVALID_CHANNEL);
-        if (!self.isOwner()) return def.reject(Max.Error.FORBIDDEN);
         if (!messageID) return def.reject(Max.Error.INVALID_MESSAGE_ID);
 
         Max.Request({
