@@ -1,5 +1,16 @@
 var x2js = new X2JS();
 
+if (!x2js.xml2json) {
+    x2js.xml2json = x2js.dom2js;
+}
+if (!x2js.xml_str2json) {
+    var xmlParser = require("xmldom").DOMParser;
+    x2js.xml_str2json = function(xmlStr) {
+        var domNode = new xmlParser().parseFromString(xmlStr ,'text/xml');
+        return domNode ? x2js.xml2json(domNode) : null;
+    };
+}
+
 /**
  * @method
  * @desc Start receiving messages.

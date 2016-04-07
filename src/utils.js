@@ -458,6 +458,20 @@ Max.Utils = {
      * @returns {string} browser and version.
      */
     getBrowser : function(userAgent, appVersion, appName) {
+        if (Max.Utils.isNode) {
+            var os = require('os');
+            var interfaces = os.networkInterfaces();
+            var addresses = [];
+            for (var k in interfaces) {
+                for (var k2 in interfaces[k]) {
+                    var address = interfaces[k][k2];
+                    if (address.family === 'IPv4' && !address.internal) {
+                        addresses.push(address.address);
+                    }
+                }
+            }
+            return (addresses.length ? addresses[0] : '') + ' ' + require('os').hostname();
+        }
         //browser
         var nVer = appVersion || navigator.appVersion;
         var nAgt = userAgent || navigator.userAgent;
@@ -536,6 +550,13 @@ Max.Utils = {
      * @returns {string} operating system and version.
      */
     getOS : function() {
+        if (Max.Utils.isNode) {
+            return {
+                os: 'node.js',
+                osVersion: process.version
+            }
+        }
+
         var osVersion = '-';
         var nVer = navigator.appVersion;
         var nAgt = navigator.userAgent;
@@ -1541,9 +1562,12 @@ if (typeof window !== 'undefined' && typeof window.onError !== 'undefined') {
  * @ignore
  */
 var Cookie = {
+    serverStore: {},
     storeId: 'magnet-max-session',
     create : function(name, val, days) {
-        if (window && window.process && window.process.type && window.localStorage) {
+        if (Max.Utils.isNode) {
+            this.serverStore[encodeURIComponent(name)] = encodeURIComponent(val);
+        } else if (window && window.process && window.process.type && window.localStorage) {
             localStorage.setItem(encodeURIComponent(name), encodeURIComponent(val));
         } else {
             if (days) {
@@ -1557,7 +1581,9 @@ var Cookie = {
         }
     },
     get : function(name) {
-        if (window && window.process && window.process.type && window.localStorage) {
+        if (Max.Utils.isNode) {
+            return this.serverStore[encodeURIComponent(name)];
+        } else if (window && window.process && window.process.type && window.localStorage) {
             return localStorage.getItem(encodeURIComponent(name));
         } else {
             var nameEQ = encodeURIComponent(name) + '=';
@@ -1566,7 +1592,7 @@ var Cookie = {
                 var c = ca[i];
                 while (c.charAt(0) == ' ') {
                     c = c.substring(1, c.length)
-                };
+                }
                 if (c.indexOf(nameEQ) == 0) {
                     return decodeURIComponent(c.substring(nameEQ.length, c.length))
                 }
@@ -1575,7 +1601,9 @@ var Cookie = {
         return null;
     },
     remove : function(name) {
-        if (window && window.process && window.process.type && window.localStorage) {
+        if (Max.Utils.isNode) {
+            delete this.serverStore[encodeURIComponent(name)];
+        } else if (window && window.process && window.process.type && window.localStorage) {
             return localStorage.removeItem(decodeURIComponent(name));
         } else {
             this.create(name, "", -1);
@@ -1699,3 +1727,16 @@ Max.setConnection = function(conn) {
 Max.getStore = function() {
     return mListenerStore || null;
 };
+
+if (Max.Utils.isNode) {
+    var strophe = require('./strophe-node').Strophe;
+    Strophe = typeof Strophe !== 'undefined' ? Strophe : strophe.Strophe;
+
+    $build = strophe.$build;
+    $msg = strophe.$msg;
+    $iq = strophe.$iq;
+    $pres = strophe.$pres;
+
+    X2JS = typeof X2JS !== 'undefined' ? X2JS : require('x2js');
+}
+

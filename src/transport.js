@@ -80,7 +80,9 @@ Max.Transport = {
         options = options || {};
         metadata._path = metadata._path || metadata.path;
         metadata._path = (metadata.local === true || /^(ftp|http|https):/.test(metadata._path) === true) ? metadata._path : Max.Config.baseUrl+metadata._path;
-        if (typeof jQuery !== 'undefined' && metadata.returnType != 'binary' && !metadata.isBinary) {
+        if (Max.Utils.isNode) {
+            this.requestNode(body, metadata, options, callback, failback);
+        } else if (typeof jQuery !== 'undefined' && metadata.returnType != 'binary' && !metadata.isBinary) {
             this.requestJQuery(body, metadata, options, callback, failback);
         } else if (XMLHttpRequest !== 'undefined') {
             this.requestXHR(body, metadata, options, callback, failback);
@@ -204,6 +206,103 @@ Max.Transport = {
                 xhr.setRequestHeader(key, metadata.headers[key]);
             }
         xhr.send(reqBody);
+    },
+    /**
+     * Initialize a transport with Node.js. For NodeJS only.
+     * @param {object|string|number} [body] The body of the request.
+     * @param {object} metadata Request metadata.
+     * @param {object} options Request options.
+     * @param {function} [callback] Executes if the request succeeded.
+     * @param {function} [failback] Executes if the request failed.
+     */
+    requestNode : function(body, metadata, options, callback, failback) {
+        var urlParser = require('url');
+        var reqObj = urlParser.parse(metadata._path);
+        var headers = Max.Utils.mergeObj({
+            'Content-Type' : metadata.contentType
+        }, metadata.headers);
+        metadata.protocol = reqObj.protocol;
+        if (reqObj.hostname) {
+            this.requestNodeExec(body, metadata, {
+                host               : reqObj.hostname,
+                port               : parseInt(reqObj.port || (reqObj.protocol == 'https:' ? 443 : null)),
+                path               : reqObj.path,
+                method             : metadata.method,
+                rejectUnauthorized : false,
+                requestCert        : false,
+                headers            : headers
+            }, options, callback, failback);
+        } else {
+            if (typeof failback === typeof Function) {
+                failback('error-parsing-url', {
+                    body : body,
+                    info : {
+                        url : metadata._path
+                    }
+                });
+            }
+        }
+    },
+    /**
+     * Transport with Node.js over HTTP/SSL protocol with REST. For NodeJS only.
+     * @param {object|string|number} [body] The body of the request.
+     * @param {object} metadata Request metadata.
+     * @param {object} httpRequestmetadata http.request metadata.
+     * @param {object} options Request options.
+     * @param {function} [callback] Executes if the request succeeded.
+     * @param {function} [failback] Executes if the request failed.
+     */
+    requestNodeExec : function(body, metadata, httpRequestmetadata, options, callback, failback) {
+        var me = this, http = require('http'), https = require('https');
+        var reqBody = me.parseBody(metadata.contentType, body);
+        options.call.transportHandle = (metadata.protocol == 'https:' ? https : http)
+            .request(httpRequestmetadata, function(res) {
+            var resBody = '';
+            var details = {
+                body : reqBody,
+                info : {
+                    metadata : metadata,
+                    url      : metadata._path,
+                    request  : options.call.transportHandle,
+                    response : res
+                },
+                contentType : res.headers['content-type'],
+                status      : res.statusCode
+            };
+            res.setEncoding('utf8');
+            res.on('data', function(chunk) {
+                resBody += chunk;
+            });
+            res.on('end', function() {
+                try {
+                    resBody = JSON.parse(resBody);
+                    resBody = resBody.result || resBody;
+                } catch (e) {}
+                if (me.isSuccess(res.statusCode)) {
+                    if (typeof callback === typeof Function)
+                        callback(resBody, details);
+                } else {
+                    if (typeof failback === typeof Function)
+                        failback(resBody, details);
+                }
+            });
+        });
+        options.call.transportHandle.on('error', function(e) {
+            if (typeof failback === typeof Function) {
+                var details = {
+                    body : body,
+                    info : {
+                        metadata : metadata,
+                        url      : metadata._path,
+                        request  : options.call.transportHandle
+                    },
+                    status : 0
+                };
+                failback(e, details);
+            }
+        });
+        if (body) options.call.transportHandle.write(reqBody, metadata.isBinary === true ? 'binary' : 'utf8');
+        options.call.transportHandle.end();
     },
     /**
      * Determines whether the status code is a success or failure.

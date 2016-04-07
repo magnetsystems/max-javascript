@@ -16,6 +16,19 @@ module.exports = function(grunt){
         'src/core-footer.js'
     ];
 
+    var fullServer = [
+        'src/core.js',
+        'src/utils.js',
+        'src/bf-oauth2.js',
+        'src/transport.js',
+        'src/attachment.js',
+        'src/user.js',
+        'src/device.js',
+        'src/message.js',
+        'src/channel.js',
+        'src/core-footer.js'
+    ];
+
     var plugins = [
         'src/plugins/plugins.js',
         'src/plugins/strophe.min.js',
@@ -45,8 +58,8 @@ module.exports = function(grunt){
                 src  : full,
                 dest : 'target/<%= pkg.name %>-<%= pkg.version %>.js'
             },
-            test : {
-                src  : full,
+            testing : {
+                src  : fullServer,
                 dest : 'testing/<%= pkg.name %>.js'
             },
             noversion : {
