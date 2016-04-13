@@ -195,13 +195,19 @@ Max.MMXClient = {
         }
     },
     // handle disconnection gracefully
-    bindDisconnect: function(callback, skipLogout) {
+    bindDisconnect: function(callback, noReconnect) {
         var self = this;
+        self.connectionEmitter.unbind(Strophe.Status.DISCONNECTED);
         self.connectionEmitter.on(Strophe.Status.DISCONNECTED, function() {
             Max.Log.info('Max disconnected');
             self.connectionEmitter = null;
             mXMPPConnection = null;
-            if (!skipLogout && mCurrentUser) Max.User.logout();
+            var token = Cookie.get('magnet-max-auth-token');
+            if (mCurrentUser && token && !noReconnect) {
+                Max.MMXClient.connect(mCurrentUser.userId, token).error(function() {
+                    Max.User.logout();
+                });
+            }
             if (typeof callback === typeof Function) return callback();
         });
     },
@@ -213,10 +219,10 @@ Max.MMXClient = {
     registerDeviceAndConnect: function(accessToken) {
         var self = this;
         var def = new Max.Deferred();
-        var userId = mCurrentUser.userId;
         Max.Device.register().success(function() {
             if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
-            function register() {
+            function connect() {
+                var userId = mCurrentUser.userId;
                 Max.MMXClient.connect(userId, accessToken).success(function() {
                     def.resolve(mCurrentUser, mCurrentDevice);
                 }).error(function() {
@@ -224,11 +230,10 @@ Max.MMXClient = {
                 });
             }
             if (!mXMPPConnection) {
-                register();
+                connect();
             } else {
-                self.connectionEmitter.unbind(Strophe.Status.DISCONNECTED);
                 self.bindDisconnect(function() {
-                    register();
+                    connect();
                 }, true);
                 Max.MMXClient.disconnect();
             }
