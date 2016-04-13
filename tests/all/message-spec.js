@@ -374,15 +374,19 @@ describe('MMXClient connectionHandler', function() {
 
 describe('MMXClient bindDisconnect', function() {
 
-    it('should handle disconnection gracefully and logout', function (done) {
-        var logoutStub = sinon.stub(Max.User, 'logout');
+    it('should handle disconnection gracefully and attempt to reconnect', function (done) {
+        Max.Cookie.create('magnet-max-auth-token', '1111', 1);
+        var connectStub = sinon.stub(Max.MMXClient, 'connect', function() {
+            var d = new Max.Deferred();
+            return d.promise;
+        });
         Max.setUser({});
         Max.MMXClient.connectionEmitter = {};
         Max.Events.create(Max.MMXClient.connectionEmitter);
         Max.MMXClient.bindDisconnect(function() {
             expect(Max.MMXClient.connectionEmitter).toEqual(null);
-            expect(logoutStub.calledOnce).toEqual(true);
-            Max.User.logout.restore();
+            expect(connectStub.calledOnce).toEqual(true);
+            Max.MMXClient.connect.restore();
             done();
         });
         Max.MMXClient.connectionEmitter.invoke(6);

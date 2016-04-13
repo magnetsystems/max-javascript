@@ -442,11 +442,11 @@ Max.User.logout = function() {
  * @ignore
  */
 Max.User.clearSession = function(reason) {
-    Max.MMXClient.disconnect();
     mCurrentUser = null;
     Max.App.hatCredentials = null;
     Cookie.remove('magnet-max-auth-token');
     Cookie.remove('magnet-max-refresh-token');
+    Max.MMXClient.disconnect();
     ChannelStore.clear();
     Max.invoke('not-authenticated', reason);
 };
