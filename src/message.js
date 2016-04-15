@@ -49,6 +49,8 @@ Max.registerListener = function(listener) {
         return true;
 
     }, null, 'message', null, null,  null);
+
+    mListenerHandlerStore[listener.id] = listener;
 };
 
 /**
@@ -58,8 +60,10 @@ Max.registerListener = function(listener) {
  * during creation.
  */
 Max.unregisterListener = function(listenerOrListenerId) {
-    if (!mListenerStore || !listenerOrListenerId || !mXMPPConnection || !mXMPPConnection.deleteHandler) return;
+    if (!listenerOrListenerId) return;
     if (typeof listenerOrListenerId === 'object') listenerOrListenerId = listenerOrListenerId.id;
+    delete mListenerHandlerStore[listenerOrListenerId];
+    if (!mListenerStore || !mXMPPConnection || !mXMPPConnection.deleteHandler) return;
     mXMPPConnection.deleteHandler(mListenerStore[listenerOrListenerId]);
     delete mListenerStore[listenerOrListenerId];
 };
@@ -193,7 +197,11 @@ Max.MMXClient = {
             mXMPPConnection = null;
             var token = Cookie.get('magnet-max-auth-token');
             if (mCurrentUser && token && !noReconnect) {
-                Max.MMXClient.connect(mCurrentUser.userId, token).error(function() {
+                Max.MMXClient.connect(mCurrentUser.userId, token).success(function() {
+                    for (var lid in mListenerHandlerStore) {
+                        Max.registerListener(mListenerHandlerStore[lid]);
+                    }
+                }).error(function() {
                     Max.User.logout();
                 });
             }

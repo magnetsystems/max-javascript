@@ -1494,7 +1494,7 @@ describe('init', function(){
         var clientSecret = 'test-client-secret';
         var baseUrl = 'http://localhost:7777';
         Max.App.initialized = false;
-		var checkInWithDeviceStub  = sinon.stub(Max.Device, 'checkInWithDevice', function(cb) {
+		var checkInWithDeviceStub = sinon.stub(Max.Device, 'checkInWithDevice', function(cb) {
             cb();
         });
 		var loginWithAccessTokenStub = sinon.stub(Max.User, 'loginWithAccessToken', function(cb) {
@@ -1521,11 +1521,14 @@ describe('init', function(){
         var clientSecret = 'test-client-secret';
         var baseUrl = 'http://localhost:7777';
         Max.App.initialized = false;
-		var checkInWithDeviceStub  = sinon.stub(Max.Device, 'checkInWithDevice', function(cb) {
+		var checkInWithDeviceStub = sinon.stub(Max.Device, 'checkInWithDevice', function(cb) {
             cb();
         });
 		var loginWithAccessTokenStub = sinon.stub(Max.User, 'loginWithAccessToken', function(cb) {
-            cb('auth token missing');
+            cb(Max.Error.INVALID_CREDENTIALS);
+        });
+		var loginWithRefreshTokenStub = sinon.stub(Max.User, 'loginWithRefreshToken', function(req, cb, fb) {
+            fb(Max.Error.INVALID_CREDENTIALS);
         });
         Max.setUser({
             userId: 'test-user-id'
@@ -1540,10 +1543,12 @@ describe('init', function(){
         expect(Max.Config.baseUrl).toEqual(baseUrl);
         expect(Max.Device.checkInWithDevice.called).toEqual(true);
         expect(Max.User.loginWithAccessToken.called).toEqual(true);
+        expect(Max.User.loginWithRefreshToken.called).toEqual(true);
         expect(Max.getCurrentUser()).toEqual(null);
         expect(Max.App.initialized).toEqual(true);
 		Max.Device.checkInWithDevice.restore();
 		Max.User.loginWithAccessToken.restore();
+		Max.User.loginWithRefreshToken.restore();
         done();
     });
 

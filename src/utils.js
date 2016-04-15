@@ -1620,6 +1620,7 @@ Max.Error = {
     FORBIDDEN: 'forbidden',
     SESSION_EXPIRED: 'session expired',
     NOT_CONNECTED: 'not connected',
+    INVALID_CREDENTIALS: 'invalid credentials',
     INVALID_CHANNEL: 'invalid channel',
     INVALID_MESSAGE_ID: 'invalid messageID',
     INVALID_TAGS: 'invalid tags',
@@ -1633,6 +1634,7 @@ var mCurrentUser = null;
 var mXMPPConnection = null;
 var MMS_DEVICE_ID = '1111-2222-3333-4444';
 var mListenerStore = {};
+var mListenerHandlerStore = {};
 var mChannelStore = {};
 
 Max.Events.create(Max);
@@ -1648,12 +1650,22 @@ Max.init = function(cfg) {
     Max.App.clientSecret = cfg.clientSecret;
     Max.Config.baseUrl = cfg.baseUrl || Max.Config.baseUrl;
 
+    function done() {
+        Max.App.initialized = true;
+        Max.Log.info('sdk initialized');
+    }
+
     Max.Device.checkInWithDevice(function(deviceErr) {
         Max.User.loginWithAccessToken(function(tokenErr) {
-            if (deviceErr || tokenErr)  Max.User.clearSession();
+            if (!deviceErr && !tokenErr)
+                return done();
 
-            Max.App.initialized = true;
-            Max.Log.info('sdk initialized');
+            Max.User.loginWithRefreshToken(null, function() {
+                done();
+            }, function() {
+                Max.User.clearSession();
+                done();
+            });
         });
     });
 };

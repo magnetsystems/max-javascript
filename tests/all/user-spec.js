@@ -230,22 +230,8 @@ describe('User loginWithRefreshToken', function() {
     it('should login user with refresh token', function (done) {
         Max.Cookie.create('magnet-max-refresh-token', 'test-refresh-token', 1);
         var regClient = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect');
-        var def = new Max.Deferred();
-        regClient.returns(def.promise);
-        Max.User.loginWithRefreshToken().success(function (res) {
-            expect(res).toEqual('ok');
-            Max.MMXClient.registerDeviceAndConnect.restore();
-            done();
-        }).error(function (e) {
-            expect(e).toEqual('failed-test');
-            Max.MMXClient.registerDeviceAndConnect.restore();
-            done();
-        });
-        setTimeout(function () {
-            expect(requests.length).toEqual(1);
-            requests[0].respond(200, {
-                'Content-Type': 'application/json'
-            }, JSON.stringify({
+        var RequestClient = sinon.stub(Max, 'Request', function(req, cb, fb) {
+            cb({
                 "token_type": "USER",
                 "expires_in": 7200,
                 "access_token": "q2Q0MONci01arwnG1554SrktHnbOTS",
@@ -264,31 +250,46 @@ describe('User loginWithRefreshToken', function() {
                     "otpCode": "n/a",
                     "userAccountData": {}
                 }
-            }));
+            });
+        });
+        var def = new Max.Deferred();
+        regClient.returns(def.promise);
+        Max.User.loginWithRefreshToken().success(function (res) {
+            expect(res).toEqual('ok');
+            Max.MMXClient.registerDeviceAndConnect.restore();
+            Max.Request.restore();
+            done();
+        }).error(function (e) {
+            expect(e).toEqual('failed-test');
+            Max.MMXClient.registerDeviceAndConnect.restore();
+            Max.Request.restore();
+            done();
+        });
+        setTimeout(function () {
             def.resolve('ok');
-        }, 5);
+        }, 10);
     });
 
     it('should fail login', function (done) {
         Max.Cookie.create('magnet-max-refresh-token', 'test-refresh-token', 1);
         var regClient = sinon.stub(Max.MMXClient, 'registerDeviceAndConnect');
+        var RequestClient = sinon.stub(Max, 'Request', function(req, cb, fb) {
+            fb(Max.Error.INVALID_CREDENTIALS);
+        });
         var def = new Max.Deferred();
         regClient.returns(def.promise);
         Max.User.loginWithRefreshToken().success(function (res) {
             expect(res).toEqual('failed-test');
             Max.MMXClient.registerDeviceAndConnect.restore();
+            Max.Request.restore();
             done();
         }).error(function (e) {
-            expect(e).toEqual('incorrect credentials');
-            expect(Max.Cookie.get('magnet-max-refresh-token')).toEqual(null);
+            expect(e).toEqual(Max.Error.INVALID_CREDENTIALS);
             Max.MMXClient.registerDeviceAndConnect.restore();
+            Max.Request.restore();
             done();
         });
         setTimeout(function () {
-            expect(requests.length).toEqual(1);
-            requests[0].respond(401, {
-                'Content-Type': 'text/plain'
-            }, 'invalid token');
             def.reject('failed');
         }, 5);
     });
@@ -309,7 +310,7 @@ describe('User loginWithAccessToken', function() {
     it('should return error if token missing', function (done) {
         Max.Cookie.remove('magnet-max-auth-token');
         Max.User.loginWithAccessToken(function(e) {
-            expect(e).toEqual('auth token missing');
+            expect(e).toEqual(Max.Error.INVALID_CREDENTIALS);
             done();
         });
     });
