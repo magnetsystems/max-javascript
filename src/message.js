@@ -114,10 +114,10 @@ Max.MMXClient = {
      * Connect to MMX server via BOSH http-bind.
      * @param {string} userId The currently logged in user's userId (id).
      * @param {string} accessToken The currently logged in user's access token.
-     * @param {object} [connection] Preferred connection.
+     * @param {boolean} [isReconnect] Set to true if the connect was caused by reconnection.
      * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
      */
-    connect: function(userId, accessToken, connection) {
+    connect: function(userId, accessToken, isReconnect) {
         var self = this;
         var def = new Max.Deferred();
         var secure = Max.Config.baseUrl.indexOf('https://') != -1;
@@ -135,7 +135,7 @@ Max.MMXClient = {
             self.bindDisconnect();
 
             mCurrentUser.jid = self.getBaredJid(userId) + '/' + mCurrentDevice.deviceId;
-            mXMPPConnection = connection || new Strophe.Connection(protocol + xmppHost + '/http-bind/', {
+            mXMPPConnection = new Strophe.Connection(protocol + xmppHost + '/http-bind/', {
                 withCredentials: secure
             });
 
@@ -154,7 +154,7 @@ Max.MMXClient = {
                     if (e) return def.reject(e);
 
                     mXMPPConnection.send($pres());
-                    Max.invoke('authenticated', 'ok');
+                    if (!isReconnect) Max.invoke('authenticated', 'ok');
                     def.resolve('ok');
                 });
             });
