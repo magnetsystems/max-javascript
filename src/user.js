@@ -144,9 +144,13 @@ Max.User.login = function(userName, password, rememberMe) {
 
 /**
  * Login automatically if the rememberMe flag was passed during login.
- * @returns {Max.Promise} A promise object returning success report or reason of failure.
+ * @param {Max.Request} [request] Request to retry if login succeeded.
+ * @param {function} [callback] fires upon successful login.
+ * @param {function} [failback] fires upon login failure.
+ * @ignore
  */
 Max.User.loginWithRefreshToken = function(request, callback, failback) {
+    var def = new Max.Deferred();
     var token = Cookie.get('magnet-max-refresh-token');
 
     Cookie.remove('magnet-max-auth-token');
@@ -156,44 +160,54 @@ Max.User.loginWithRefreshToken = function(request, callback, failback) {
     if (request && request.headers && request.headers.Authorization)
         delete request.headers.Authorization;
 
-    var def = Max.Request({
-        method: 'POST',
-        url: '/com.magnet.server/user/newtoken',
-        data: {
-            client_id: Max.App.clientId,
-            refresh_token: token,
-            grant_type: 'refresh_token',
-            device_id: mCurrentDevice.deviceId,
-            scope: 'user'
-        },
-        isLogin: true
-    }, function(data, details) {
-
-        Max.App.hatCredentials = data;
-        mCurrentUser = new Max.User(data.user);
-        Cookie.create('magnet-max-auth-token', data.access_token, 2);
-
-        if (mXMPPConnection) {
-            if (request.url) return Max.Request(request, callback, failback);
-            return def.resolve.apply(def, [mCurrentUser, details]);
+    setTimeout(function() {
+        if (!token) {
+          failback(Max.Error.INVALID_CREDENTIALS);
+          return def.reject(Max.Error.SESSION_EXPIRED);
         }
 
-        Max.MMXClient.registerDeviceAndConnect(data.access_token)
-            .success(function() {
-                if (request.url) return Max.Request(request, callback, failback);
-                def.resolve.apply(def, arguments);
-            })
-            .error(function() {
-                Max.User.clearSession(Max.Error.SESSION_EXPIRED);
-                if (failback) failback(Max.Error.SESSION_EXPIRED);
-                def.reject.apply(def, arguments);
-            });
+        Max.Request({
+            method: 'POST',
+            url: '/com.magnet.server/user/newtoken',
+            data: {
+                client_id: Max.App.clientId,
+                refresh_token: token,
+                grant_type: 'refresh_token',
+                device_id: mCurrentDevice.deviceId,
+                scope: 'user'
+            },
+            bypassReady: true,
+            isLogin: true
+        }, function(data, details) {
 
-    }, function(e, details) {
-        Max.User.clearSession(Max.Error.SESSION_EXPIRED);
-        if (failback) failback(Max.Error.SESSION_EXPIRED);
-        def.reject((details && details.status == 401) ? 'incorrect credentials' : e, details);
-    });
+            Max.App.hatCredentials = data;
+            mCurrentUser = new Max.User(data.user);
+            Cookie.create('magnet-max-auth-token', data.access_token, 2);
+
+            Max.Log.fine('login with refresh token');
+
+            if (mXMPPConnection) {
+                if (request.url) return Max.Request(request, callback, failback);
+                if (callback) callback();
+                return def.resolve.apply(def, [mCurrentUser, details]);
+            }
+
+            Max.MMXClient.registerDeviceAndConnect(data.access_token)
+                .success(function() {
+                    if (request.url) return Max.Request(request, callback, failback);
+                    if (callback) callback();
+                    def.resolve.apply(def, arguments);
+                })
+                .error(function() {
+                    if (failback) failback(Max.Error.SESSION_EXPIRED);
+                    def.reject.apply(def, arguments);
+                });
+
+        }, function(e, details) {
+            if (failback) failback(Max.Error.SESSION_EXPIRED);
+            def.reject((details && details.status == 401) ? Max.Error.INVALID_CREDENTIALS : e, details);
+        });
+    }, 0);
 
     return def.promise;
 };
@@ -205,7 +219,7 @@ Max.User.loginWithRefreshToken = function(request, callback, failback) {
  */
 Max.User.loginWithAccessToken = function(callback) {
     var token = Cookie.get('magnet-max-auth-token');
-    if (!token) return callback('auth token missing');
+    if (!token) return callback(Max.Error.INVALID_CREDENTIALS);
 
     Max.App.hatCredentials = {
         access_token: token
@@ -213,6 +227,8 @@ Max.User.loginWithAccessToken = function(callback) {
 
     Max.User.getUserInfo().success(function(user) {
         mCurrentUser = new Max.User(user);
+
+        Max.Log.fine('login with access token');
 
         Max.MMXClient.registerDeviceAndConnect(token)
             .success(function() {
@@ -446,6 +462,7 @@ Max.User.clearSession = function(reason) {
     Max.App.hatCredentials = null;
     Cookie.remove('magnet-max-auth-token');
     Cookie.remove('magnet-max-refresh-token');
+    mListenerHandlerStore = {};
     Max.MMXClient.disconnect();
     ChannelStore.clear();
     Max.invoke('not-authenticated', reason);
