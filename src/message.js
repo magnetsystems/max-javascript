@@ -197,7 +197,7 @@ Max.MMXClient = {
             mXMPPConnection = null;
             var token = Cookie.get('magnet-max-auth-token');
             if (mCurrentUser && token && !noReconnect) {
-                Max.MMXClient.connect(mCurrentUser.userId, token).success(function() {
+                Max.MMXClient.connect(mCurrentUser.userId, token, true).success(function() {
                     for (var lid in mListenerHandlerStore) {
                         Max.registerListener(mListenerHandlerStore[lid]);
                     }
