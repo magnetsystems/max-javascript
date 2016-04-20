@@ -1100,7 +1100,7 @@ Max.ChannelHelper = {
             mmxMsg.messageID = ary[j].itemId;
             if (ary[j].content) {
                 Max.MessageHelper.attachmentRefsToAttachment(mmxMsg, ary[j].content);
-                mmxMsg.messageContent = ary[j].content;
+                mmxMsg.messageContent = ary[j].content || {};
             }
             ary[j] = mmxMsg;
         }

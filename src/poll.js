@@ -8,7 +8,7 @@
  * @param {string} pollObj.question The question this poll should answer.
  * @param {Max.PollOption[]} pollObj.options A list of {Max.PollOption}.
  * @param {boolean} [pollObj.allowMultiChoice] If enabled, users can select more than one option. Defaults to true.
- * @param {boolean} [pollObj.hideResultsFromOthers] If enabled, only the poll creator can obtain the poll results. Defaults to false.
+ * @param {boolean} [pollObj.hideResultsFromOthers] If enabled, participants cannot obtain results from the poll, and will not receive {Max.PollAnswer} when a participant chooses a poll option. The poll creator can still obtain results using {Max.Poll.get} or poll.refreshResults. Defaults to false.
  * @param {object} [pollObj.extras] A user-defined object used to store arbitrary data will can accessed from a {Max.Poll} instance.
  * @param {Date} [pollObj.endDate] Optionally, specify a date this poll ends. After a poll ends, users can no longer select options.
  * @property {string} pollId Poll identifier.
@@ -16,11 +16,11 @@
  * @property {string} question The question this poll should answer.
  * @property {Max.PollOption[]} options The available poll selection options.
  * @property {boolean} allowMultiChoice If enabled, users can select more than one option.
- * @property {boolean} hideResultsFromOthers If enabled, only the poll creator can obtain the poll results.
+ * @property {boolean} hideResultsFromOthers If enabled, participants cannot obtain results from the poll, and will not receive {Max.PollAnswer} when a participant chooses a poll option. The poll creator can still obtain results using {Max.Poll.get} or poll.refreshResults. Defaults to false.
  * @property {object} extras A user-defined object used to store arbitrary data will can accessed from a {Max.Poll} instance.
+ * @property {Date} startDate The date this poll was created.
  * @property {Date} [endDate] The date this poll ends. After a poll ends, users can no longer select options.
  * @property {string} ownerId User identifier of the poll creator.
- * @property {Max.Channel} channel Channel where the poll was created.
  * @property {Max.PollOption[]} [myVotes] Poll options selected by the current user, if hideResultsFromOthers was set to false.
  */
 Max.Poll = function(pollObj) {
@@ -31,7 +31,8 @@ Max.Poll = function(pollObj) {
         pollObj.hideResultsFromOthers = false;
 
     pollObj.extras = pollObj.extras || {};
-    this.mType = Max.MessageType.POLL;
+    this.TYPE = Max.MessageType.POLL;
+    this.startDate = Max.Utils.dateToISO8601(new Date());
 
     Max.Utils.mergeObj(this, pollObj);
     return this;
@@ -47,8 +48,7 @@ Max.Poll.get = function(pollId) {
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
-        if (!pollId)
-            return def.reject(Max.Error.INVALID_POLL_ID);
+        if (!pollId) return def.reject(Max.Error.INVALID_POLL_ID);
 
         Max.Request({
             method: 'GET',
@@ -127,16 +127,19 @@ Max.Poll.prototype.publish = function(channel) {
 
 /**
  * Choose a option for a poll and publish a message to the channel.
- * @param {Max.PollOption|Max.PollOption[]} pollOptions One or more {Max.PollOption}.
+ * @param {Max.PollOption|Max.PollOption[]} [pollOptions] One or more {Max.PollOption}. If no options are passed, all votes are removed.
  * @returns {Max.Promise} A promise object returning {Max.Message} or reason of failure.
  */
 Max.Poll.prototype.choose = function(pollOptions) {
-    var self = this, surveyAnswers = {answers: []}, def = new Max.Deferred();
+    var self = this, def = new Max.Deferred(), previousOpts = [], currentOpts = [], selectedOpts = [], deselectedOpts = [];
+    var surveyAnswers = {pollId: self.pollId, answers: []};
+    self.myVotes = self.myVotes || [];
+
+    pollOptions = pollOptions || [];
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
-        if (!pollOptions) return def.reject(Max.Error.INVALID_POLL_OPTIONS);
-        if (!self.allowMultiChoice && pollOptions.length && pollOptions.length > 1)
+        if (!self.allowMultiChoice && pollOptions && pollOptions.length && pollOptions.length > 1)
             return def.reject(Max.Error.TOO_MANY_POLL_OPTIONS);
         if (self.endDate < new Date())
             return def.reject(Max.Error.POLL_ENDED);
@@ -144,12 +147,24 @@ Max.Poll.prototype.choose = function(pollOptions) {
         if (!Max.Utils.isArray(pollOptions))
             pollOptions = [pollOptions];
 
+        for (var i=0;i<self.myVotes.length;++i) {
+            previousOpts.push(self.myVotes[i].optionId);
+        }
+
         for (var i=0;i<pollOptions.length;++i) {
+            currentOpts.push(pollOptions[i].optionId);
             surveyAnswers.answers.push({
                 text: pollOptions[i].text,
                 questionId: self.questionId,
                 selectedOptionId: pollOptions[i].optionId
             });
+            if (previousOpts.indexOf(pollOptions[i].optionId) == -1)
+                selectedOpts.push(pollOptions[i]);
+        }
+
+        for (var i=0;i<self.myVotes.length;++i) {
+            if (currentOpts.indexOf(self.myVotes[i].optionId) == -1)
+                deselectedOpts.push(self.myVotes[i]);
         }
 
         Max.Request({
@@ -157,16 +172,18 @@ Max.Poll.prototype.choose = function(pollOptions) {
             url: '/com.magnet.server/surveys/answers/' + self.pollId,
             data: surveyAnswers
         }, function() {
+            self.myVotes = pollOptions;
+            if (!self.hideResultsFromOthers) {
+                var msg = new Max.Message().addPayload(new Max.PollAnswer(self, selectedOpts, deselectedOpts));
 
-            var msg = new Max.Message().addPayload(new Max.PollAnswer(pollOptions));
-
-            self.channel.publish(msg).success(function(data, details) {
-                def.resolve(msg, details);
-            }).error(function() {
-                def.reject.apply(def, arguments);
-            });
-
-            def.resolve.apply(def, arguments);
+                self.channel.publish(msg).success(function(data, details) {
+                    def.resolve(msg, details);
+                }).error(function() {
+                    def.reject.apply(def, arguments);
+                });
+            } else {
+                def.resolve.apply(def, arguments);
+            }
         }, function() {
             def.reject.apply(def, arguments);
         });
@@ -201,6 +218,44 @@ Max.Poll.prototype.delete = function() {
 };
 
 /**
+ * Update poll results using a poll answer.
+ * @param {PollAnswer} pollAnswer A poll answer.
+ */
+Max.Poll.prototype.updateResults = function(pollAnswer) {
+    if (!pollAnswer.selectedOptions.length && !pollAnswer.deselectedOptions.length) return;
+
+    for (var i=0;i<this.options.length;++i) {
+        for (var j=0;j<pollAnswer.selectedOptions.length;++j) {
+            if (this.options[i].optionId === pollAnswer.selectedOptions[j].optionId) {
+                ++this.options[i].count;
+            }
+        }
+        for (var j=0;j<pollAnswer.deselectedOptions.length;++j) {
+            if (this.options[i].optionId === pollAnswer.deselectedOptions[j].optionId) {
+                --this.options[i].count;
+            }
+        }
+    }
+};
+
+/**
+ * Refresh the poll results.
+ * @returns {Max.Promise} A promise object returning the {Max.Poll} or reason of failure.
+ */
+Max.Poll.prototype.refreshResults = function() {
+    var self = this, def = new Max.Deferred();
+
+    Max.Poll.get(self.pollId).success(function(poll) {
+        self.options = poll.options;
+        def.resolve.apply(def, arguments);
+    }).error(function() {
+        def.reject.apply(def, arguments);
+    });
+
+    return def.promise;
+};
+
+/**
  * @constructor
  * @class
  * The PollOption class is a local representation of a poll option in the MagnetMax platform. A {Max.PollOption} instance contains information about the poll option.
@@ -215,9 +270,9 @@ Max.Poll.prototype.delete = function() {
 Max.PollOption = function(text, extras) {
     if (!text) throw('invalid text');
 
+    this.TYPE = Max.MessageType.POLL_OPTION;
     this.text = text;
     this.extras = extras || {};
-    this.mType = Max.MessageType.POLL_OPTION;
     this.count = 0;
 
     return this;
@@ -231,6 +286,7 @@ Max.PollOption = function(text, extras) {
  * @property {string} pollId {Max.Poll} identifier.
  */
 Max.PollIdentifier = function(pollId) {
+    this.TYPE = Max.MessageType.POLL_IDENTIFIER;
     this.pollId = pollId;
 };
 
@@ -238,11 +294,23 @@ Max.PollIdentifier = function(pollId) {
  * @constructor
  * @class
  * The PollAnswer class is returned by the {Max.EventListener} after a user selects a poll option. It contains all the {Max.PollOption} selected by the user.
- * @param {Max.PollOption[]} result A list of poll options.
- * @property {Max.PollOption[]} result A list of poll options.
+ * @param {string} poll {Max.Poll} The poll this answer is related to.
+ * @param {Max.PollOption[]} [selectedOptions] A list of poll options selected by the current user.
+ * @param {Max.PollOption[]} [deselectedOptions] A list of poll options deselected by the current user.
+ * @property {string} pollId {Max.Poll} identifier.
+ * @property {string} name Name of the poll.
+ * @property {string} question The question this poll should answer.
+ * @property {Max.PollOption[]} selectedOptions A list of poll options selected by the current user.
+ * @property {Max.PollOption[]} deselectedOptions A list of poll options selected by the current user.
  */
-Max.PollAnswer = function(result) {
-    this.result = result;
+Max.PollAnswer = function(poll, selectedOptions, deselectedOptions) {
+    poll = poll || {};
+    this.TYPE = Max.MessageType.POLL_ANSWER;
+    this.pollId = poll.pollId;
+    this.name = poll.name;
+    this.question = poll.question;
+    this.selectedOptions = selectedOptions || [];
+    this.deselectedOptions = deselectedOptions || [];
 };
 
 Max.registerPayloadType(Max.MessageType.POLL, Max.Poll);
@@ -291,9 +359,10 @@ Max.PollHelper = {
 
         for (i = 0; i < choices.length; ++i) {
             opt = new Max.PollOption(choices[i].value, choices[i].metaData);
-            opt.pollId = survey.pollId;
+            opt.pollId = survey.id;
             opt.optionId = choices[i].optionId;
-            opt.count = results[i] || 0;
+            opt.count = results[i].count || 0;
+            opt.extras = results[i].metaData || {};
             pollObj.options.push(opt);
             if (myAnswerOptionIds.indexOf(opt.optionId) != -1)
                 myAnswerOptions.push(opt);
@@ -320,9 +389,10 @@ Max.PollHelper = {
             resultAccessModel: poll.hideResultsFromOthers ? 'PRIVATE' : 'PUBLIC',
             type: 'POLL',
             notificationChannelId: channel.getChannelName(),
+            startDate: poll.startDate,
             endDate: poll.endDate,
-            questions: this.pollOptionToSurveyQuestions(poll)
-            //participantModel: 'PRIVATE'
+            questions: this.pollOptionToSurveyQuestions(poll),
+            participantModel: 'PUBLIC' // for user access control
         };
         return survey;
     },

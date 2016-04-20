@@ -77,7 +77,7 @@ Max.unregisterListener = function(listenerOrListenerId) {
  * @ignore
  */
 Max.registerPayloadType = function(name, typedPayload) {
-    typedPayload.prototype.mType = name;
+    typedPayload.prototype.TYPE = name;
     mPayloadTypes[name] = typedPayload;
 };
 
@@ -304,9 +304,7 @@ Max.Message = function(contents, recipientOrRecipients, attachments) {
     this.meta = {};
     this.recipients = [];
     this._attachments = [];
-
-    if (contents)
-        this.messageContent = contents;
+    this.messageContent = contents || {};
 
     if (recipientOrRecipients) {
         if (Max.Utils.isArray(recipientOrRecipients)) {
@@ -368,6 +366,7 @@ Max.Message.formatEvent = function(msg, channel, callback) {
         ? msg.event.items.item._id : msg._id;
     self.channel = null;
     self.attachments = null;
+    self.messageContent = {};
 
     self.meta = {
         from: msg._from,
@@ -380,7 +379,7 @@ Max.Message.formatEvent = function(msg, channel, callback) {
     if (msg.mmx && msg.mmx.meta) {
         var msgMeta = JSON.parse(msg.mmx.meta);
         Max.MessageHelper.attachmentRefsToAttachment(self, msgMeta);
-        self.messageContent = msgMeta;
+        self.messageContent = msgMeta || {};
     }
 
     if (msg.mmx && msg.mmx.payload && msg.mmx.payload.__text) {
@@ -413,7 +412,6 @@ Max.Message.formatEvent = function(msg, channel, callback) {
 
     if (channel) {
         self.channel = channel;
-        if (self.payload) self.payload.channel = channel;
         callback(null, self);
     } else if (self.invitationMeta || (msg.event && msg.event.items && msg.event.items._node)) {
 
@@ -425,13 +423,11 @@ Max.Message.formatEvent = function(msg, channel, callback) {
         if (ChannelStore.get(channelObj)) {
             ChannelStore.get(channelObj).isSubscribed = true;
             self.channel = ChannelStore.get(channelObj);
-            if (self.payload) self.payload.channel = ChannelStore.get(channelObj);
             return callback(null, self);
         }
 
         Max.Channel.getChannel(channelObj.name, channelObj.userId).success(function(channel) {
             self.channel = channel;
-            if (self.payload) self.payload.channel = channel;
             callback(null, self);
         }).error(function(e) {
             callback(e);
@@ -629,7 +625,7 @@ Max.Message.prototype.addAttachments = function(attachmentOrAttachments) {
  */
 Max.Message.prototype.addPayload = function(payload) {
     if (!payload) return;
-    this.contentType = TYPED_PAYLOAD_CONTENT_TYPE + payload.mType;
+    this.contentType = TYPED_PAYLOAD_CONTENT_TYPE + payload.TYPE;
     this.payload = payload;
     return this;
 };
