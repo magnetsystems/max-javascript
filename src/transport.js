@@ -129,7 +129,6 @@ Max.Transport = {
                     details.info.xhr = Max.Utils.convertHeaderStrToObj(xhr);
                     details.contentType = xhr.getResponseHeader('Content-Type');
                     details.status = xhr.status;
-                    data = data.result || data;
                     callback(data, details);
                 }
             },

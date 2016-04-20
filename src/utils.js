@@ -1626,7 +1626,14 @@ Max.Error = {
     INVALID_TAGS: 'invalid tags',
     INVALID_CHANNEL_NAME: 'channel name required',
     INVALID_PUBLISH_PERMISSIONS: 'publishPermissions must be in ["anyone", "owner", "subscribers"]',
-    INVALID_ACCEPTED: 'accepted property missing'
+    INVALID_ACCEPTED: 'accepted property missing',
+    INVALID_POLL_OPTIONS: 'invalid poll options',
+    TOO_MANY_POLL_OPTIONS: 'only one option allowed',
+    INVALID_POLL_ID: 'invalid poll id',
+    INVALID_POLL_NAME: 'invalid poll name',
+    INVALID_POLL_QUESTION: 'invalid poll question',
+    POLL_ENDED: 'poll has ended',
+    INVALID_END_DATE: 'invalid end date'
 };
 
 var mCurrentDevice = null;
@@ -1636,6 +1643,7 @@ var MMS_DEVICE_ID = '1111-2222-3333-4444';
 var mListenerStore = {};
 var mListenerHandlerStore = {};
 var mChannelStore = {};
+var mPayloadTypes = {};
 
 Max.Events.create(Max);
 

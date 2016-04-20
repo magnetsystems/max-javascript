@@ -12,6 +12,7 @@ module.exports = function(grunt){
         'src/user.js',
         'src/device.js',
         'src/message.js',
+        'src/poll.js',
         'src/channel.js',
         'src/core-footer.js'
     ];
@@ -31,6 +32,7 @@ module.exports = function(grunt){
         'src/user.js',
         'src/device.js',
         'src/message.js',
+        'src/poll.js',
         'src/channel.js',
         'src/core-footer.js'
     ];
@@ -47,7 +49,7 @@ module.exports = function(grunt){
             },
             test : {
                 src  : full,
-                dest : 'testing/<%= pkg.name %>.js'
+                dest : 'testing/poll/js/<%= pkg.name %>.js'
             },
             noversion : {
                 src  : full,

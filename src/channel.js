@@ -265,7 +265,7 @@ Max.Channel.getAllSubscriptions = function(subscriptionOnly) {
             var subs = Max.Utils.objToObjAry(json.pubsub.subscriptions.subscription);
 
             for (var i=0;i<subs.length;++i) {
-                channels.push(nodePathToChannel(subs[i]._node));
+                channels.push(Max.MessageHelper.nodePathToChannel(subs[i]._node));
                 channels[i].isSubscribed = true;
             }
 
@@ -374,8 +374,8 @@ Max.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, mes
                             };
                         data[i].owner = new Max.User(data[i].owner);
                     }
-                    data[i].channel = matchChannel(channelOrChannels, data[i].channelName, data[i].userId);
-                    data[i].messages = parseMessageList(data[i].messages, data[i].channel);
+                    data[i].channel = Max.ChannelHelper.matchChannel(channelOrChannels, data[i].channelName, data[i].userId);
+                    data[i].messages = Max.ChannelHelper.parseMessageList(data[i].messages, data[i].channel);
                     data[i].subscribers = Max.Utils.objToObjAry(data[i].subscribers);
                     for (j = 0; j < data[i].subscribers.length; ++j)
                         data[i].subscribers[j] = new Max.User(data[i].subscribers[j]);
@@ -392,39 +392,6 @@ Max.Channel.getChannelSummary = function(channelOrChannels, subscriberCount, mes
 
     return def.promise;
 };
-
-// converts an ary of message data into Message object
-function parseMessageList(ary, channel) {
-    if (!ary) return [];
-    if (!Max.Utils.isArray(ary)) ary = [ary];
-    for (j = 0; j < ary.length; ++j) {
-        var mmxMsg = new Max.Message();
-        mmxMsg.sender = new Max.User(ary[j].publisher);
-        if (ary[j].metaData)
-            mmxMsg.timestamp = Max.Utils.ISO8601ToDate(ary[j].metaData.creationDate);
-        mmxMsg.channel = channel;
-        mmxMsg.messageID = ary[j].itemId;
-        if (ary[j].content) {
-            attachmentRefsToAttachment(mmxMsg, ary[j].content);
-            mmxMsg.messageContent = ary[j].content;
-        }
-        ary[j] = mmxMsg;
-    }
-    return ary;
-}
-
-// get matching channel
-function matchChannel(channels, matchName, matchOwner) {
-    var channel;
-    for (var i=0;i<channels.length;++i) {
-        if (!channels[i].userId) delete channels[i].userId;
-        if (channels[i].name.toLowerCase() === matchName.toLowerCase() && channels[i].userId == matchOwner) {
-            channel = channels[i];
-            break;
-        }
-    }
-    return channel;
-}
 
 /**
  * Get the basic information about a private channel. Only private channels created by the current user will be returned.
@@ -774,12 +741,16 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
     var iqId = Max.Utils.getCleanGUID();
     self.msgId = Max.Utils.getCleanGUID()+'c';
     var dt = Max.Utils.dateToISO8601(new Date());
+    var typedPayload;
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
         if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
 
         function sendMessage(msgMeta) {
+            if (mmxMessage.contentType && mmxMessage.payload)
+                typedPayload = JSON.stringify(mmxMessage.payload);
+
             var meta = JSON.stringify(msgMeta);
             var mmxMeta = {
                 From: {
@@ -800,7 +771,9 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
                 .c('mmx', {xmlns: 'com.magnet:msg:payload'})
                 .c('mmxmeta', mmxMeta).up()
                 .c('meta', meta).up()
-                .c('payload', {mtype: 'unknown', stamp: dt, chunk: '0/0/0'});
+                .c('payload', {mtype: mmxMessage.contentType || 'unknown', stamp: dt, chunk: '0/0/0'});
+
+            if (typedPayload) payload.t(typedPayload);
 
             mXMPPConnection.addHandler(function(msg) {
                 var json = x2js.xml2json(msg);
@@ -882,7 +855,7 @@ Max.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, 
                 payload = (json.mmx && json.mmx.__text) ? JSON.parse(json.mmx.__text) : JSON.parse(json.mmx);
                 if (payload) {
                     payload.items = Max.Utils.objToObjAry(payload.items);
-                    formatMessage([], self, payload.items, 0, function(messages) {
+                    Max.ChannelHelper.formatMessage([], self, payload.items, 0, function(messages) {
                         def.resolve(messages, payload.totalCount);
                     });
                 }
@@ -895,20 +868,6 @@ Max.Channel.prototype.getMessages = function(startDate, endDate, limit, offset, 
 
     return def.promise;
 };
-
-// recursively convert message metadata into Message object
-function formatMessage(messages, channel, msgAry, index, cb) {
-    if (!msgAry[index] || !msgAry[index].payloadXML) return cb(messages);
-    var jsonObj = x2js.xml_str2json(msgAry[index].payloadXML);
-
-    Max.Message.formatEvent(jsonObj, channel, function(e, mmxMsg) {
-        if (mmxMsg) {
-            mmxMsg.messageID = msgAry[index].itemId;
-            messages.push(mmxMsg);
-        }
-        formatMessage(messages, channel, msgAry, ++index, cb);
-    });
-}
 
 /**
  * Get the tags for this channel.
@@ -1123,4 +1082,58 @@ Max.Channel.prototype.getChannelName = function() {
  */
 Max.Channel.prototype.getNodePath = function() {
     return '/' + Max.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
+};
+
+Max.ChannelHelper = {
+    /**
+     * Converts an ary of message data into Message object
+     */
+    parseMessageList: function(ary, channel) {
+        if (!ary) return [];
+        if (!Max.Utils.isArray(ary)) ary = [ary];
+        for (j = 0; j < ary.length; ++j) {
+            var mmxMsg = new Max.Message();
+            mmxMsg.sender = new Max.User(ary[j].publisher);
+            if (ary[j].metaData)
+                mmxMsg.timestamp = Max.Utils.ISO8601ToDate(ary[j].metaData.creationDate);
+            mmxMsg.channel = channel;
+            mmxMsg.messageID = ary[j].itemId;
+            if (ary[j].content) {
+                Max.MessageHelper.attachmentRefsToAttachment(mmxMsg, ary[j].content);
+                mmxMsg.messageContent = ary[j].content;
+            }
+            ary[j] = mmxMsg;
+        }
+        return ary;
+    },
+    /**
+     * Get matching channel.
+     */
+    matchChannel: function(channels, matchName, matchOwner) {
+        var channel;
+        for (var i=0;i<channels.length;++i) {
+            if (!channels[i].userId) delete channels[i].userId;
+            if (channels[i].name.toLowerCase() === matchName.toLowerCase() && channels[i].userId == matchOwner) {
+                channel = channels[i];
+                break;
+            }
+        }
+        return channel;
+    },
+    /**
+     * Recursively convert message metadata into Message object
+     */
+    formatMessage: function(messages, channel, msgAry, index, cb) {
+        var self = this;
+        if (!msgAry[index] || !msgAry[index].payloadXML) return cb(messages);
+        var jsonObj = x2js.xml_str2json(msgAry[index].payloadXML);
+
+        Max.Message.formatEvent(jsonObj, channel, function(e, mmxMsg) {
+            if (mmxMsg) {
+                mmxMsg.messageID = msgAry[index].itemId;
+                messages.push(mmxMsg);
+            }
+            self.formatMessage(messages, channel, msgAry, ++index, cb);
+        });
+    }
 };
