@@ -1,4 +1,5 @@
 var x2js = new X2JS();
+var TYPED_PAYLOAD_CONTENT_TYPE = 'object/';
 
 /**
  * @method
@@ -66,6 +67,18 @@ Max.unregisterListener = function(listenerOrListenerId) {
     if (!mListenerStore || !mXMPPConnection || !mXMPPConnection.deleteHandler) return;
     mXMPPConnection.deleteHandler(mListenerStore[listenerOrListenerId]);
     delete mListenerStore[listenerOrListenerId];
+};
+
+/**
+ * @method
+ * @desc Register a custom message payload type.
+ * @param {string} name Name of the payload type.
+ * @param {object} typedPayload The typed payload constructor.
+ * @ignore
+ */
+Max.registerPayloadType = function(name, typedPayload) {
+    typedPayload.prototype.mType = name;
+    mPayloadTypes[name] = typedPayload;
 };
 
 /**
@@ -263,7 +276,11 @@ Max.MMXClient = {
 Max.MessageType = {
     MESSAGE: 'unknown',
     INVITATION: 'invitation',
-    INVITATION_RESPONSE: 'invitationResponse'
+    INVITATION_RESPONSE: 'invitationResponse',
+    POLL: 'MMXPoll',
+    POLL_OPTION: 'MMXPollOption',
+    POLL_IDENTIFIER: 'MMXPollIdentifier',
+    POLL_ANSWER: 'MMXPollAnswer'
 };
 
 /**
@@ -362,8 +379,12 @@ Max.Message.formatEvent = function(msg, channel, callback) {
 
     if (msg.mmx && msg.mmx.meta) {
         var msgMeta = JSON.parse(msg.mmx.meta);
-        attachmentRefsToAttachment(self, msgMeta);
+        Max.MessageHelper.attachmentRefsToAttachment(self, msgMeta);
         self.messageContent = msgMeta;
+    }
+
+    if (msg.mmx && msg.mmx.payload && msg.mmx.payload.__text) {
+        Max.MessageHelper.initTypedPayload(self, mType, JSON.parse(msg.mmx.payload.__text));
     }
 
     if (msg.mmx && msg.mmx.mmxmeta) {
@@ -392,22 +413,25 @@ Max.Message.formatEvent = function(msg, channel, callback) {
 
     if (channel) {
         self.channel = channel;
+        if (self.payload) self.payload.channel = channel;
         callback(null, self);
     } else if (self.invitationMeta || (msg.event && msg.event.items && msg.event.items._node)) {
 
         var channelObj = self.invitationMeta ? new Max.Channel({
             name: self.invitationMeta.channelName,
             userId: (self.invitationMeta.channelIsPublic === 'false' ? self.invitationMeta.channelOwnerId : null)
-        }) : nodePathToChannel(msg.event.items._node);
+        }) : Max.MessageHelper.nodePathToChannel(msg.event.items._node);
 
         if (ChannelStore.get(channelObj)) {
             ChannelStore.get(channelObj).isSubscribed = true;
             self.channel = ChannelStore.get(channelObj);
+            if (self.payload) self.payload.channel = ChannelStore.get(channelObj);
             return callback(null, self);
         }
 
         Max.Channel.getChannel(channelObj.name, channelObj.userId).success(function(channel) {
             self.channel = channel;
+            if (self.payload) self.payload.channel = channel;
             callback(null, self);
         }).error(function(e) {
             callback(e);
@@ -441,21 +465,48 @@ var ChannelStore = {
     }
 };
 
-/**
- * Given a {Max.Message} object, instantiate the {Max.Attachment} objects.
- */
-function attachmentRefsToAttachment(mmxMessage, msgMeta) {
-    mmxMessage.attachments = mmxMessage.attachments || [];
+Max.MessageHelper = {
+    /**
+     * Given a {Max.Message} object, instantiate the {Max.Attachment} objects.
+     */
+    attachmentRefsToAttachment: function(mmxMessage, msgMeta) {
+        mmxMessage.attachments = mmxMessage.attachments || [];
 
-    if (!msgMeta._attachments || msgMeta._attachments === '[]') return;
-    if (typeof msgMeta._attachments === 'string')
-        msgMeta._attachments = JSON.parse(msgMeta._attachments);
+        if (!msgMeta._attachments || msgMeta._attachments === '[]') return;
+        if (typeof msgMeta._attachments === 'string')
+            msgMeta._attachments = JSON.parse(msgMeta._attachments);
 
-    for (var i=0;i<msgMeta._attachments.length;++i)
-        mmxMessage.attachments.push(new Max.Attachment(msgMeta._attachments[i]));
+        for (var i=0;i<msgMeta._attachments.length;++i)
+            mmxMessage.attachments.push(new Max.Attachment(msgMeta._attachments[i]));
 
-    delete msgMeta._attachments;
-}
+        delete msgMeta._attachments;
+    },
+    /**
+     * Given a {Max.Message} object, instantiate custom typed payload if it exists.
+     */
+    initTypedPayload: function(mmxMessage, mType, typedPayload) {
+        if (mType && mType.indexOf(TYPED_PAYLOAD_CONTENT_TYPE) != -1 && typeof typedPayload == 'object') {
+            mmxMessage.addPayload(new mPayloadTypes[mType.replace(TYPED_PAYLOAD_CONTENT_TYPE, '')]);
+            Max.Utils.mergeObj(mmxMessage.payload,  typedPayload);
+        }
+    },
+    /**
+     * Convert a XMPP pubsub node string into a {Max.Channel} object.
+     */
+    nodePathToChannel: function(nodeStr) {
+        nodeStr = nodeStr.split('/');
+        if (nodeStr.length !== 4) return;
+
+        var name = nodeStr[nodeStr.length-1];
+        var userId = nodeStr[nodeStr.length-2];
+        userId = userId == '*' ? null : userId;
+
+        return new Max.Channel({
+            name: name,
+            userId: userId
+        });
+    }
+};
 
 // TODO: if we ever ned to fully hydrate channel on message receive:
 //function nodePathToChannel(nodeStr, cb) {
@@ -470,23 +521,6 @@ function attachmentRefsToAttachment(mmxMessage, msgMeta) {
 //        cb();
 //    });
 //}
-
-/**
- * Convert a XMPP pubsub node string into a {Max.Channel} object.
- */
-function nodePathToChannel(nodeStr) {
-    nodeStr = nodeStr.split('/');
-    if (nodeStr.length !== 4) return;
-
-    var name = nodeStr[nodeStr.length-1];
-    var userId = nodeStr[nodeStr.length-2];
-    userId = userId == '*' ? null : userId;
-
-    return new Max.Channel({
-        name: name,
-        userId: userId
-    });
-}
 
 /**
  * Send the message to a user.
@@ -571,7 +605,7 @@ Max.Message.prototype.send = function() {
 };
 
 /**
- * Add on or more attachments.
+ * Add one or more attachments.
  * @param {File|File[]|FileList} [attachmentOrAttachments] One or more File objects created by an input[type="file"] HTML element.
  */
 Max.Message.prototype.addAttachments = function(attachmentOrAttachments) {
@@ -584,6 +618,20 @@ Max.Message.prototype.addAttachments = function(attachmentOrAttachments) {
     } else {
         this._attachments.push(attachmentOrAttachments);
     }
+
+    return this;
+};
+
+/**
+ * Add a payload.
+ * @param {object} payload A structured payload to add to the {Max.Message} instance.
+ * @ignore
+ */
+Max.Message.prototype.addPayload = function(payload) {
+    if (!payload) return;
+    this.contentType = TYPED_PAYLOAD_CONTENT_TYPE + payload.mType;
+    this.payload = payload;
+    return this;
 };
 
 /**
