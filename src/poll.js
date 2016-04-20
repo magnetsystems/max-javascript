@@ -164,7 +164,7 @@ Max.Poll.prototype.choose = function(pollOptions) {
         }, function() {
             self.myVotes = pollOptions;
             if (!self.hideResultsFromOthers) {
-                var msg = new Max.Message().addPayload(new Max.PollAnswer(self, pollOptions, previousOpts));
+                var msg = new Max.Message().addPayload(new Max.PollAnswer(self, previousOpts, pollOptions));
 
                 self.channel.publish(msg).success(function(data, details) {
                     def.resolve(msg, details);
