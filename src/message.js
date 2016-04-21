@@ -290,21 +290,22 @@ Max.MessageType = {
  * @param {object} contents an object containing your custom message body.
  * @param {Max.User|Max.User[]|string|string[]} recipientOrRecipients One or more {Max.User}
  * @param {File|File[]|FileList} [attachments] One or more File objects created by an input[type="file"] HTML element.
+ * @param {string} [pushConfigName] The push config name. The push config can be defined on the server and controls behavior like push notification content, whether to send a push notification if the recipient is not online, etc.
  * @property {object|Max.User} sender The message sender.
  * @property {object} messageContent The custom message body object sent by the sender.
  * @property {string} messageID An identifier for the message. It can be used to determine whether a message has already been displayed on a chat screen.
  * @property {Max.Attachment[]} [attachments] An array of message attachments.
  * @property {Max.Channel} [channel] If the message was sent to a channel, the channel object will be available.
  * @property {Date} timestamp The date and time this message was sent.
- * @property {object[]|Max.User[]} [recipients] An array of recipients, if the message was sent to
- * individual users instead of through a channel.
- * objects or userIds to be recipients for your message.
+ * @property {object[]|Max.User[]} [recipients] An array of recipients, if the message was sent to individual users instead of through a channel.
+ * @property {string} [pushConfigName] The push config name. The push config can be defined on the server and controls behavior like push notification content, whether to send a push notification if the recipient is not online, etc.
  */
-Max.Message = function(contents, recipientOrRecipients, attachments) {
+Max.Message = function(contents, recipientOrRecipients, attachments, pushConfigName) {
     this.meta = {};
     this.recipients = [];
     this._attachments = [];
     this.messageContent = contents || {};
+    this.pushConfigName = pushConfigName;
 
     if (recipientOrRecipients) {
         if (Max.Utils.isArray(recipientOrRecipients)) {
@@ -553,6 +554,7 @@ Max.Message.prototype.send = function() {
                 //NoAck: true,
                 mmxdistributed: true
             };
+            if (self.pushConfigName) mmxMeta['Push-Config-Name'] = self.pushConfigName;
             mmxMeta = JSON.stringify(mmxMeta);
 
             var payload = $msg({type: 'chat', from: mCurrentUser.jid,
