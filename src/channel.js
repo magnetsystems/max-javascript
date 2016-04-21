@@ -9,8 +9,13 @@
  * @property {string} [summary] An optional summary of the channel.
  * @property {string} [publishPermissions] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
  * @property {string} [ownerUserID] The userID for the owner/creator of the channel.
+ * @property {string} [pushConfigName] The push config name. The push config can be defined on the server and controls behavior like push notification content, whether to send a push notification if the recipient is not online, etc.
+ * @property {boolean} isMuted True if the channel was muted for the current user. Muted channels will not receive any messages published to the channel.
  */
 Max.Channel = function(channelObj) {
+    this.isMuted = false;
+    this.isSubscribed = false;
+
     if (channelObj.topicName) {
         channelObj.name = channelObj.topicName;
         delete channelObj.topicName;
@@ -48,6 +53,9 @@ Max.Channel = function(channelObj) {
 
     channelObj.isPublic = !channelObj.privateChannel;
     delete channelObj.privateChannel;
+
+    channelObj.isMuted = channelObj.isPushMutedByUser;
+    delete channelObj.isPushMutedByUser;
 
     Max.Utils.mergeObj(this, channelObj);
 
@@ -197,10 +205,12 @@ Max.Channel.setSubscriptionState = function(channelOrChannels, cb) {
  * @param {string} [channelObj.summary] An optional summary of the channel.
  * @param {boolean} [channelObj.isPublic] Set to true to make the channel public. Defaults to true.
  * @param {string} [channelObj.publishPermissions] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish. Defaults to 'subscribers' only if private channel, and 'anyone' if public channel.
+ * @param {string|Max.User|string[]|Max.User[]} [channelObj.subscribers] A list of userId or {Max.User} to automatically subscribe.
+ * @param {string} [channelObj.pushConfigName] Optional push config name. Should match the name given when the push config was created in the Magnet Console.
  * @returns {Max.Promise} A promise object returning the new {Max.Channel} or reason of failure.
  */
 Max.Channel.create = function(channelObj) {
-    var def = new Max.Deferred();
+    var def = new Max.Deferred(), subscriberlist = [];
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
@@ -219,6 +229,17 @@ Max.Channel.create = function(channelObj) {
         if (channelObj.privateChannel) channelObj.userId = mCurrentUser.userId;
         if (!channelObj.publishPermission && channelObj.isPublic) channelObj.publishPermission = 'anyone';
         if (!channelObj.publishPermission && !channelObj.isPublic) channelObj.publishPermission = 'subscribers';
+
+        if (channelObj.subscribers) {
+            if (!Max.Utils.isArray(channelObj.subscribers))
+                channelObj.subscribers = [channelObj.subscribers];
+
+            for (var i in channelObj.subscribers)
+                subscriberlist.push(Max.Utils.isObject(channelObj.subscribers[i])
+                    ? channelObj.subscribers[i].userId : channelObj.subscribers[i]);
+
+            channelObj.subscribers = subscriberlist;
+        }
 
         Max.Request({
             method: 'POST',
@@ -762,6 +783,7 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
                     userName: mCurrentUser.userName
                 }
             };
+            if (self.pushConfigName) mmxMeta['Push-Config-Name'] = self.pushConfigName;
             mmxMeta = JSON.stringify(mmxMeta);
 
             var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'set', id: iqId})
@@ -1059,6 +1081,54 @@ Max.Channel.prototype.delete = function() {
 };
 
 /**
+ * Disable push notifications to the channel for the current user. This feature has no effect on web apps, but allows users to mute push notifications for their mobile devices.
+ * @param {Date} [endDate] Optional date when push notifications will be unmuted.
+ * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
+ */
+Max.Channel.prototype.mute = function(endDate) {
+    var self = this;
+    var def = new Max.Deferred();
+
+    setTimeout(function() {
+        Max.Request({
+            method: 'POST',
+            url: '/com.magnet.server/channel/' + encodeURIComponent(self.getChannelId()) + '/push/mute',
+            data: {
+                untilDate: endDate ? Max.Utils.dateToISO8601(endDate) : null
+            }
+        }, function(res, details) {
+            def.resolve('ok', details);
+        }, function() {
+            def.reject.apply(def, arguments);
+        });
+    }, 0);
+
+    return def.promise;
+};
+
+/**
+ * Re-enable push notifications to the channel for the current user.
+ * @returns {Max.Promise} A promise object returning "ok" or reason of failure.
+ */
+Max.Channel.prototype.unmute = function() {
+    var self = this;
+    var def = new Max.Deferred();
+
+    setTimeout(function() {
+        Max.Request({
+            method: 'POST',
+            url: '/com.magnet.server/channel/' + encodeURIComponent(self.getChannelId()) + '/push/unmute'
+        }, function(res, details) {
+            def.resolve('ok', details);
+        }, function() {
+            def.reject.apply(def, arguments);
+        });
+    }, 0);
+
+    return def.promise;
+};
+
+/**
  * Determines if the currently logged in user is the owner of the channel.
  * @returns {boolean} True if the currently logged in user is the owner of the channel.
  */
@@ -1076,10 +1146,14 @@ Max.Channel.prototype.getChannelName = function() {
 };
 
 /**
- * Get the pubsub node path of the given channel
- * @returns {string} A pubsub node path.
+ * Get the formal channelId used by REST APIs.
+ * @returns {string} The formal channelId.
  * @ignore
  */
+Max.Channel.prototype.getChannelId = function() {
+    return (this.isPublic === true ? this.name : (this.userId + '#' + this.name)).toLowerCase();
+};
+
 Max.Channel.prototype.getNodePath = function() {
     return '/' + Max.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
 };
