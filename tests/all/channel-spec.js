@@ -376,7 +376,7 @@ describe('Channel findChannelsBySubscribers', function() {
         Max.Channel.findChannelsBySubscribers(testUserId).success(function(channels) {
             expect(channels.length).toEqual(1);
             expect(channels[0].name).toEqual(testChannelId);
-            expect(channels[0].ownerUserID).toEqual(testUserId);
+            expect(channels[0].ownerUserId).toEqual(testUserId);
             expect(channels[0].isPublic).toEqual(true);
             Max.Request.restore();
             Max.Channel.setSubscriptionState.restore();
@@ -527,7 +527,7 @@ describe('Channel getChannel', function() {
         Max.Channel.getChannel(testChannelName, testUserId).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
             expect(channel.isPublic).toEqual(true);
-            expect(channel.ownerUserID).toEqual(testUserId);
+            expect(channel.ownerUserId).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
             Max.Channel.setSubscriptionState.restore();
             done();
@@ -562,7 +562,7 @@ describe('Channel getChannel', function() {
         Max.Channel.getPrivateChannel(testChannelName).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
             expect(channel.isPublic).toEqual(false);
-            expect(channel.ownerUserID).toEqual(testUserId);
+            expect(channel.ownerUserId).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
             Max.Channel.setSubscriptionState.restore();
             done();
@@ -597,7 +597,7 @@ describe('Channel getChannel', function() {
         Max.Channel.getPublicChannel(testChannelName).success(function(channel) {
             expect(channel.name).toEqual(testChannelName);
             expect(channel.isPublic).toEqual(true);
-            expect(channel.ownerUserID).toEqual(testUserId);
+            expect(channel.ownerUserId).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
             Max.Channel.setSubscriptionState.restore();
             done();
@@ -652,7 +652,7 @@ describe('Channel getChannels', function() {
             expect(channels.length).toEqual(1);
             expect(channels[0].name).toEqual(testChannelName);
             expect(channels[0].isPublic).toEqual(true);
-            expect(channels[0].ownerUserID).toEqual(testUserId);
+            expect(channels[0].ownerUserId).toEqual(testUserId);
             expect(sendSpy.calledOnce).toEqual(true);
             Max.Channel.setSubscriptionState.restore();
             done();

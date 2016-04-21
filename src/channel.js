@@ -9,7 +9,7 @@
  * @property {boolean} isSubscribed True if the current user is subscribed to the channel.
  * @property {string} [summary] An optional summary of the channel.
  * @property {string} [publishPermissions] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
- * @property {string} [ownerUserID] The userID for the owner/creator of the channel.
+ * @property {string} [ownerUserId] The userId for the owner/creator of the channel.
  * @property {boolean} isMuted True if the channel was muted for the current user. Muted channels will not receive any messages published to the channel.
  */
 Max.Channel = function(channelObj) {
@@ -23,11 +23,11 @@ Max.Channel = function(channelObj) {
     if (channelObj.creator && channelObj.creator.indexOf('%') != -1)
         channelObj.creator = channelObj.creator.split('%')[0];
     if (channelObj.creator) {
-        channelObj.ownerUserID = channelObj.creator;
+        channelObj.ownerUserId = channelObj.creator;
         delete channelObj.creator;
     }
     if (channelObj.userId) {
-        channelObj.ownerUserID = channelObj.userId;
+        channelObj.ownerUserId = channelObj.userId;
     }
     if (channelObj.description) {
         channelObj.summary = channelObj.description;
@@ -44,7 +44,7 @@ Max.Channel = function(channelObj) {
     if (channelObj.privateChannel !== false && channelObj.privateChannel !== true)
         channelObj.privateChannel = channelObj.userId ? true : false;
     if (channelObj.privateChannel === true)
-        channelObj.userId = channelObj.userId || channelObj.ownerUserID;
+        channelObj.userId = channelObj.userId || channelObj.ownerUserId;
     if (channelObj.privateChannel === false)
         delete channelObj.userId;
 
@@ -997,7 +997,7 @@ Max.Channel.prototype.inviteUsers = function(recipients, comments) {
             channelSummary: self.summary,
             channelName: self.name,
             channelIsPublic: self.isPublic+'',
-            channelOwnerId: self.ownerUserID,
+            channelOwnerId: self.ownerUserId,
             channelPublishPermissions: self.publishPermissions,
             channelCreationDate: self.creationDate
             //_attachments: 'encoded-JSON-string'   // optional, see Attachments section
@@ -1143,7 +1143,7 @@ Max.Channel.prototype.unmute = function() {
  * @returns {boolean} True if the currently logged in user is the owner of the channel.
  */
 Max.Channel.prototype.isOwner = function() {
-    return this.userId == mCurrentUser.userId || (this.ownerUserID && this.ownerUserID == mCurrentUser.userId);
+    return this.userId == mCurrentUser.userId || (this.ownerUserId && this.ownerUserId == mCurrentUser.userId);
 };
 
 /**
