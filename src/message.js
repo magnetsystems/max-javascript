@@ -298,7 +298,6 @@ Max.MessageType = {
  * @property {Max.Channel} [channel] If the message was sent to a channel, the channel object will be available.
  * @property {Date} timestamp The date and time this message was sent.
  * @property {object[]|Max.User[]} [recipients] An array of recipients, if the message was sent to individual users instead of through a channel.
- * @property {string} [pushConfigName] The push config name. The push config can be defined on the server and controls behavior like push notification content, whether to send a push notification if the recipient is not online, etc.
  */
 Max.Message = function(contents, recipientOrRecipients, attachments, pushConfigName) {
     this.meta = {};
@@ -435,30 +434,6 @@ Max.Message.formatEvent = function(msg, channel, callback) {
         });
     } else {
         callback(null, self);
-    }
-};
-
-// non-persistent cache of channel information to improve message receive performance
-var ChannelStore = {
-    store: {},
-    add: function(channelOrChannels) {
-        if (!Max.Utils.isArray(channelOrChannels))
-            return this.store[this.getChannelId(channelOrChannels)] = channelOrChannels;
-        for (var i=0;i<channelOrChannels.length;++i)
-            this.store[this.getChannelId(channelOrChannels[i])] = channelOrChannels[i];
-    },
-    get: function(channel) {
-        return this.store[this.getChannelId(channel)];
-    },
-    remove: function(channel) {
-        if (this.store[this.getChannelId(channel)])
-            delete this.store[this.getChannelId(channel)];
-    },
-    getChannelId: function(channel) {
-        return (channel.userId || '*') + '/' + (channel.name.toLowerCase());
-    },
-    clear: function() {
-        this.store = {};
     }
 };
 

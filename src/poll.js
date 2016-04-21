@@ -212,19 +212,19 @@ Max.Poll.prototype.delete = function() {
  * @param {PollAnswer} pollAnswer A poll answer.
  */
 Max.Poll.prototype.updateResults = function(pollAnswer) {
-    if (!pollAnswer.previousSelections.length && !pollAnswer.currentSelections.length) return;
+    var optsObj = {}, i;
 
-    for (var i=0;i<this.options.length;++i) {
-        for (var j=0;j<pollAnswer.previousSelections.length;++j) {
-            if (this.options[i].optionId === pollAnswer.previousSelections[j].optionId) {
-                --this.options[i].count;
-            }
-        }
-        for (var j=0;j<pollAnswer.currentSelections.length;++j) {
-            if (this.options[i].optionId === pollAnswer.currentSelections[j].optionId) {
-                ++this.options[i].count;
-            }
-        }
+    if (!pollAnswer.previousSelection.length && !pollAnswer.currentSelection.length) return;
+
+    for (i=0;i<this.options.length;++i) {
+        optsObj[this.options.optionId] = i;
+    }
+
+    for (i=0;i<pollAnswer.previousSelection.length;++i) {
+        --this.options[optsObj[pollAnswer.previousSelection[i].optionId]].count;
+    }
+    for (i=0;i<pollAnswer.currentSelection.length;++i) {
+        ++this.options[optsObj[pollAnswer.currentSelection[i].optionId]].count;
     }
 };
 
@@ -285,22 +285,22 @@ Max.PollIdentifier = function(pollId) {
  * @class
  * The PollAnswer class is returned by the {Max.EventListener} after a user selects a poll option. It contains all the {Max.PollOption} selected by the user.
  * @param {string} poll {Max.Poll} The poll this answer is related to.
- * @param {Max.PollOption[]} [previousSelections] A list of poll options selected by the current user.
- * @param {Max.PollOption[]} [currentSelections] A list of poll options deselected by the current user.
+ * @param {Max.PollOption[]} [previousSelection] A list of poll options selected by the current user.
+ * @param {Max.PollOption[]} [currentSelection] A list of poll options deselected by the current user.
  * @property {string} pollId {Max.Poll} identifier.
  * @property {string} name Name of the poll.
  * @property {string} question The question this poll should answer.
- * @property {Max.PollOption[]} previousSelections A list of poll options selected by the current user.
- * @property {Max.PollOption[]} currentSelections A list of poll options selected by the current user.
+ * @property {Max.PollOption[]} previousSelection A list of poll options selected by the current user.
+ * @property {Max.PollOption[]} currentSelection A list of poll options selected by the current user.
  */
-Max.PollAnswer = function(poll, previousSelections, currentSelections) {
+Max.PollAnswer = function(poll, previousSelection, currentSelection) {
     poll = poll || {};
     this.TYPE = Max.MessageType.POLL_ANSWER;
     this.pollId = poll.pollId;
     this.name = poll.name;
     this.question = poll.question;
-    this.previousSelections = previousSelections || [];
-    this.currentSelections = currentSelections || [];
+    this.previousSelection = previousSelection || [];
+    this.currentSelection = currentSelection || [];
 };
 
 Max.registerPayloadType(Max.MessageType.POLL, Max.Poll);
