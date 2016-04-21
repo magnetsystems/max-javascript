@@ -217,7 +217,7 @@ Max.Poll.prototype.updateResults = function(pollAnswer) {
     if (!pollAnswer.previousSelection.length && !pollAnswer.currentSelection.length) return;
 
     for (i=0;i<this.options.length;++i) {
-        optsObj[this.options.optionId] = i;
+        optsObj[this.options[i].optionId] = i;
     }
 
     for (i=0;i<pollAnswer.previousSelection.length;++i) {
