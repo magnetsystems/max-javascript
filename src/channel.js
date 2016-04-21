@@ -3,13 +3,13 @@
  * @class
  * The Channel class is the local representation of a channel. This class provides various channel specific methods, like publishing and subscribing users.
  * @param {object} channelObj An object containing channel information.
+ * @property {string} channelId The ID of the channel.
  * @property {string} name The name of the channel.
  * @property {boolean} isPublic True if the channel public.
  * @property {boolean} isSubscribed True if the current user is subscribed to the channel.
  * @property {string} [summary] An optional summary of the channel.
  * @property {string} [publishPermissions] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
  * @property {string} [ownerUserID] The userID for the owner/creator of the channel.
- * @property {string} [pushConfigName] The push config name. The push config can be defined on the server and controls behavior like push notification content, whether to send a push notification if the recipient is not online, etc.
  * @property {boolean} isMuted True if the channel was muted for the current user. Muted channels will not receive any messages published to the channel.
  */
 Max.Channel = function(channelObj) {
@@ -56,6 +56,8 @@ Max.Channel = function(channelObj) {
 
     channelObj.isMuted = channelObj.isPushMutedByUser;
     delete channelObj.isPushMutedByUser;
+
+    channelObj.channelId = this.getChannelId();
 
     Max.Utils.mergeObj(this, channelObj);
 
@@ -1097,6 +1099,10 @@ Max.Channel.prototype.mute = function(endDate) {
                 untilDate: endDate ? Max.Utils.dateToISO8601(endDate) : null
             }
         }, function(res, details) {
+            self.isMuted = true;
+            if (ChannelStore.get(self)) {
+                ChannelStore.get(self).isMuted = true;
+            }
             def.resolve('ok', details);
         }, function() {
             def.reject.apply(def, arguments);
@@ -1119,6 +1125,10 @@ Max.Channel.prototype.unmute = function() {
             method: 'POST',
             url: '/com.magnet.server/channel/' + encodeURIComponent(self.getChannelId()) + '/push/unmute'
         }, function(res, details) {
+            self.isMuted = false;
+            if (ChannelStore.get(self)) {
+                ChannelStore.get(self).isMuted = false;
+            }
             def.resolve('ok', details);
         }, function() {
             def.reject.apply(def, arguments);
@@ -1156,6 +1166,30 @@ Max.Channel.prototype.getChannelId = function() {
 
 Max.Channel.prototype.getNodePath = function() {
     return '/' + Max.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
+};
+
+// non-persistent cache of channel information to improve message receive performance
+var ChannelStore = {
+    store: {},
+    add: function(channelOrChannels) {
+        if (!Max.Utils.isArray(channelOrChannels))
+            return this.store[this.getChannelId(channelOrChannels)] = channelOrChannels;
+        for (var i=0;i<channelOrChannels.length;++i)
+            this.store[this.getChannelId(channelOrChannels[i])] = channelOrChannels[i];
+    },
+    get: function(channel) {
+        return this.store[this.getChannelId(channel)];
+    },
+    remove: function(channel) {
+        if (this.store[this.getChannelId(channel)])
+            delete this.store[this.getChannelId(channel)];
+    },
+    getChannelId: function(channel) {
+        return (channel.userId || '*') + '/' + (channel.name.toLowerCase());
+    },
+    clear: function() {
+        this.store = {};
+    }
 };
 
 Max.ChannelHelper = {
