@@ -435,6 +435,17 @@ Max.Channel.getPublicChannel = function(channelName) {
 };
 
 /**
+ * Get the channel information.
+ * @param {string} channelId The channel ID.
+ * @returns {Max.Promise} A promise object returning a {Max.Channel} or reason of failure.
+ * @ignore
+ */
+Max.Channel.getChannelById = function(channelId) {
+    var channel = channelId.split('#');
+    return Max.Channel.getChannel(channel[1] || channel[0], channel[1] ? channel[0] : null);
+};
+
+/**
  * Get the basic channel information.
  * @param {string} channelName The channel name.
  * @param {string} [userId] The userId of the channel owner if the channel is private.
