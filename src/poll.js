@@ -131,7 +131,7 @@ Max.Poll.prototype.publish = function(channel) {
  * @returns {Max.Promise} A promise object returning {Max.Message} or reason of failure.
  */
 Max.Poll.prototype.choose = function(pollOptions) {
-    var self = this, def = new Max.Deferred(), previousOpts = [];
+    var self = this, def = new Max.Deferred(), previousOpts = [], pollAnswer;
     var surveyAnswers = {pollId: self.pollId, answers: []};
     self.myVotes = self.myVotes || [];
 
@@ -162,9 +162,10 @@ Max.Poll.prototype.choose = function(pollOptions) {
             url: '/com.magnet.server/surveys/answers/' + self.pollId,
             data: surveyAnswers
         }, function() {
-            self.myVotes = pollOptions;
+            pollAnswer = new Max.PollAnswer(self, previousOpts, pollOptions, mCurrentUser.userId);
+
             if (!self.hideResultsFromOthers) {
-                var msg = new Max.Message().addPayload(new Max.PollAnswer(self, previousOpts, pollOptions));
+                var msg = new Max.Message().addPayload(pollAnswer);
 
                 self.channel.publish(msg).success(function(data, details) {
                     def.resolve(msg, details);
@@ -172,6 +173,11 @@ Max.Poll.prototype.choose = function(pollOptions) {
                     def.reject.apply(def, arguments);
                 });
             } else {
+                if (self.ownerId == mCurrentUser.userId)
+                    self.updateResults(pollAnswer);
+                else
+                    self.myVotes = pollOptions;
+
                 def.resolve.apply(def, arguments);
             }
         }, function() {
@@ -226,6 +232,9 @@ Max.Poll.prototype.updateResults = function(pollAnswer) {
     for (i=0;i<pollAnswer.currentSelection.length;++i) {
         ++this.options[optsObj[pollAnswer.currentSelection[i].optionId]].count;
     }
+
+    if (mCurrentUser && pollAnswer.userId == mCurrentUser.userId)
+        this.myVotes = pollAnswer.currentSelection;
 };
 
 /**
@@ -236,6 +245,7 @@ Max.Poll.prototype.refreshResults = function() {
     var self = this, def = new Max.Deferred();
 
     Max.Poll.get(self.pollId).success(function(poll) {
+        self.myVotes = poll.myVotes;
         self.options = poll.options;
         def.resolve.apply(def, arguments);
     }).error(function() {
@@ -287,13 +297,15 @@ Max.PollIdentifier = function(pollId) {
  * @param {string} poll {Max.Poll} The poll this answer is related to.
  * @param {Max.PollOption[]} [previousSelection] A list of poll options selected by the current user.
  * @param {Max.PollOption[]} [currentSelection] A list of poll options deselected by the current user.
+ * @param {string} userId Identifier of the user who answered the poll.
  * @property {string} pollId {Max.Poll} identifier.
  * @property {string} name Name of the poll.
  * @property {string} question The question this poll should answer.
  * @property {Max.PollOption[]} previousSelection A list of poll options selected by the current user.
  * @property {Max.PollOption[]} currentSelection A list of poll options selected by the current user.
+ * @property {string} userId Identifier of the user who answered the poll.
  */
-Max.PollAnswer = function(poll, previousSelection, currentSelection) {
+Max.PollAnswer = function(poll, previousSelection, currentSelection, userId) {
     poll = poll || {};
     this.TYPE = Max.MessageType.POLL_ANSWER;
     this.pollId = poll.pollId;
@@ -301,6 +313,7 @@ Max.PollAnswer = function(poll, previousSelection, currentSelection) {
     this.question = poll.question;
     this.previousSelection = previousSelection || [];
     this.currentSelection = currentSelection || [];
+    this.userId = userId;
 };
 
 Max.registerPayloadType(Max.MessageType.POLL, Max.Poll);
@@ -351,8 +364,8 @@ Max.PollHelper = {
             opt = new Max.PollOption(choices[i].value, choices[i].metaData);
             opt.pollId = survey.id;
             opt.optionId = choices[i].optionId;
-            opt.count = results[i].count || 0;
-            opt.extras = results[i].metaData || {};
+            opt.count = (results && results[i] && results[i].count) ? results[i].count : 0;
+            opt.extras = choices[i].metaData || {};
             pollObj.options.push(opt);
             if (myAnswerOptionIds.indexOf(opt.optionId) != -1)
                 myAnswerOptions.push(opt);
