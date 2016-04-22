@@ -364,7 +364,7 @@ Max.PollHelper = {
             opt = new Max.PollOption(choices[i].value, choices[i].metaData);
             opt.pollId = survey.id;
             opt.optionId = choices[i].optionId;
-            opt.count = (results && results[i] && results[i].count) ? results[i].count : null;
+            opt.count = (results && results[i] && typeof results[i].count !== 'undefined') ? results[i].count : null;
             opt.extras = choices[i].metaData || {};
             pollObj.options.push(opt);
             if (myAnswerOptionIds.indexOf(opt.optionId) != -1)
