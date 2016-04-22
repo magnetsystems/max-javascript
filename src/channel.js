@@ -3,7 +3,7 @@
  * @class
  * The Channel class is the local representation of a channel. This class provides various channel specific methods, like publishing and subscribing users.
  * @param {object} channelObj An object containing channel information.
- * @property {string} channelId The ID of the channel.
+ * @property {string} channelId The identifier of the channel.
  * @property {string} name The name of the channel.
  * @property {boolean} isPublic True if the channel public.
  * @property {boolean} isSubscribed True if the current user is subscribed to the channel.
@@ -57,9 +57,10 @@ Max.Channel = function(channelObj) {
     channelObj.isMuted = channelObj.isPushMutedByUser;
     delete channelObj.isPushMutedByUser;
 
-    channelObj.channelId = this.getChannelId();
-
     Max.Utils.mergeObj(this, channelObj);
+
+    this.channelId = channelObj.topicId || this.getChannelId();
+    delete this.topicId;
 
     return this;
 };
@@ -435,8 +436,8 @@ Max.Channel.getPublicChannel = function(channelName) {
 };
 
 /**
- * Get the channel information.
- * @param {string} channelId The channel ID.
+ * Get the basic channel information about a public or private channel.
+ * @param {string} channelId The channel identifier.
  * @returns {Max.Promise} A promise object returning a {Max.Channel} or reason of failure.
  * @ignore
  */
