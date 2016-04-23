@@ -1,3 +1,6 @@
+var DEFAULT_POLL_CONFIG_NAME = 'DefaultPollConfig';
+var DEFAULT_POLL_ANSWER_CONFIG_NAME = 'DefaultPollAnswerConfig';
+
 /**
  * @constructor
  * @class
@@ -110,7 +113,10 @@ Max.Poll.prototype.publish = function(channel) {
                 self.options[i].optionId = data.surveyDefinition.questions[0].choices[i];
             }
 
-            var msg = new Max.Message().addPayload(new Max.PollIdentifier(self.pollId));
+            var msg = new Max.Message({
+                question: self.question,
+                pushConfigName: DEFAULT_POLL_CONFIG_NAME
+            }).addPayload(new Max.PollIdentifier(self.pollId));
 
             channel.publish(msg).success(function(data, details) {
                 def.resolve(msg, details);
@@ -165,7 +171,10 @@ Max.Poll.prototype.choose = function(pollOptions) {
             pollAnswer = new Max.PollAnswer(self, previousOpts, pollOptions, mCurrentUser.userId);
 
             if (!self.hideResultsFromOthers) {
-                var msg = new Max.Message().addPayload(pollAnswer);
+                var msg = new Max.Message({
+                question: self.question,
+                pushConfigName: DEFAULT_POLL_ANSWER_CONFIG_NAME
+            }).addPayload(pollAnswer);
 
                 self.channel.publish(msg).success(function(data, details) {
                     def.resolve(msg, details);
