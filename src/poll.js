@@ -114,9 +114,8 @@ Max.Poll.prototype.publish = function(channel) {
             }
 
             var msg = new Max.Message({
-                question: self.question,
-                pushConfigName: DEFAULT_POLL_CONFIG_NAME
-            }).addPayload(new Max.PollIdentifier(self.pollId));
+                question: self.question
+            }, null, null, DEFAULT_POLL_CONFIG_NAME).addPayload(new Max.PollIdentifier(self.pollId));
 
             channel.publish(msg).success(function(data, details) {
                 def.resolve(msg, details);
@@ -172,9 +171,8 @@ Max.Poll.prototype.choose = function(pollOptions) {
 
             if (!self.hideResultsFromOthers) {
                 var msg = new Max.Message({
-                    question: self.question,
-                    pushConfigName: DEFAULT_POLL_ANSWER_CONFIG_NAME
-                }).addPayload(pollAnswer);
+                    question: self.question
+                }, null, null, DEFAULT_POLL_ANSWER_CONFIG_NAME).addPayload(pollAnswer);
 
                 self.channel.publish(msg).success(function(data, details) {
                     def.resolve(msg, details);
