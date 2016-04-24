@@ -799,7 +799,7 @@ Max.Channel.prototype.publish = function(mmxMessage, attachments) {
             };
             if (mmxMessage.pushConfigName || self.pushConfigName)
                 mmxMeta['Push-Config-Name'] = mmxMessage.pushConfigName || self.pushConfigName;
-            
+
             mmxMeta = JSON.stringify(mmxMeta);
 
             var payload = $iq({to: 'pubsub.mmx', from: mCurrentUser.jid, type: 'set', id: iqId})
