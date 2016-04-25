@@ -18,6 +18,8 @@ Max.Channel = function(channelObj) {
     this.mutedUntil = null;
     this.isSubscribed = false;
 
+    channelObj.ownerUserId = channelObj.ownerUserId || channelObj.ownerUserID;
+
     if (channelObj.topicName) {
         channelObj.name = channelObj.topicName;
         delete channelObj.topicName;
