@@ -26,8 +26,22 @@ var DOMParser      = require('xmldom').DOMParser;
 
 var document = jsdom("<html><head></head><body></body></html>");
 
+var InMemorySessionStorage = {
+    items: {},
+    setItem: function(key, val) {
+        this.items[key] = val;
+    },
+    removeItem: function(key) {
+        delete this.items[key];
+    },
+    getItem: function(key) {
+        return this.items[key];
+    }
+};
+
 var window = {
-    XMLHttpRequest: XMLHttpRequest
+    XMLHttpRequest: XMLHttpRequest,
+    sessionStorage: InMemorySessionStorage
 };
 
 exports.Strophe = window;
