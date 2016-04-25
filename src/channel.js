@@ -262,6 +262,7 @@ Max.Channel.create = function(channelObj) {
             delete channelObj.channelName;
             channelObj.creator = mCurrentUser.userId;
             channelObj.isSubscribed = true;
+            channelObj.name += '';
 
             def.resolve(new Max.Channel(channelObj), details);
         }, function () {
@@ -1176,7 +1177,7 @@ Max.Channel.prototype.isOwner = function() {
  * @ignore
  */
 Max.Channel.prototype.getChannelName = function() {
-    return this.isPublic === true ? (this.name + '') : (this.userId + '#' + this.name);
+    return this.isPublic === true ? this.name : (this.userId + '#' + this.name);
 };
 
 /**
@@ -1185,11 +1186,11 @@ Max.Channel.prototype.getChannelName = function() {
  * @ignore
  */
 Max.Channel.prototype.getChannelId = function() {
-    return (this.isPublic === true ? (this.name + '') : (this.userId + '#' + this.name)).toLowerCase();
+    return (this.isPublic === true ? this.name : (this.userId + '#' + this.name)).toLowerCase();
 };
 
 Max.Channel.prototype.getNodePath = function() {
-    return '/' + Max.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + (this.name + '').toLowerCase();
+    return '/' + Max.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
 };
 
 // non-persistent cache of channel information to improve message receive performance
