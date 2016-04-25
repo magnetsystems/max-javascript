@@ -11,9 +11,11 @@
  * @property {string} [publishPermissions] Permissions level required to be able to post, must be in ['anyone', 'owner', 'subscribers']. The channel owner can always publish.
  * @property {string} [ownerUserId] The userId for the owner/creator of the channel.
  * @property {boolean} isMuted True if the channel was muted for the current user. Muted channels will not receive any messages published to the channel.
+ * @property {Date} [mutedUntil] The date when the channel will become unmuted, or null if it is not muted.
  */
 Max.Channel = function(channelObj) {
     this.isMuted = false;
+    this.mutedUntil = null;
     this.isSubscribed = false;
 
     if (channelObj.topicName) {
@@ -56,6 +58,11 @@ Max.Channel = function(channelObj) {
 
     channelObj.isMuted = channelObj.isPushMutedByUser;
     delete channelObj.isPushMutedByUser;
+
+    if (channelObj.isMuted && channelObj.pushMutedUntil) {
+        channelObj.mutedUntil = Max.Utils.ISO8601ToDate(channelObj.pushMutedUntil);
+    }
+    delete channelObj.pushMutedUntil;
 
     Max.Utils.mergeObj(this, channelObj);
 
@@ -1113,6 +1120,7 @@ Max.Channel.prototype.mute = function(endDate) {
                 untilDate: endDate ? Max.Utils.dateToISO8601(endDate) : null
             }
         }, function(res, details) {
+            self.isMuted = true;
             self.isMuted = true;
             if (ChannelStore.get(self)) {
                 ChannelStore.get(self).isMuted = true;
