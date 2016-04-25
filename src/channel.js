@@ -262,6 +262,7 @@ Max.Channel.create = function(channelObj) {
             delete channelObj.channelName;
             channelObj.creator = mCurrentUser.userId;
             channelObj.isSubscribed = true;
+            channelObj.name += '';
 
             def.resolve(new Max.Channel(channelObj), details);
         }, function () {
