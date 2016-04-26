@@ -1633,7 +1633,8 @@ Max.Error = {
     INVALID_POLL_NAME: 'invalid poll name',
     INVALID_POLL_QUESTION: 'invalid poll question',
     POLL_ENDED: 'poll has ended',
-    INVALID_END_DATE: 'invalid end date'
+    INVALID_END_DATE: 'invalid end date',
+    INVALID_PRIVACY_LIST_NAME: 'invalid privacy list name'
 };
 
 var mCurrentDevice = null;
