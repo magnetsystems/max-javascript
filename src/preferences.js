@@ -1,3 +1,5 @@
+var DEFAULT_PRIVACY_LIST = 'default';
+
 /**
  * @constructor
  * @class
@@ -60,7 +62,7 @@ Max.UserPreferences = {
      * @ignore
      */
     setUsers: function(users) {
-        var def = new Max.Deferred(), iqId = Max.Utils.getCleanGUID(), userId, uids = {};
+        var self = this, def = new Max.Deferred(), iqId = Max.Utils.getCleanGUID(), userId, uids = {};
 
         setTimeout(function() {
             if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
@@ -71,7 +73,7 @@ Max.UserPreferences = {
 
             var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
                 .c('query', {xmlns: 'jabber:iq:privacy'})
-                .c('list', {name: 'default'});
+                .c('list', {name: DEFAULT_PRIVACY_LIST});
 
             for (var i in users) {
                 if (uids[userId]) continue;
@@ -89,7 +91,11 @@ Max.UserPreferences = {
                     return def.reject(json.error._type, json.error._code);
                 }
 
-                def.resolve('ok');
+                self.enablePrivacyList(DEFAULT_PRIVACY_LIST).success(function() {
+                    def.resolve('ok');
+                }).error(function(e) {
+                    def.reject(e);
+                });
             }, null, null, null, iqId, null);
 
             mXMPPConnection.send(payload.tree());
@@ -112,7 +118,7 @@ Max.UserPreferences = {
 
             var payload = $iq({from: mCurrentUser.jid, type: 'get', id: iqId})
                 .c('query', {xmlns: 'jabber:iq:privacy'})
-                .c('list', {name: 'default'});
+                .c('list', {name: DEFAULT_PRIVACY_LIST});
 
             mXMPPConnection.addHandler(function(msg) {
                 var json = x2js.xml2json(msg);
@@ -140,6 +146,40 @@ Max.UserPreferences = {
                 }).error(function(e) {
                     def.reject(e);
                 });
+            }, null, null, null, iqId, null);
+
+            mXMPPConnection.send(payload.tree());
+
+        }, 0);
+
+        return def.promise;
+    },
+    /**
+     * Set default privacy list for the current user.
+     * @param {string} listName The privacy list to use.
+     * @returns {Max.Promise} A promise object returning "ok" or request error.
+     */
+    enablePrivacyList: function(listName) {
+        var def = new Max.Deferred(), iqId = Max.Utils.getCleanGUID();
+
+        setTimeout(function() {
+            if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+            if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
+            if (!listName) return def.reject(Max.Error.INVALID_PRIVACY_LIST_NAME);
+
+            var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
+                .c('query', {xmlns: 'jabber:iq:privacy'})
+                .c('default', {name: listName || DEFAULT_PRIVACY_LIST});
+
+            mXMPPConnection.addHandler(function(msg) {
+                var json = x2js.xml2json(msg);
+
+                if (json.error && json.error._code != '404') {
+                    if (json.error._type == 'auth') json.error._type = Max.Error.FORBIDDEN;
+                    return def.reject(json.error._type, json.error._code);
+                }
+
+                def.resolve('ok');
             }, null, null, null, iqId, null);
 
             mXMPPConnection.send(payload.tree());
