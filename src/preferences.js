@@ -158,6 +158,7 @@ Max.UserPreferences = {
      * Set default privacy list for the current user.
      * @param {string} listName The privacy list to use.
      * @returns {Max.Promise} A promise object returning "ok" or request error.
+     * @ignore
      */
     enablePrivacyList: function(listName) {
         var def = new Max.Deferred(), iqId = Max.Utils.getCleanGUID();
@@ -169,7 +170,7 @@ Max.UserPreferences = {
 
             var payload = $iq({from: mCurrentUser.jid, type: 'set', id: iqId})
                 .c('query', {xmlns: 'jabber:iq:privacy'})
-                .c('default', {name: listName || DEFAULT_PRIVACY_LIST});
+                .c('default', {name: listName});
 
             mXMPPConnection.addHandler(function(msg) {
                 var json = x2js.xml2json(msg);
