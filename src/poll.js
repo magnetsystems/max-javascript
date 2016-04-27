@@ -168,25 +168,18 @@ Max.Poll.prototype.choose = function(pollOptions) {
             data: surveyAnswers
         }, function() {
             pollAnswer = new Max.PollAnswer(self, previousOpts, pollOptions, mCurrentUser.userId);
+            self.myVotes = pollOptions;
 
             if (!self.hideResultsFromOthers) {
+                self.updateResults(pollAnswer, true);
                 var msg = new Max.Message({
                     question: self.question
                 }, null, null, DEFAULT_POLL_ANSWER_CONFIG_NAME).addPayload(pollAnswer);
 
-                self.channel.publish(msg).success(function(data, details) {
-                    def.resolve(msg, details);
-                }).error(function() {
-                    def.reject.apply(def, arguments);
-                });
-            } else {
-                if (self.ownerId == mCurrentUser.userId)
-                    self.updateResults(pollAnswer);
-                else
-                    self.myVotes = pollOptions;
-
-                def.resolve.apply(def, arguments);
+                self.channel.publish(msg);
             }
+
+            def.resolve('ok');
         }, function() {
             def.reject.apply(def, arguments);
         });
@@ -224,10 +217,11 @@ Max.Poll.prototype.delete = function() {
  * Update poll results using a poll answer.
  * @param {PollAnswer} pollAnswer A poll answer.
  */
-Max.Poll.prototype.updateResults = function(pollAnswer) {
+Max.Poll.prototype.updateResults = function(pollAnswer, forceUpdate) {
     var optsObj = {}, i;
 
-    if (!pollAnswer.previousSelection.length && !pollAnswer.currentSelection.length) return;
+    if ((!pollAnswer.previousSelection.length && !pollAnswer.currentSelection.length)
+      || (!forceUpdate && mCurrentUser && pollAnswer.userId == mCurrentUser.userId)) return;
 
     for (i=0;i<this.options.length;++i) {
         optsObj[this.options[i].optionId] = i;
@@ -239,9 +233,6 @@ Max.Poll.prototype.updateResults = function(pollAnswer) {
     for (i=0;i<pollAnswer.currentSelection.length;++i) {
         ++this.options[optsObj[pollAnswer.currentSelection[i].optionId]].count;
     }
-
-    if (mCurrentUser && pollAnswer.userId == mCurrentUser.userId)
-        this.myVotes = pollAnswer.currentSelection;
 };
 
 /**
