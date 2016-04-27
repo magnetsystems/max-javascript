@@ -292,15 +292,11 @@ Max.PollIdentifier = function(pollId) {
  * @constructor
  * @class
  * The PollAnswer class is returned by the {Max.EventListener} after a user selects a poll option. It contains all the {Max.PollOption} selected by the user.
- * @param {string} poll {Max.Poll} The poll this answer is related to.
- * @param {Max.PollOption[]} [previousSelection] A list of poll options selected by the current user.
- * @param {Max.PollOption[]} [currentSelection] A list of poll options deselected by the current user.
- * @param {string} userId Identifier of the user who answered the poll.
  * @property {string} pollId {Max.Poll} identifier.
  * @property {string} name Name of the poll.
  * @property {string} question The question this poll should answer.
- * @property {Max.PollOption[]} previousSelection A list of poll options selected by the current user.
- * @property {Max.PollOption[]} currentSelection A list of poll options selected by the current user.
+ * @property {Max.PollOption[]} previousSelection The previous list of poll options selected by the current user.
+ * @property {Max.PollOption[]} currentSelection The current list of poll options selected by the current user.
  * @property {string} userId Identifier of the user who answered the poll.
  */
 Max.PollAnswer = function(poll, previousSelection, currentSelection, userId) {
@@ -323,6 +319,7 @@ Max.registerPayloadType(Max.MessageType.POLL_ANSWER, Max.PollAnswer);
  * @constructor
  * @class
  * Contains helper methods related to polls.
+ * @ignore
  */
 Max.PollHelper = {
     /**
