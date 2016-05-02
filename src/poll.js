@@ -35,7 +35,7 @@ Max.Poll = function(pollObj) {
 
     pollObj.extras = pollObj.extras || {};
     this.TYPE = Max.MessageType.POLL;
-    this.startDate = Max.Utils.dateToISO8601(new Date());
+    this.startDate = new Date();
 
     Max.Utils.mergeObj(this, pollObj);
     return this;
@@ -107,6 +107,7 @@ Max.Poll.prototype.publish = function(channel) {
             self.questionId = data.surveyDefinition.questions[0].questionId;
             self.channel = channel;
             self.channelIdentifier = channel.getChannelName();
+            self.ownerId = mCurrentUser.userId;
 
             for (var i=0;i<self.options.length;++i) {
                 self.options[i].pollId = self.pollId;
@@ -172,6 +173,7 @@ Max.Poll.prototype.choose = function(pollOptions) {
 
             if (!self.hideResultsFromOthers) {
                 self.updateResults(pollAnswer, true);
+
                 var msg = new Max.Message({
                     question: self.question
                 }, null, null, DEFAULT_POLL_ANSWER_CONFIG_NAME).addPayload(pollAnswer);
@@ -339,7 +341,6 @@ Max.PollHelper = {
         pollObj.name = survey.name;
         pollObj.question = survey.surveyDefinition.questions[0].text;
         pollObj.questionId = survey.surveyDefinition.questions[0].questionId;
-        pollObj.startDate = Max.Utils.ISO8601ToDate(survey.startDate);
         pollObj.hideResultsFromOthers = survey.surveyDefinition.resultAccessModel === 'PRIVATE';
         pollObj.allowMultiChoice = survey.surveyDefinition.questions[0].type === 'MULTI_CHOICE';
         pollObj.channelIdentifier = survey.surveyDefinition.notificationChannelId;
@@ -347,6 +348,9 @@ Max.PollHelper = {
         pollObj.extras = survey.metaData;
         pollObj.options = [];
         choices = survey.surveyDefinition.questions[0].choices;
+
+        if (survey.surveyDefinition.startDate)
+            pollObj.startDate = Max.Utils.ISO8601ToDate(survey.surveyDefinition.startDate);
 
         if (survey.surveyDefinition.endDate)
             pollObj.endDate = Max.Utils.ISO8601ToDate(survey.surveyDefinition.endDate);
@@ -392,6 +396,12 @@ Max.PollHelper = {
             questions: this.pollOptionToSurveyQuestions(poll),
             participantModel: 'PUBLIC' // for user access control
         };
+        if (poll.startDate) {
+            survey.surveyDefinition.startDate = Max.Utils.dateToISO8601(poll.startDate);
+        }
+        if (poll.endDate) {
+            survey.surveyDefinition.endDate = Max.Utils.dateToISO8601(poll.endDate);
+        }
         return survey;
     },
     /**

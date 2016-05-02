@@ -4,6 +4,24 @@ var Max = Max || require('../../target/magnet-sdk');
 
 describe('User', function() {
 
+    beforeEach(function(done) {
+        var deviceId = "js-5debf7f5-0501-4c61-d721-4235813fffdf";
+        var label = "Chrome 48.0.2564.97 (48) ";
+        Max.setDevice({
+            "clientId": "40a0501e-7205-4917-bc79-5b201a172052",
+            "deviceId": deviceId,
+            "deviceStatus": "ACTIVE",
+            "deviceToken": null,
+            "label": label,
+            "os": "ANDROID",
+            "osVersion": null,
+            "pushAuthority": null,
+            "tags": null,
+            "userId": "ff8080815315854a015316e6955d0013"
+        });
+        done();
+    });
+
     it('should instantiate a new User', function(done) {
         var userObj = {
             userName: 'jack.doe',
@@ -846,6 +864,57 @@ describe('User setAvatar', function() {
     var userName = 'test-user';
     var userId = 'test-id';
 
+    it('should fail without valid picture', function (done) {
+        var user = new Max.User({
+            userName: userName,
+            userId: userId
+        });
+        Max.setUser(user);
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        var mockFile = {
+            type: 'text/plain'
+        };
+        var multipart = {
+            avatarUpload: function() {}
+        };
+        var avatarUploaderStub = sinon.stub(multipart, 'avatarUpload', function(uid) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var updateProfileStub = sinon.stub(Max.User, 'updateProfile', function(userObj) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                userObj = Max.Utils.mergeObj(user, userObj);
+                Max.setUser(new Max.User(userObj));
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
+        var oUploader = Max.Uploader;
+        Max.Uploader = function(attachments, cb) {
+            this.attachmentRefs = [{"mimeType":"text/plain","senderId":"test-id","attachmentId":"test-attachment-id"}];
+            cb(null, multipart);
+        };
+        Max.User.setAvatar().success(function(res) {
+            expect(res).toEqual('failed-test');
+            Max.User.updateProfile.restore();
+            Max.Uploader = oUploader;
+            done();
+        }).error(function(e) {
+            expect(e).toEqual(Max.Error.INVALID_PICTURE);
+            expect(avatarUploaderStub.calledOnce).toEqual(false);
+            expect(updateProfileStub.calledOnce).toEqual(false);
+            Max.User.updateProfile.restore();
+            Max.Uploader = oUploader;
+            done();
+        });
+    });
+
     it('should should set avatar and update user hasAvatar extra', function (done) {
         var user = new Max.User({
             userName: userName,
@@ -937,6 +1006,613 @@ describe('User setAvatar', function() {
             expect(Max.getCurrentUser().extras.hasAvatar).toEqual(true);
             Max.User.updateProfile.restore();
             Max.Uploader = oUploader;
+            done();
+        });
+    });
+
+});
+
+describe('User deleteAvatar', function() {
+    var testUserId = 'test-user-id-1';
+
+    beforeEach(function () {
+        Max.setUser({
+            userId: testUserId
+        });
+        Max.setConnection({
+            connected: true
+        });
+    });
+    afterEach(function () {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should delete avatar', function (done) {
+        var persistentExistingValueTest = 'yes';
+        Max.setUser({
+            userId: testUserId,
+            extras: {
+                something: persistentExistingValueTest,
+                hasAvatar: true
+            }
+        });
+        var reqStub = sinon.stub(Max, 'Request', function(meta, success) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                success();
+            }, 5);
+            return d.promise;
+        });
+        var updateProfileStub = sinon.stub(Max.User, 'updateProfile', function() {
+            var d = new Max.Deferred();
+            setTimeout(function () {
+                d.resolve();
+            }, 1);
+            return d.promise;
+        });
+
+        Max.User.deleteAvatar().success(function() {
+            expect(Max.getCurrentUser().extras).toBeDefined();
+            expect(Max.getCurrentUser().extras.something).toEqual(persistentExistingValueTest);
+            expect(Max.getCurrentUser().extras.hasAvatar).toEqual(null);
+            expect(reqStub.calledOnce).toEqual(true);
+            expect(updateProfileStub.calledOnce).toEqual(true);
+            Max.Request.restore();
+            Max.User.updateProfile.restore();
+            done();
+        }).error(function (e) {
+            Max.Request.restore();
+            Max.User.updateProfile.restore();
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+});
+
+describe('UserPreferences blockUsers', function() {
+    var userName = 'test-user';
+    var userId = 'test-id';
+
+    beforeEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: userName,
+            userId: userId
+        });
+    });
+
+    afterEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: userName,
+            userId: userId
+        });
+    });
+
+    it('should add users to an existing list of blocked users', function (done) {
+        var newBlockedUsers = ['test-blocked-user-new-1', 'test-blocked-user-new-2'];
+        var originallyBlockedUsers = ['test-blocked-user-1', 'test-blocked-user-2'];
+        var getBlockedUsersStub = sinon.stub(Max.UserPreferences, 'getBlockedUsers', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve(originallyBlockedUsers);
+            }, 5);
+            return d.promise;
+        });
+        var setUsersStub = sinon.stub(Max.UserPreferences, 'setUsers', function(combinedUsers) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                expect(combinedUsers.length).toEqual(4);
+                expect(combinedUsers[0]).toEqual(originallyBlockedUsers[0]);
+                expect(combinedUsers[1]).toEqual(originallyBlockedUsers[1]);
+                expect(combinedUsers[2]).toEqual(newBlockedUsers[0]);
+                expect(combinedUsers[3]).toEqual(newBlockedUsers[1]);
+                d.resolve();
+            }, 5);
+            return d.promise;
+        });
+        Max.UserPreferences.blockUsers(newBlockedUsers).success(function() {
+            expect(getBlockedUsersStub.calledOnce).toEqual(true);
+            expect(setUsersStub.calledOnce).toEqual(true);
+            Max.UserPreferences.getBlockedUsers.restore();
+            Max.UserPreferences.setUsers.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.UserPreferences.getBlockedUsers.restore();
+            Max.UserPreferences.setUsers.restore();
+            done();
+        });
+    });
+
+});
+
+describe('UserPreferences unblockUsers', function() {
+    var userName = 'test-user';
+    var userId = 'test-id';
+
+    beforeEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: userName,
+            userId: userId
+        });
+    });
+
+    afterEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: userName,
+            userId: userId
+        });
+    });
+
+    it('should remove users from a existing list of blocked users', function (done) {
+        var usersToUnblock = [{
+            userId: 'test-blocked-user-2'
+        }, 'test-blocked-not-user-not-blocked-1', 'test-blocked-user-3'];
+        var originallyBlockedUsers = ['test-blocked-user-1', 'test-blocked-user-2', 'test-blocked-user-3', 'test-blocked-user-4'];
+        var getBlockedUsersStub = sinon.stub(Max.UserPreferences, 'getBlockedUsers', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve(originallyBlockedUsers.slice(0));
+            }, 5);
+            return d.promise;
+        });
+        var setUsersStub = sinon.stub(Max.UserPreferences, 'setUsers', function(combinedUsers) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                expect(combinedUsers.length).toEqual(2);
+                expect(combinedUsers[0]).toEqual(originallyBlockedUsers[0]);
+                expect(combinedUsers[1]).toEqual(originallyBlockedUsers[3]);
+                d.resolve();
+            }, 5);
+            return d.promise;
+        });
+        Max.UserPreferences.unblockUsers(usersToUnblock).success(function() {
+            expect(getBlockedUsersStub.calledOnce).toEqual(true);
+            expect(setUsersStub.calledOnce).toEqual(true);
+            Max.UserPreferences.getBlockedUsers.restore();
+            Max.UserPreferences.setUsers.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.UserPreferences.getBlockedUsers.restore();
+            Max.UserPreferences.setUsers.restore();
+            done();
+        });
+    });
+
+});
+
+describe('UserPreferences setUsers', function() {
+    var userName = 'test-user';
+    var userId = 'test-id';
+    var sendSpy;
+
+    beforeEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.setConnection({
+            connected: true
+        });
+        sendSpy = sinon.spy();
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: userName,
+            userId: userId
+        });
+    });
+
+    afterEach(function () {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should should fail if forbidden', function (done) {
+        var usersToUnblock = [{
+            userId: 'test-blocked-user-2'
+        }, 'test-blocked-not-user-not-blocked-1', 'test-blocked-user-3'];
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<error type='auth'></error>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        var enablePrivacyListStub = sinon.stub(Max.UserPreferences, 'enablePrivacyList', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 5);
+            return d.promise;
+        });
+        Max.setConnection(connStub);
+        Max.UserPreferences.setUsers(usersToUnblock).success(function(res) {
+            expect(res).toEqual('failed-test');
+            Max.UserPreferences.enablePrivacyList.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual(Max.Error.FORBIDDEN);
+            Max.UserPreferences.enablePrivacyList.restore();
+            done();
+        });
+    });
+
+    it('should should update blocked users list', function (done) {
+        var usersToUnblock = [{
+            userId: 'test-blocked-user-2'
+        }, 'test-blocked-not-user-not-blocked-1', 'test-blocked-user-3'];
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<query\
+        xmlns='jabber:iq:privacy'>\
+        <list name='default'>\
+            <item action='deny' order='1' type='jid' value='ff808081546288ce015472d0db610000%nwhinkpj4zu@mmx'>\
+                <iq/>\
+                <message/>\
+                <presence-in/>\
+                <presence-out/>\
+            </item>\
+            <item action='deny' order='1' type='jid' value='ff808081546288ce015472d107060001%nwhinkpj4zu@mmx'>\
+                <iq/>\
+                <message/>\
+                <presence-in/>\
+                <presence-out/>\
+            </item>\
+            <item action='deny' order='1' type='jid' value='ff808081546288ce015472d143690002%nwhinkpj4zu@mmx'>\
+                <iq/>\
+                <message/>\
+                <presence-in/>\
+                <presence-out/>\
+            </item>\
+            <item action='deny' order='1' type='jid' value='ff808081546288ce015472d1631b0003%nwhinkpj4zu@mmx'>\
+                <iq/>\
+                <message/>\
+                <presence-in/>\
+                <presence-out/>\
+            </item>\
+        </list>\
+    </query>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        var enablePrivacyListStub = sinon.stub(Max.UserPreferences, 'enablePrivacyList', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 5);
+            return d.promise;
+        });
+        Max.setConnection(connStub);
+        Max.UserPreferences.setUsers(usersToUnblock).success(function() {
+            expect(sendSpy.calledOnce).toEqual(true);
+            expect(enablePrivacyListStub.calledOnce).toEqual(true);
+            Max.UserPreferences.enablePrivacyList.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.UserPreferences.enablePrivacyList.restore();
+            done();
+        });
+    });
+
+});
+
+describe('UserPreferences getBlockedUsers', function() {
+    var userName = 'test-user';
+    var userId = 'test-id';
+    var sendSpy;
+
+    beforeEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.setConnection({
+            connected: true
+        });
+        sendSpy = sinon.spy();
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: userName,
+            userId: userId
+        });
+    });
+
+    afterEach(function () {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should fail if forbidden', function (done) {
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<error type='auth' code='401'></error>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        var getUsersByUserIdsStub = sinon.stub(Max.User, 'getUsersByUserIds', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 5);
+            return d.promise;
+        });
+        Max.setConnection(connStub);
+        Max.UserPreferences.getBlockedUsers().success(function(res) {
+            expect(res).toEqual('failed-test');
+            Max.User.getUsersByUserIds.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual(Max.Error.FORBIDDEN);
+            expect(getUsersByUserIdsStub.calledOnce).toEqual(false);
+            Max.User.getUsersByUserIds.restore();
+            done();
+        });
+    });
+
+    it('should return empty list if list not found', function (done) {
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<error code='404'></error>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        var getUsersByUserIdsStub = sinon.stub(Max.User, 'getUsersByUserIds', function() {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                d.resolve();
+            }, 5);
+            return d.promise;
+        });
+        Max.setConnection(connStub);
+        Max.UserPreferences.getBlockedUsers().success(function(users) {
+            expect(users.length).toEqual(0);
+            expect(getUsersByUserIdsStub.calledOnce).toEqual(false);
+            Max.User.getUsersByUserIds.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.User.getUsersByUserIds.restore();
+            done();
+        });
+    });
+
+    it('should return a list of blocked users', function (done) {
+        var testUid1 = 'ff808081546288ce015472d0db610000';
+        var testUid2 = 'ff808081546288ce015472d107060001';
+        var testUid3 = 'ff808081546288ce015472d143690002';
+        var testUid4 = 'ff808081546288ce015472d1631b0003';
+        var users = [new Max.User({
+            "userIdentifier": testUid1,
+            "clientId": "a7a9e901-abc5-4485-af1c-0b088b34f44d",
+            "firstName": "Jack",
+            "lastName": "Doe",
+            "email": "jack.doe@magnet.com",
+            "userName": "jack.doe2",
+            "password": "n/a",
+            "userRealm": "DB",
+            "roles": [
+                "USER"
+            ],
+            "otpCode": "n/a",
+            "userAccountData": {}
+        }), new Max.User({
+            "userIdentifier": testUid2,
+            "clientId": "a7a9e901-abc5-4485-af1c-0b088b34f44d",
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "email": "jane.doe@magnet.com",
+            "userName": "jane.doe2",
+            "password": "n/a",
+            "userRealm": "DB",
+            "roles": [
+                "USER"
+            ],
+            "otpCode": "n/a",
+            "userAccountData": {}
+        }), new Max.User({
+            "userIdentifier": testUid3,
+            "clientId": "a7a9e901-abc5-4485-af1c-0b088b34f44d",
+            "firstName": "Jack2",
+            "lastName": "Doe",
+            "email": "jack.doe2@magnet.com",
+            "userName": "jack.doe2",
+            "password": "n/a",
+            "userRealm": "DB",
+            "roles": [
+                "USER"
+            ],
+            "otpCode": "n/a",
+            "userAccountData": {}
+        }), new Max.User({
+            "userIdentifier": testUid4,
+            "clientId": "a7a9e901-abc5-4485-af1c-0b088b34f44d",
+            "firstName": "Jane2",
+            "lastName": "Doe",
+            "email": "jane.doe2@magnet.com",
+            "userName": "jane.doe2",
+            "password": "n/a",
+            "userRealm": "DB",
+            "roles": [
+                "USER"
+            ],
+            "otpCode": "n/a",
+            "userAccountData": {}
+        })];
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<query\
+        xmlns='jabber:iq:privacy'>\
+        <list name='default'>\
+            <item action='deny' order='1' type='jid' value='"+testUid1+"%nwhinkpj4zu@mmx'>\
+                <iq/>\
+                <message/>\
+                <presence-in/>\
+                <presence-out/>\
+            </item>\
+            <item action='deny' order='1' type='jid' value='"+testUid2+"%nwhinkpj4zu@mmx'>\
+                <iq/>\
+                <message/>\
+                <presence-in/>\
+                <presence-out/>\
+            </item>\
+            <item action='deny' order='1' type='jid' value='"+testUid3+"%nwhinkpj4zu@mmx'>\
+                <iq/>\
+                <message/>\
+                <presence-in/>\
+                <presence-out/>\
+            </item>\
+            <item action='deny' order='1' type='jid' value='"+testUid4+"%nwhinkpj4zu@mmx'>\
+                <iq/>\
+                <message/>\
+                <presence-in/>\
+                <presence-out/>\
+            </item>\
+        </list>\
+    </query>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        var getUsersByUserIdsStub = sinon.stub(Max.User, 'getUsersByUserIds', function(uids) {
+            var d = new Max.Deferred();
+            setTimeout(function() {
+                expect(uids.length).toEqual(4);
+                expect(uids[0]).toEqual(testUid1);
+                expect(uids[2]).toEqual(testUid3);
+                d.resolve(users);
+            }, 5);
+            return d.promise;
+        });
+        Max.setConnection(connStub);
+        Max.UserPreferences.getBlockedUsers().success(function(blockedUsers) {
+            expect(blockedUsers.length).toEqual(4);
+            expect(blockedUsers[0].userId).toEqual(testUid1);
+            expect(blockedUsers[1].userId).toEqual(testUid2);
+            expect(blockedUsers[2].userId).toEqual(testUid3);
+            expect(blockedUsers[3].userId).toEqual(testUid4);
+            expect(getUsersByUserIdsStub.calledOnce).toEqual(true);
+            Max.User.getUsersByUserIds.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.User.getUsersByUserIds.restore();
+            done();
+        });
+    });
+
+});
+
+describe('UserPreferences getBlockedUsers', function() {
+    var userName = 'test-user';
+    var userId = 'test-id';
+    var sendSpy;
+
+    beforeEach(function () {
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.setConnection({
+            connected: true
+        });
+        sendSpy = sinon.spy();
+        Max.App.initialized = true;
+        Max.setUser({
+            userName: userName,
+            userId: userId
+        });
+    });
+
+    afterEach(function () {
+        Max.setUser(null);
+        Max.setConnection(null);
+    });
+
+    it('should fail if list name not set', function (done) {
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<error type='auth' code='401'></error>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        Max.UserPreferences.enablePrivacyList().success(function(res) {
+            expect(res).toEqual('failed-test');
+            done();
+        }).error(function(e) {
+            expect(e).toEqual(Max.Error.INVALID_PRIVACY_LIST_NAME);
+            done();
+        });
+    });
+
+    it('should fail if forbidden', function (done) {
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<error type='auth' code='401'></error>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        Max.UserPreferences.enablePrivacyList('default').success(function(res) {
+            expect(res).toEqual('failed-test');
+            done();
+        }).error(function(e) {
+            expect(e).toEqual(Max.Error.FORBIDDEN);
+            done();
+        });
+    });
+
+    it('should enable privacy list', function (done) {
+        var connStub = {
+            addHandler: function(cb) {
+                var xmlStr = "<query xmlns='jabber:iq:privacy'><list name='default'/></query>";
+                var xml = Max.Utils.getValidXML(xmlStr);
+                cb(xml);
+            },
+            send: sendSpy,
+            connected: true
+        };
+        Max.setConnection(connStub);
+        Max.UserPreferences.enablePrivacyList('default').success(function(res) {
+            expect(res).toEqual('ok');
+            expect(sendSpy.calledOnce).toEqual(true);
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
             done();
         });
     });

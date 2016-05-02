@@ -498,7 +498,7 @@ Max.User.setAvatar = function(picture) {
 
     setTimeout(function() {
         if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
-        if (!picture) return def.reject('picture not set');
+        if (!picture) return def.reject(Max.Error.INVALID_PICTURE);
 
         new Max.Uploader(picture, function(e, multipart) {
             if (e || !multipart) return def.reject(e);
@@ -531,7 +531,9 @@ Max.User.setAvatar = function(picture) {
  * @returns {Max.Promise} A promise object returning 'ok' or reason of failure.
  */
 Max.User.deleteAvatar = function() {
-    var def = Max.Request({
+    var def = new Max.Deferred();
+
+    Max.Request({
         method: 'DELETE',
         url: '/com.magnet.server/file/delete/' + mCurrentUser.userId,
         headers: {

@@ -76,8 +76,8 @@ Max.UserPreferences = {
                 .c('list', {name: DEFAULT_PRIVACY_LIST});
 
             for (var i in users) {
-                if (uids[userId]) continue;
                 userId = Max.Utils.isObject(users[i]) ? users[i].userId : users[i];
+                if (uids[userId]) continue;
                 uids[userId] = true;
                 payload.c('item', {action: 'deny', order: '1', type: 'jid', value: Max.MMXClient.getBaredJid(userId)});
                 payload.c('iq').up().c('message').up().c('presence-in').up().c('presence-out').up().up();

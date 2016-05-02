@@ -202,6 +202,45 @@ describe('Channel create', function() {
         });
     });
 
+    it('should create with subscribers', function(done) {
+        var uid1 = '40288192510694f6015106960150000a';
+        var user = new Max.User({
+            "userIdentifier": uid1,
+            "clientId": "a7a9e901-abc5-4485-af1c-0b088b34f44d",
+            "firstName": "Jack",
+            "lastName": "Doe",
+            "email": "jack.doe@magnet.com",
+            "userName": "jack.doe",
+            "password": "n/a",
+            "userRealm": "DB",
+            "roles": [
+                "USER"
+            ],
+            "otpCode": "n/a",
+            "userAccountData": {}
+        });
+        var channelObj = {
+            "name": channelName,
+            publishPermissions: 'subscribers',
+            isPublic: false,
+            subscribers: user
+        };
+        var requestStub = sinon.stub(Max, 'Request');
+        requestStub.callsArg(1);
+        Max.Channel.create(channelObj).success(function(channel) {
+            expect(channel.userId).toEqual(testUserId);
+            expect(channel.name).toEqual(channelObj.name);
+            expect(channel.isPublic).toEqual(false);
+            expect(channel.subscribers[0]).toEqual(uid1);
+            Max.Request.restore();
+            done();
+        }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.Request.restore();
+            done();
+        });
+    });
+
     it('should fail creation given invalid publish permissions', function(done) {
         var channelObj = {
             "name": channelName,
@@ -759,7 +798,6 @@ describe('Channel getAllSubscribers', function() {
             Max.User.getUsersByUserIds.restore();
             done();
         }).error(function(e) {
-            console.log('got', e);
             expect(e).toEqual('failed-test2');
             Max.User.getUsersByUserIds.restore();
             done();
@@ -1892,6 +1930,81 @@ describe('Channel deleteMessage', function() {
             Max.Request.restore();
             done();
         }).error(function(e) {
+            expect(e).toEqual('failed-test');
+            Max.Request.restore();
+            done();
+        });
+    });
+});
+
+describe('Channel mute', function() {
+    var testUserId = 'test-user-id-1';
+    var channelName = 'test-channel-name';
+
+    beforeEach(function () {
+        Max.setUser({
+            userId: testUserId
+        });
+        Max.App.hatCredentials = {
+            access_token: 'test-token'
+        };
+        Max.App.initialized = true;
+    });
+
+    it('should mute channel', function (done) {
+        var reqStub = sinon.stub(Max, 'Request', function(meta, success) {
+            success();
+        });
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": channelName,
+            "privateChannel": true,
+            isMuted: false
+        });
+        channel.mute().success(function () {
+            expect(channel.isMuted).toEqual(true);
+            Max.Request.restore();
+            done();
+        }).error(function (e) {
+            expect(e).toEqual('failed-test');
+            Max.Request.restore();
+            done();
+        });
+    });
+
+    it('should unmute channel', function (done) {
+        var reqStub = sinon.stub(Max, 'Request', function(meta, success) {
+            success();
+        });
+        var channel = new Max.Channel({
+            "isCollection": false,
+            "description": "",
+            "isPersistent": true,
+            "maxItems": -1,
+            "maxPayloadSize": 2097152,
+            "creationDate": "2016-02-26T21:27:23.014Z",
+            "modificationDate": "2016-02-26T21:27:23.015Z",
+            "publisherType": "subscribers",
+            "userId": testUserId,
+            "subscriptionEnabled": true,
+            "topicName": channelName,
+            "privateChannel": true,
+            isMuted: true
+        });
+        channel.unmute().success(function () {
+            expect(channel.isMuted).toEqual(false);
+            Max.Request.restore();
+            done();
+        }).error(function (e) {
             expect(e).toEqual('failed-test');
             Max.Request.restore();
             done();
