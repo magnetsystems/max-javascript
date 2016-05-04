@@ -1186,11 +1186,11 @@ Max.Channel.prototype.getChannelName = function() {
  * @ignore
  */
 Max.Channel.prototype.getChannelId = function() {
-    return (this.isPublic === true ? this.name : (this.userId + '#' + this.name)).toLowerCase();
+    return (this.isPublic === true ? (this.name+'') : (this.userId + '#' + this.name)).toLowerCase();
 };
 
 Max.Channel.prototype.getNodePath = function() {
-    return '/' + Max.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + this.name.toLowerCase();
+    return ('/' + Max.App.appId + '/' + (this.userId ? this.userId : '*') + '/' + (this.name+'')).toLowerCase();
 };
 
 // non-persistent cache of channel information to improve message receive performance
