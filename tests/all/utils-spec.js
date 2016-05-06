@@ -624,6 +624,531 @@ describe('Events', function(){
 
 });
 
+describe('Storage SQLConnector', function() {
+
+    beforeEach(function (done) {
+        Max.SQLConnector.db = {};
+        done();
+    });
+    afterEach(function (done) {
+        Max.SQLConnector.db = undefined;
+        done();
+    });
+
+    it('should create a table', function (done) {
+        var table = 'testSQLTable';
+        var kvp = {
+            foo: 'bar',
+            baz: 'bal'
+        };
+        Max.SQLConnector.db.transaction = function(cb) {
+            var tx = {
+                executeSql: function(sql, vals, cb2) {
+                    expect(sql).toEqual('INSERT INTO testSQLTable (foo, baz) VALUES (?, ?)');
+                    cb2(null, 12345);
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.create(table, kvp, function(savedKvp) {
+            expect(savedKvp.foo).toEqual(kvp.foo);
+            expect(Max.SQLConnector.db.transaction.calledOnce).toEqual(true);
+            done();
+        }, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should fail to create a table', function (done) {
+        var table = 'testSQLTable';
+        var kvp = {
+            foo: 'bar',
+            baz: 'bal'
+        };
+        var permissionErr = 'permission-denied';
+        Max.SQLConnector.db.transaction = function(cb, fb) {
+            fb(permissionErr);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.create(table, kvp, function(savedKvp) {
+            expect(savedKvp).toEqual('failed-test');
+            done();
+        }, function(e) {
+            expect(e).toEqual(permissionErr);
+            done();
+        });
+    });
+
+    it('should update a table', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var kvp = {
+            foo: 'bar',
+            baz: 'bal'
+        };
+        Max.SQLConnector.db.transaction = function(cb) {
+            var tx = {
+                executeSql: function(sql, vals, cb2) {
+                    expect(sql).toEqual('UPDATE testSQLTable SET foo=?, baz=? WHERE id=?');
+                    cb2(null, 12345);
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.update(table, rowId, kvp, function(updatedKvp) {
+            expect(updatedKvp.foo).toEqual(kvp.foo);
+            expect(Max.SQLConnector.db.transaction.calledOnce).toEqual(true);
+            done();
+        }, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should fail to update a table', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var kvp = {
+            foo: 'bar',
+            baz: 'bal'
+        };
+        var permissionErr = 'permission-denied';
+        Max.SQLConnector.db.transaction = function(cb, fb) {
+            fb(permissionErr);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.update(table, rowId, kvp, function(updatedKvp) {
+            expect(updatedKvp).toEqual('failed-test');
+            done();
+        }, function(e) {
+            expect(e).toEqual(permissionErr);
+            done();
+        });
+    });
+
+    it('should retrieve records from a table using query', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var kvp = {
+            foo: 'bar',
+            baz: 'bal',
+            qux: 'fred'
+        };
+        Max.SQLConnector.db.transaction = function(cb) {
+            var tx = {
+                executeSql: function(sql, vals, cb2) {
+                    expect(sql).toEqual('SELECT * FROM testSQLTable WHERE foo=? AND baz=?');
+                    var res = {
+                        rows: {
+                            length: 1,
+                            item: function(index) {
+                                return kvp;
+                            }
+                        }
+                    };
+                    cb2(tx, res);
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.get(table, {
+            foo: 'bar',
+            baz: 'bal'
+        }, function(results) {
+            expect(results.length).toEqual(1);
+            expect(results[0].foo).toEqual(kvp.foo);
+            expect(Max.SQLConnector.db.transaction.calledOnce).toEqual(true);
+            done();
+        }, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should retrieve a single record from a table using id', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var kvp = {
+            id: rowId,
+            foo: 'bar',
+            baz: 'bal',
+            qux: 'fred'
+        };
+        Max.SQLConnector.db.transaction = function(cb) {
+            var tx = {
+                executeSql: function(sql, vals, cb2) {
+                    expect(sql).toEqual('SELECT * FROM testSQLTable WHERE id=?');
+                    var res = {
+                        rows: {
+                            length: 1,
+                            item: function(index) {
+                                return kvp;
+                            }
+                        }
+                    };
+                    cb2(tx, res);
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.get(table, rowId, function(result) {
+            expect(result.id).toEqual(kvp.id);
+            expect(result.foo).toEqual(kvp.foo);
+            expect(Max.SQLConnector.db.transaction.calledOnce).toEqual(true);
+            done();
+        }, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should fail to get records from a table due to tx error', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var kvp = {
+            foo: 'bar',
+            baz: 'bal'
+        };
+        var permissionErr = 'permission-denied';
+        Max.SQLConnector.db.transaction = function(cb, fb) {
+            fb(permissionErr);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.get(table, {
+            foo: 'bar'
+        }, function(results) {
+            expect(results).toEqual('failed-test');
+            done();
+        }, function(e) {
+            expect(e).toEqual(permissionErr);
+            done();
+        });
+    });
+
+    it('should fail to get records from a table due to sql execute error', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var sqlError = 'table-not-ready';
+        Max.SQLConnector.db.transaction = function(cb, fb) {
+            var tx = {
+                executeSql: function(sql, vals, cb2, fb2) {
+                    expect(sql).toEqual('SELECT * FROM testSQLTable WHERE foo=?');
+                    fb2(sqlError);
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.get(table, {
+            foo: 'bar'
+        }, function(results) {
+            expect(results).toEqual('failed-test');
+            done();
+        }, function(e) {
+            expect(Max.SQLConnector.db.transaction.calledOnce).toEqual(true);
+            expect(e).toEqual(sqlError);
+            done();
+        });
+    });
+
+    it('should remove a single record from a table using id', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var kvp = {
+            id: rowId,
+            foo: 'bar',
+            baz: 'bal',
+            qux: 'fred'
+        };
+        var completionCb = sinon.spy();
+        Max.SQLConnector.db.transaction = function(cb, fb, always) {
+            always();
+            var tx = {
+                executeSql: function(sql, vals, cb2) {
+                    expect(sql).toEqual('DELETE FROM testSQLTable WHERE id=?');
+                    expect(Max.SQLConnector.db.transaction.calledOnce).toEqual(true);
+                    expect(completionCb.calledOnce).toEqual(true);
+                    done();
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.remove(table, rowId, completionCb, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should remove multiple records from a table using query', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var kvp = {
+            id: rowId,
+            foo: 'bar',
+            baz: 'bal',
+            qux: 'fred'
+        };
+        var completionCb = sinon.spy();
+        Max.SQLConnector.db.transaction = function(cb, fb, always) {
+            always();
+            var tx = {
+                executeSql: function(sql) {
+                    expect(sql).toEqual('DELETE FROM testSQLTable WHERE foo=? AND baz=?');
+                    expect(Max.SQLConnector.db.transaction.calledOnce).toEqual(true);
+                    expect(completionCb.calledOnce).toEqual(true);
+                    done();
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.remove(table, {
+            foo: 'bar',
+            baz: 'bal'
+        }, completionCb, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should remove multiple records from a table using query with arrays', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var kvp = {
+            id: rowId,
+            foo: 'bar',
+            baz: 'bal',
+            qux: 'fred'
+        };
+        var completionCb = sinon.spy();
+        Max.SQLConnector.db.transaction = function(cb, fb, always) {
+            always();
+            var tx = {
+                executeSql: function(sql) {
+                    expect(sql).toEqual('DELETE FROM testSQLTable WHERE baz=? AND foo IN (?, ?, ?)');
+                    expect(Max.SQLConnector.db.transaction.calledOnce).toEqual(true);
+                    expect(completionCb.calledOnce).toEqual(true);
+                    done();
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.remove(table, {
+            foo: ['bar', 'qux', 'fred'],
+            baz: 'bal'
+        }, completionCb, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should fail to remove records from a table due to tx error', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var permissionErr = 'permission-denied';
+        Max.SQLConnector.db.transaction = function(cb, fb) {
+            fb(permissionErr);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.remove(table, rowId, function(res) {
+            expect(res).toEqual('failed-test');
+            done();
+        }, function(e) {
+            expect(e).toEqual(permissionErr);
+            done();
+        });
+    });
+
+    it('should truncate a table', function (done) {
+        var table = 'testSQLTable';
+        var completionCb = sinon.spy();
+        Max.SQLConnector.db.transaction = function(cb, fb, always) {
+            always();
+            var tx = {
+                executeSql: function(sql) {
+                    expect(sql).toEqual('DELETE FROM testSQLTable');
+                    expect(Max.SQLConnector.db.transaction.calledOnce).toEqual(true);
+                    expect(completionCb.calledOnce).toEqual(true);
+                    done();
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.clearTable(table, completionCb, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should fail to truncate table due to tx error', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var permissionErr = 'permission-denied';
+        Max.SQLConnector.db.transaction = function(cb, fb) {
+            fb(permissionErr);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.clearTable(table, function(res) {
+            expect(res).toEqual('failed-test');
+            done();
+        }, function(e) {
+            expect(e).toEqual(permissionErr);
+            done();
+        });
+    });
+
+    it('should fail to create table if not exist due to tx error', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var permissionErr = 'permission-denied';
+        Max.SQLConnector.db.transaction = function(cb, fb) {
+            fb(permissionErr);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.createTableIfNotExist(table, {
+            callId      : 'TEXT',
+            callOptions : 'TEXT',
+            options     : 'TEXT',
+            metadata    : 'TEXT',
+            queueName   : 'TEXT'
+        }, null, true, function() {
+            expect(res).toEqual('failed-test');
+            done();
+        }, function(e) {
+            expect(e).toEqual(permissionErr);
+            done();
+        });
+    });
+
+    it('should create table if not exist', function (done) {
+        var table = 'testSQLTable';
+        var completionCb = sinon.spy();
+        var executions = [];
+        Max.SQLConnector.db.transaction = function(cb, fb, always) {
+            always();
+            var tx = {
+                executeSql: function(sql) {
+                    executions.push(sql);
+                    if (executions.length == 2) {
+                        expect(completionCb.calledOnce).toEqual(true);
+                        expect(executions[0]).toEqual('CREATE TABLE IF NOT EXISTS testSQLTable (id INTEGER PRIMARY KEY AUTOINCREMENT, callId TEXT, callOptions TEXT, options TEXT, metadata TEXT, queueName TEXT)');
+                        expect(executions[1]).toEqual('DELETE FROM testSQLTable');
+                        done();
+                    }
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.createTableIfNotExist(table, {
+            callId      : 'TEXT',
+            callOptions : 'TEXT',
+            options     : 'TEXT',
+            metadata    : 'TEXT',
+            queueName   : 'TEXT'
+        }, null, true, completionCb, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should create table if not exist with data', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var completionCb = sinon.spy();
+        var kvp = {
+            id: rowId,
+            foo: 'bar',
+            baz: 'bal',
+            qux: 'fred'
+        };
+        var executions = [];
+        Max.SQLConnector.db.transaction = function(cb, fb, always) {
+            always();
+            var tx = {
+                executeSql: function(sql) {
+                    executions.push(sql);
+                    if (executions.length == 3) {
+                        expect(completionCb.calledOnce).toEqual(true);
+                        expect(executions[0]).toEqual('CREATE TABLE IF NOT EXISTS testSQLTable (id INTEGER PRIMARY KEY AUTOINCREMENT, callId TEXT, callOptions TEXT, options TEXT, metadata TEXT, queueName TEXT)');
+                        expect(executions[1]).toEqual('DELETE FROM testSQLTable');
+                        expect(executions[2]).toEqual('INSERT INTO testSQLTable (id, foo, baz, qux) VALUES (?, ?, ?, ?)');
+                        done();
+                    }
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.createTableIfNotExist(table, {
+            callId      : 'TEXT',
+            callOptions : 'TEXT',
+            options     : 'TEXT',
+            metadata    : 'TEXT',
+            queueName   : 'TEXT'
+        }, kvp, true, completionCb, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+    it('should create table if not exist with array of data', function (done) {
+        var table = 'testSQLTable';
+        var rowId = 'foo12345';
+        var rowId2 = 'foo67890';
+        var completionCb = sinon.spy();
+        var kvps = [{
+            id: rowId,
+            foo: 'bar',
+            baz: 'bal',
+            qux: 'fred'
+        }, {
+            id: rowId2,
+            foo: 'bar',
+            baz: 'bal',
+            qux: 'fred'
+        }];
+        var executions = [];
+        Max.SQLConnector.db.transaction = function(cb, fb, always) {
+            always();
+            var tx = {
+                executeSql: function(sql) {
+                    executions.push(sql);
+                    if (executions.length == 4) {
+                        expect(completionCb.calledOnce).toEqual(true);
+                        expect(executions[0]).toEqual('CREATE TABLE IF NOT EXISTS testSQLTable (id INTEGER PRIMARY KEY AUTOINCREMENT, callId TEXT, callOptions TEXT, options TEXT, metadata TEXT, queueName TEXT)');
+                        expect(executions[1]).toEqual('DELETE FROM testSQLTable');
+                        expect(executions[2]).toEqual('INSERT INTO testSQLTable (id, foo, baz, qux) VALUES (?, ?, ?, ?)');
+                        expect(executions[3]).toEqual('INSERT INTO testSQLTable (id, foo, baz, qux) VALUES (?, ?, ?, ?)');
+                        done();
+                    }
+                }
+            };
+            cb(tx);
+        };
+        sinon.spy(Max.SQLConnector.db, 'transaction');
+        Max.SQLConnector.createTableIfNotExist(table, {
+            callId      : 'TEXT',
+            callOptions : 'TEXT',
+            options     : 'TEXT',
+            metadata    : 'TEXT',
+            queueName   : 'TEXT'
+        }, kvps, true, completionCb, function(e) {
+            expect(e).toEqual('failed-test');
+            done();
+        });
+    });
+
+});
+
 describe('Storage MemoryStoreConnector', function(){
 
     beforeEach(function(done){

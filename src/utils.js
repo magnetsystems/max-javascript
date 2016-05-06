@@ -894,13 +894,13 @@ Max.SQLConnector = {
         me.db.transaction(function(tx) {
             var props = Max.Utils.getAttributes(kvp).join(', ');
             var vals = Max.Utils.getValues(kvp);
-            Max.Log('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
+            Max.Log.fine('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
             tx.executeSql('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals, function(insertTX, res) {
                 kvp.id = res.insertId;
                 callback(kvp);
             });
         }, function(e) {
-            Max.Log('error inserting a record: ', e);
+            Max.Log.fine('error inserting a record: ', e);
             failback(e);
         });
     },
@@ -910,12 +910,12 @@ Max.SQLConnector = {
             var props = Max.Utils.getAttributes(kvp).join('=?, ')+'=?';
             var vals = Max.Utils.getValues(kvp);
             vals.push(id);
-            Max.Log('UPDATE '+table+' SET '+props+' WHERE id=?', vals);
+            Max.Log.fine('UPDATE '+table+' SET '+props+' WHERE id=?', vals);
             tx.executeSql('UPDATE '+table+' SET '+props+' WHERE id=?', vals, function() {
                 callback(kvp);
             });
         }, function(e) {
-            Max.Log('error updating a record: ', e);
+            Max.Log.fine('error updating a record: ', e);
             failback(e);
         });
     },
@@ -931,15 +931,15 @@ Max.SQLConnector = {
                 props = 'id=?';
                 vals = [input];
             }
-            Max.Log('SELECT * FROM '+table+' WHERE '+props, vals);
+            Max.Log.fine('SELECT * FROM '+table+' WHERE '+props, vals);
             tx.executeSql('SELECT * FROM '+table+' WHERE '+props, vals, function(tx, results) {
                 callback(me.formatResponse(results.rows, isQuery));
             }, function(e) {
-                Max.Log('error retrieving records: ', e);
+                Max.Log.fine('error retrieving records: ', e);
                 failback(e);
             });
         }, function(e) {
-            Max.Log('error setting up web sql transaction: ', e);
+            Max.Log.fine('error setting up web sql transaction: ', e);
             failback(e);
         });
     },
@@ -969,19 +969,19 @@ Max.SQLConnector = {
                 props = 'id=?';
                 vals = [input];
             }
-            Max.Log('DELETE FROM '+table+' WHERE '+props, vals);
+            Max.Log.fine('DELETE FROM '+table+' WHERE '+props, vals);
             tx.executeSql('DELETE FROM '+table+' WHERE '+props, vals);
         }, function(e) {
-            Max.Log('error deleting a record: ', e);
+            Max.Log.fine('error deleting a record: ', e);
             failback(e);
         }, callback);
     },
     clearTable : function(table, callback, failback) {
         this.db.transaction(function(tx) {
-            Max.Log('DELETE FROM '+table);
+            Max.Log.fine('DELETE FROM '+table);
             tx.executeSql('DELETE FROM '+table);
         }, function(e) {
-            Max.Log('error clearing table: ', e);
+            Max.Log.fine('error clearing table: ', e);
             failback(e);
         }, callback);
     },
@@ -994,27 +994,27 @@ Max.SQLConnector = {
             me.schemas[table] = schema;
         }
         me.db.transaction(function(tx) {
-            Max.Log('CREATE TABLE IF NOT EXISTS '+table+' ('+columns+')');
+            Max.Log.fine('CREATE TABLE IF NOT EXISTS '+table+' ('+columns+')');
             tx.executeSql('CREATE TABLE IF NOT EXISTS '+table+' ('+columns+')');
             if (clearRecords === true) {
-                Max.Log('DELETE FROM '+table);
+                Max.Log.fine('DELETE FROM '+table);
                 tx.executeSql('DELETE FROM '+table);
             }
             if (Max.Utils.isArray(kvps)) {
                 for(var i=0;i<kvps.length;++i) {
                     props = Max.Utils.getAttributes(kvps[i]).join(', ');
                     vals = Max.Utils.getValues(kvps[i]);
-                    Max.Log('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
+                    Max.Log.fine('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
                     tx.executeSql('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
                 }
             } else if (kvps) {
                 props = Max.Utils.getAttributes(kvps).join(', ');
                 vals = Max.Utils.getValues(kvps);
-                Max.Log('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
+                Max.Log.fine('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
                 tx.executeSql('INSERT INTO '+table+' ('+props+') VALUES ('+me.getPlaceholders(vals)+')', vals);
             }
         }, function(e) {
-            Max.Log('error executing web sql transaction: ', e);
+            Max.Log.fine('error executing web sql transaction: ', e);
             failback(e);
         }, callback);
     },
