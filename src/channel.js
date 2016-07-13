@@ -306,11 +306,74 @@ Max.Channel.getAllSubscriptions = function(subscriptionOnly) {
             if (subscriptionOnly) return def.resolve(channels);
 
             Max.Channel.getChannels(channels, true).success(function(channels) {
-                ChannelStore.add(channels);
-                def.resolve(channels);
+                Max.Channel.getSummary(channels).success(function() {
+                  ChannelStore.add(channels);
+                  def.resolve(channels);
+                });
             }).error(function() {
                 def.reject.apply(def, arguments);
             });
+        }, null, null, null, msgId,  null);
+
+        mXMPPConnection.send(payload.tree());
+
+    }, 0);
+
+    return def.promise;
+};
+
+/**
+ * Get all the channels the current user is the subscribed to.
+ * @returns {Max.Promise} A promise object returning a list of {Max.Channel} (containing basic information only) or reason of failure.
+ * @ignore
+ */
+Max.Channel.getSummary = function(channels) {
+    var def = new Max.Deferred(), topicNodes = [], t, channelIds = {};
+    var msgId = Max.Utils.getCleanGUID();
+
+    for (var i=0;i<channels.length;++i)
+        topicNodes.push({
+            userId: channels[i].userId,
+            topicName: channels[i].name
+        });
+
+    setTimeout(function() {
+        if (!mCurrentUser) return def.reject(Max.Error.SESSION_EXPIRED);
+        if (!mXMPPConnection || !mXMPPConnection.connected) return def.reject(Max.Error.NOT_CONNECTED);
+
+        var mmxMeta = {
+            topicNodes: topicNodes
+        };
+
+        mmxMeta = JSON.stringify(mmxMeta);
+
+        var payload = $iq({from: mCurrentUser.jid, type: 'get', id: msgId})
+            .c('mmx', {xmlns: 'com.magnet:pubsub', command: 'getSummary', ctype: 'application/json'}, mmxMeta);
+
+        mXMPPConnection.addHandler(function(msg) {
+            var json = x2js.xml2json(msg);
+            var payload;
+
+            if (!json || !json.mmx) return def.reject(Max.Error.INVALID_CHANNEL);
+            payload = JSON.parse(json.mmx);
+            if (payload.message) return def.reject(payload.message);
+
+            for (var i=0;i<payload.length;++i) {
+              t = new Max.Channel({
+                name: payload[i].topicNode.topicName,
+                userId: payload[i].topicNode.userId
+              });
+              channelIds[t.channelId] = payload[i].lastPubTime;
+            }
+            for (var i=0;i<channels.length;++i) {
+              if (channelIds[channels[i].channelId]) {
+                channels[i].lastPubTime = Max.Utils.ISO8601ToDate(channelIds[channels[i].channelId])
+              } else {
+                channels[i].lastPubTime = Max.Utils.ISO8601ToDate(channels[i].creationDate);
+              }
+            }
+
+            def.resolve(channels);
         }, null, null, null, msgId,  null);
 
         mXMPPConnection.send(payload.tree());

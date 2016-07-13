@@ -340,6 +340,13 @@ describe('Channel getAllSubscriptions', function() {
         var setSubscriptionStateStub = sinon.stub(Max.Channel, 'setSubscriptionState', function(input, cb) {
             cb(null, input);
         });
+        var getSummaryStub = sinon.stub(Max.Channel, 'getSummary', function() {
+            var d = new Max.Deferred();
+            setTimeout(function(){
+                d.resolve();
+            }, 0);
+            return d.promise;
+        });
         var connStub = {
             addHandler: function(cb) {
                 var xmlStr = "<pubsub xmlns='http://jabber.org/protocol/pubsub'><subscriptions><s" +
@@ -363,13 +370,16 @@ describe('Channel getAllSubscriptions', function() {
             expect(channels[1].name).toEqual(channelName2);
             expect(channels[1].isPublic).toEqual(false);
             expect(sendSpy.calledOnce).toEqual(true);
+            expect(getSummaryStub.calledOnce).toEqual(true);
             Max.Channel.getChannels.restore();
             Max.Channel.setSubscriptionState.restore();
+            Max.Channel.getSummary.restore();
             done();
         }).error(function(e) {
             expect(e).toEqual('failed-test');
             Max.Channel.getChannels.restore();
             Max.Channel.setSubscriptionState.restore();
+            Max.Channel.getSummary.restore();
             done();
         });
     });
